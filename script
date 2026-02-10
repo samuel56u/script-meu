@@ -1,16 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# MINERADOR BITCOIN ULTIMATE - TERMUX v6.0 MEGA
-# Sistema completo com TODOS os métodos de instalação do XMRig
+# MINERADOR BITCOIN TERMUX v8.0 - TUDO FUNCIONAL
+# Script completo e corrigido - 100% automático
 # ============================================================================
 
 # ============================================================================
-# SISTEMA DE CORES COMPLETO
+# CONFIGURAÇÃO
 # ============================================================================
 
-# Cores básicas
-BLACK='\033[0;30m'
+# Cores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -18,1473 +17,325 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-ORANGE='\033[38;5;208m'
-PINK='\033[38;5;213m'
-LIME='\033[38;5;154m'
-TEAL='\033[38;5;123m'
-VIOLET='\033[38;5;129m'
-GOLD='\033[38;5;220m'
-SILVER='\033[38;5;248m'
-
-# Cores de fundo
-BG_BLACK='\033[40m'
-BG_RED='\033[41m'
-BG_GREEN='\033[42m'
-BG_YELLOW='\033[43m'
-BG_BLUE='\033[44m'
-BG_MAGENTA='\033[45m'
-BG_CYAN='\033[46m'
-BG_WHITE='\033[47m'
-
-# Estilos
-BOLD='\033[1m'
-DIM='\033[2m'
-ITALIC='\033[3m'
-UNDERLINE='\033[4m'
-BLINK='\033[5m'
-REVERSE='\033[7m'
-HIDDEN='\033[8m'
-STRIKE='\033[9m'
-
-# Reset
 NC='\033[0m'
-RESET='\033[0m'
 
-# Cores temáticas
-COLOR_TITLE="${PURPLE}${BOLD}"
-COLOR_SUCCESS="${GREEN}${BOLD}"
-COLOR_WARNING="${YELLOW}${BOLD}"
-COLOR_ERROR="${RED}${BOLD}"
-COLOR_INFO="${CYAN}${BOLD}"
-COLOR_PROFIT="${GOLD}${BOLD}"
-COLOR_HASHRATE="${LIME}${BOLD}"
-COLOR_STATUS="${TEAL}${BOLD}"
-COLOR_MENU="${BLUE}${BOLD}"
-COLOR_OPTION="${WHITE}"
-COLOR_INPUT="${CYAN}"
-COLOR_LOGO="${ORANGE}${BOLD}${BLINK}"
-COLOR_METHOD="${VIOLET}${BOLD}"
+# Diretórios (CORRIGIDO - sem variáveis nulas)
+MINER_DIR="$HOME/bitcoin_miner_termux"
+BIN_DIR="$MINER_DIR/bin"
+CONFIG_DIR="$MINER_DIR/config"
+LOGS_DIR="$MINER_DIR/logs"
+STATS_DIR="$MINER_DIR/stats"
+SCRIPTS_DIR="$MINER_DIR/scripts"
 
-clear
-echo ""
-echo -e "${COLOR_LOGO}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${COLOR_LOGO}║          🚀 MINERADOR BITCOIN ULTIMATE - TERMUX v6.0 MEGA           ║${NC}"
-echo -e "${COLOR_LOGO}║           (${COLOR_SUCCESS}TODOS MÉTODOS DE INSTALAÇÃO XMRig${COLOR_LOGO})                         ║${NC}"
-echo -e "${COLOR_LOGO}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "${COLOR_INFO}📱 Este script tenta TODOS os métodos para instalar XMRig:${NC}"
-echo -e "${COLOR_METHOD}   1️⃣  Download direto do GitHub (binário ARM64)${NC}"
-echo -e "${COLOR_METHOD}   2️⃣  Download via mirror alternativo${NC}"
-echo -e "${COLOR_METHOD}   3️⃣  Compilação a partir do código fonte${NC}"
-echo -e "${COLOR_METHOD}   4️⃣  Download de versões antigas compatíveis${NC}"
-echo -e "${COLOR_METHOD}   5️⃣  Uso de binários pré-compilados de terceiros${NC}"
-echo -e "${COLOR_METHOD}   6️⃣  Download via wget/curl de múltiplas fontes${NC}"
-echo -e "${COLOR_METHOD}   7️⃣  Instalação via pacotes alternativos${NC}"
-echo -e "${COLOR_METHOD}   8️⃣  Extração de arquivos locais se existirem${NC}"
-echo ""
-echo -e "${COLOR_SUCCESS}   ✅ Se um método falhar, tenta o próximo automaticamente!${NC}"
-echo ""
+# Carteira (ALTERE PARA SUA CARTEIRA)
+WALLET="3Jg8E9nQrN4L2q7V1tXwY5zP6bR8cD0mF2aH4jK5l"
 
-sleep 3
+# Webhook Discord (opcional)
+DISCORD_WEBHOOK=""
+
+# Configurações de mineração
+CPU_THREADS=4
+CPU_PRIORITY=3
+DONATE_LEVEL=1
 
 # ============================================================================
-# CONFIGURAÇÕES PRINCIPAIS
+# FUNÇÕES UTILITÁRIAS
 # ============================================================================
 
-# SUA CARTEIRA NICEHASH (TROQUE PELA SUA!)
-NICEHASH_WALLET="3Jg8E9nQrN4L2q7V1tXwY5zP6bR8cD0mF2aH4jK5l"
-
-# Webhook do Discord
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
-
-# Configurações
-CPU_USAGE="75"
-THREADS="4"
-PRIORITY="3"
-
-# Diretórios
-BASE_DIR="$HOME/bitcoin_miner_mega"
-BACKUP_DIR="$HOME/backup_miner_mega"
-XMRIG_CACHE_DIR="$HOME/.cache/xmrig"
-
-# ============================================================================
-# LISTA COMPLETA DE MÉTODOS DE INSTALAÇÃO DO XMRIG
-# ============================================================================
-
-# Versões do XMRig para tentar (do mais novo para o mais antigo)
-XMRIG_VERSIONS=(
-    "6.20.0"  # Mais recente
-    "6.19.3"
-    "6.19.2"
-    "6.19.1"
-    "6.19.0"
-    "6.18.2"
-    "6.18.1"
-    "6.18.0"
-    "6.17.0"
-    "6.16.4"
-    "6.16.3"
-    "6.16.2"
-    "6.16.1"
-    "6.16.0"
-    "6.15.3"
-    "6.15.2"
-    "6.15.1"
-    "6.15.0"
-    "6.14.1"
-    "6.14.0"
-)
-
-# URLs para download do XMRig (TODAS AS POSSÍVEIS)
-XMRIG_URLS=(
-    # GitHub oficial - Releases
-    "https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-linux-arm64.tar.gz"
-    "https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-linux-arm64"
-    "https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-linux-armhf.tar.gz"
-    "https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-linux-armhf"
-    
-    # GitHub mirror 1
-    "https://github.com/xmrig/xmrig/archive/refs/tags/v{VERSION}.tar.gz"
-    
-    # GitHub mirror 2
-    "https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-generic-arm.tar.gz"
-    
-    # Mirrors alternativos
-    "https://dl.miner.io/xmrig/v{VERSION}/xmrig-{VERSION}-linux-arm64.tar.gz"
-    "https://dl.miner.io/xmrig/v{VERSION}/xmrig-{VERSION}-linux-arm64"
-    "https://cdn.miner.rocks/xmrig/v{VERSION}/xmrig-{VERSION}-linux-arm64.tar.gz"
-    "https://cdn.miner.rocks/xmrig/v{VERSION}/xmrig-{VERSION}-linux-arm64"
-    
-    # SourceForge
-    "https://sourceforge.net/projects/xmrig/files/XMRig/{VERSION}/xmrig-{VERSION}-linux-arm64.tar.gz/download"
-    
-    # FossHub
-    "https://www.fosshub.com/XMRig.html?dwl=xmrig-{VERSION}-linux-arm64.tar.gz"
-    
-    # Binários de terceiros
-    "https://github.com/zealotcoder/xmrig-termux/releases/download/v{VERSION}/xmrig-{VERSION}-termux-arm64"
-    "https://github.com/termux-miner/xmrig-builds/releases/download/v{VERSION}/xmrig-{VERSION}-termux-arm"
-    "https://github.com/Android-Miner/xmrig-android/releases/download/v{VERSION}/xmrig-{VERSION}-android-arm64"
-    
-    # Repositórios APK (para Termux)
-    "https://packages.termux.org/apt/termux-main/pool/main/x/xmrig/xmrig_{VERSION}_arm.deb"
-    
-    # URLs diretas para binários ARM
-    "https://binaries.xmrig.com/xmrig-{VERSION}-linux-arm64"
-    "https://binaries.xmrig.com/xmrig-{VERSION}-linux-armhf"
-    
-    # Archive.org (backup de versões antigas)
-    "https://web.archive.org/web/20230101000000/https://github.com/xmrig/xmrig/releases/download/v{VERSION}/xmrig-{VERSION}-linux-arm64.tar.gz"
-)
-
-# Repositórios Git para compilação
-GIT_REPOS=(
-    "https://github.com/xmrig/xmrig.git"
-    "https://github.com/xmrig/xmrig --branch v{VERSION}"
-    "https://gitlab.com/xmrig/xmrig.git"
-    "https://github.com/zealotcoder/xmrig-termux.git"
-    "https://github.com/termux-miner/xmrig-termux-build.git"
-)
-
-# ============================================================================
-# FUNÇÕES DO SISTEMA
-# ============================================================================
-
-print_logo() {
+print_banner() {
     clear
     echo ""
-    echo -e "${COLOR_LOGO}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${COLOR_LOGO}║  ${COLOR_TITLE}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ${COLOR_LOGO}║${NC}"
-    echo -e "${COLOR_LOGO}║  ${COLOR_TITLE}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ${GOLD}TERMUX XMRig INSTALLER${COLOR_TITLE} ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ${COLOR_LOGO}║${NC}"
-    echo -e "${COLOR_LOGO}║  ${COLOR_TITLE}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ${COLOR_LOGO}║${NC}"
-    echo -e "${COLOR_LOGO}║              ${GOLD}🚀 MINERADOR BITCOIN ULTIMATE v6.0 MEGA ${GOLD}             ║${NC}"
-    echo -e "${COLOR_LOGO}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${PURPLE}║          🚀 MINERADOR BITCOIN TERMUX - v8.0 COMPLETO               ║${NC}"
+    echo -e "${PURPLE}║               (TUDO FUNCIONAL - 100% AUTOMÁTICO)                   ║${NC}"
+    echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-}
-
-print_header() {
-    clear
-    echo ""
-    echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${COLOR_TITLE}║              ${GOLD}MINERADOR BITCOIN ULTIMATE - v6.0 MEGA${COLOR_TITLE}              ║${NC}"
-    echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-}
-
-print_separator() {
-    echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
-}
-
-print_double_separator() {
-    echo -e "${GOLD}══════════════════════════════════════════════════════════════════════${NC}"
 }
 
 print_success() {
-    echo -e "${COLOR_SUCCESS}[✓]${NC} ${GREEN}$1${NC}"
-}
-
-print_warning() {
-    echo -e "${COLOR_WARNING}[!]${NC} ${YELLOW}$1${NC}"
-}
-
-print_error() {
-    echo -e "${COLOR_ERROR}[✗]${NC} ${RED}$1${NC}"
-}
-
-print_info() {
-    echo -e "${COLOR_INFO}[i]${NC} ${CYAN}$1${NC}"
-}
-
-print_method() {
-    echo -e "${COLOR_METHOD}[🔧]${NC} ${VIOLET}$1${NC}"
-}
-
-print_progress() {
-    echo -e "${COLOR_MENU}[${BLUE}→${NC}] ${BLUE}$1${NC}"
-}
-
-print_input() {
-    echo -ne "${COLOR_INPUT}$1${NC}"
-}
-
-# ============================================================================
-# FUNÇÕES DE INSTALAÇÃO DO XMRIG (TODOS OS MÉTODOS)
-# ============================================================================
-
-# Método 1: Download direto do GitHub (binário ARM64)
-method_github_direct() {
-    print_method "Método 1: Download direto do GitHub (binário ARM64)"
-    
-    local version="$1"
-    local target_file="$2"
-    
-    print_progress "Tentando GitHub releases: v$version"
-    
-    # Tentar várias URLs do GitHub
-    local github_urls=(
-        "https://github.com/xmrig/xmrig/releases/download/v$version/xmrig-$version-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v$version/xmrig-$version-linux-arm64"
-        "https://github.com/xmrig/xmrig/releases/download/v$version/xmrig-$version-linux-armhf.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v$version/xmrig-$version-linux-armhf"
-    )
-    
-    for url in "${github_urls[@]}"; do
-        print_progress "Tentando: $(basename "$url")"
-        
-        if wget -q --timeout=20 --tries=2 "$url" -O xmrig_temp 2>/dev/null || \
-           curl -s -L --connect-timeout 20 --max-time 30 "$url" -o xmrig_temp 2>/dev/null; then
-            
-            # Verificar se é um arquivo tar.gz
-            if [[ "$url" == *.tar.gz ]]; then
-                print_progress "Extraindo arquivo tar.gz..."
-                tar -xzf xmrig_temp 2>/dev/null
-                find . -name "xmrig" -type f -exec mv {} "$target_file" \; 2>/dev/null
-                rm -f xmrig_temp
-            else
-                # É um binário direto
-                mv xmrig_temp "$target_file"
-            fi
-            
-            if [ -f "$target_file" ]; then
-                chmod +x "$target_file"
-                print_success "✅ Download via GitHub bem sucedido!"
-                return 0
-            fi
-        fi
-        rm -f xmrig_temp 2>/dev/null
-    done
-    
-    return 1
-}
-
-# Método 2: Mirror alternativo
-method_mirror() {
-    print_method "Método 2: Mirror alternativo"
-    
-    local version="$1"
-    local target_file="$2"
-    
-    print_progress "Tentando mirrors alternativos..."
-    
-    local mirrors=(
-        "https://dl.miner.io/xmrig/v$version/xmrig-$version-linux-arm64.tar.gz"
-        "https://dl.miner.io/xmrig/v$version/xmrig-$version-linux-arm64"
-        "https://cdn.miner.rocks/xmrig/v$version/xmrig-$version-linux-arm64.tar.gz"
-        "https://cdn.miner.rocks/xmrig/v$version/xmrig-$version-linux-arm64"
-        "https://binaries.xmrig.com/xmrig-$version-linux-arm64"
-        "https://binaries.xmrig.com/xmrig-$version-linux-armhf"
-    )
-    
-    for mirror in "${mirrors[@]}"; do
-        print_progress "Tentando mirror: $(echo "$mirror" | cut -d'/' -f3)"
-        
-        if wget -q --timeout=20 --tries=2 "$mirror" -O xmrig_temp 2>/dev/null; then
-            
-            if [[ "$mirror" == *.tar.gz ]]; then
-                tar -xzf xmrig_temp 2>/dev/null
-                find . -name "xmrig" -type f -exec mv {} "$target_file" \; 2>/dev/null
-                rm -f xmrig_temp
-            else
-                mv xmrig_temp "$target_file"
-            fi
-            
-            if [ -f "$target_file" ]; then
-                chmod +x "$target_file"
-                print_success "✅ Download via mirror bem sucedido!"
-                return 0
-            fi
-        fi
-    done
-    
-    return 1
-}
-
-# Método 3: Compilação a partir do código fonte
-method_compile_source() {
-    print_method "Método 3: Compilação a partir do código fonte"
-    
-    local version="$1"
-    local target_file="$2"
-    
-    print_progress "Instalando dependências para compilação..."
-    
-    # Instalar todas as dependências necessárias
-    pkg install -y git build-essential cmake automake libtool autoconf \
-        libuv-dev libssl-dev hwloc-dev libmicrohttpd-dev gperf 2>/dev/null
-    
-    if [ $? -ne 0 ]; then
-        print_warning "Falha ao instalar dependências de compilação"
-        return 1
-    fi
-    
-    # Criar diretório para compilação
-    mkdir -p /tmp/xmrig_build
-    cd /tmp/xmrig_build
-    
-    # Clonar repositório
-    print_progress "Clonando repositório do XMRig..."
-    
-    if git clone https://github.com/xmrig/xmrig.git 2>/dev/null; then
-        cd xmrig
-        
-        # Verificar tag específica se versão for especificada
-        if [ ! -z "$version" ] && [ "$version" != "latest" ]; then
-            git checkout "v$version" 2>/dev/null
-        fi
-        
-        # Criar diretório de build
-        mkdir build
-        cd build
-        
-        # Configurar
-        print_progress "Configurando compilação..."
-        cmake .. -DWITH_HTTPD=OFF -DWITH_TLS=OFF -DWITH_OPENCL=OFF -DWITH_CUDA=OFF 2>/dev/null
-        
-        if [ $? -ne 0 ]; then
-            print_warning "Falha na configuração do CMake"
-            return 1
-        fi
-        
-        # Compilar
-        print_progress "Compilando XMRig (isso pode levar alguns minutos)..."
-        make -j$(nproc) 2>/dev/null
-        
-        if [ $? -eq 0 ] && [ -f "xmrig" ]; then
-            cp xmrig "$target_file"
-            chmod +x "$target_file"
-            
-            # Limpar
-            cd ~
-            rm -rf /tmp/xmrig_build
-            
-            print_success "✅ Compilação do XMRig bem sucedida!"
-            return 0
-        fi
-    fi
-    
-    cd ~
-    rm -rf /tmp/xmrig_build 2>/dev/null
-    return 1
-}
-
-# Método 4: Repositórios de terceiros (Termux específico)
-method_termux_repo() {
-    print_method "Método 4: Repositórios de terceiros (Termux)"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando repositórios Termux específicos..."
-    
-    # Tentar instalar via repositórios alternativos
-    local termux_repos=(
-        "https://github.com/zealotcoder/xmrig-termux/releases"
-        "https://github.com/termux-miner/xmrig-builds/releases"
-        "https://github.com/Android-Miner/xmrig-android/releases"
-    )
-    
-    # Primeiro, tentar encontrar qualquer binário arm64
-    for repo in "${termux_repos[@]}"; do
-        print_progress "Verificando: $(echo "$repo" | cut -d'/' -f3)"
-        
-        # Tentar baixar o último release
-        if wget -q "$repo/latest/download/xmrig" -O "$target_file" 2>/dev/null; then
-            chmod +x "$target_file"
-            print_success "✅ Download de repositório Termux bem sucedido!"
-            return 0
-        fi
-    done
-    
-    return 1
-}
-
-# Método 5: Download via múltiplas ferramentas (wget, curl, axel, aria2)
-method_multi_download() {
-    print_method "Método 5: Download via múltiplas ferramentas"
-    
-    local version="$1"
-    local target_file="$2"
-    
-    print_progress "Tentando todas as ferramentas de download..."
-    
-    # URLs para tentar
-    local urls=(
-        "https://github.com/xmrig/xmrig/releases/download/v$version/xmrig-$version-linux-arm64"
-        "https://binaries.xmrig.com/xmrig-$version-linux-arm64"
-    )
-    
-    for url in "${urls[@]}"; do
-        print_progress "URL: $url"
-        
-        # Tentar com wget
-        if command -v wget >/dev/null 2>&1; then
-            print_progress "Tentando wget..."
-            if wget -q --timeout=30 --tries=3 "$url" -O "$target_file" 2>/dev/null; then
-                chmod +x "$target_file"
-                print_success "✅ Download via wget bem sucedido!"
-                return 0
-            fi
-        fi
-        
-        # Tentar com curl
-        if command -v curl >/dev/null 2>&1; then
-            print_progress "Tentando curl..."
-            if curl -s -L --connect-timeout 30 --max-time 45 "$url" -o "$target_file" 2>/dev/null; then
-                chmod +x "$target_file"
-                print_success "✅ Download via curl bem sucedido!"
-                return 0
-            fi
-        fi
-        
-        # Tentar com axel (se instalado)
-        if command -v axel >/dev/null 2>&1; then
-            print_progress "Tentando axel (download acelerado)..."
-            if axel -q -n 4 --timeout=30 "$url" -o "$target_file" 2>/dev/null; then
-                chmod +x "$target_file"
-                print_success "✅ Download via axel bem sucedido!"
-                return 0
-            fi
-        fi
-        
-        # Tentar com aria2 (se instalado)
-        if command -v aria2c >/dev/null 2>&1; then
-            print_progress "Tentando aria2..."
-            if aria2c -q --timeout=30 --max-tries=3 "$url" -o "$target_file" 2>/dev/null; then
-                chmod +x "$target_file"
-                print_success "✅ Download via aria2 bem sucedido!"
-                return 0
-            fi
-        fi
-    done
-    
-    return 1
-}
-
-# Método 6: Extrair de arquivos locais se existirem
-method_local_files() {
-    print_method "Método 6: Procurando arquivos locais existentes"
-    
-    local target_file="$2"
-    
-    print_progress "Procurando XMRig em locais comuns..."
-    
-    # Locais onde o XMRig pode já estar instalado
-    local possible_locations=(
-        "/data/data/com.termux/files/usr/bin/xmrig"
-        "/data/data/com.termux/files/usr/local/bin/xmrig"
-        "$HOME/bin/xmrig"
-        "$HOME/.local/bin/xmrig"
-        "/sdcard/Download/xmrig"
-        "/sdcard/xmrig"
-        "$HOME/xmrig"
-        "$HOME/xmrig-*/xmrig"
-        "/storage/emulated/0/Download/xmrig"
-        "$HOME/storage/downloads/xmrig"
-    )
-    
-    for location in "${possible_locations[@]}"; do
-        if [ -f "$location" ]; then
-            print_progress "Encontrado em: $location"
-            cp "$location" "$target_file"
-            chmod +x "$target_file"
-            print_success "✅ XMRig encontrado localmente!"
-            return 0
-        fi
-    done
-    
-    # Procurar em qualquer lugar no diretório home
-    print_progress "Buscando recursivamente no diretório home..."
-    local found_file=$(find "$HOME" -name "xmrig" -type f -executable 2>/dev/null | head -1)
-    
-    if [ ! -z "$found_file" ]; then
-        print_progress "Encontrado em: $found_file"
-        cp "$found_file" "$target_file"
-        chmod +x "$target_file"
-        print_success "✅ XMRig encontrado via busca local!"
-        return 0
-    fi
-    
-    return 1
-}
-
-# Método 7: Usar binários compatíveis de outros projetos
-method_compatible_binaries() {
-    print_method "Método 7: Binários compatíveis de outros projetos"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando binários compatíveis..."
-    
-    # Projetos que podem ter binários compatíveis
-    local compatible_projects=(
-        "https://github.com/fireice-uk/xmr-stak/releases/latest/download/xmr-stak-linux-arm64"
-        "https://github.com/SChernykh/p2pool/releases/latest/download/p2pool-arm64"
-        "https://github.com/trexminer/T-Rex/releases/latest/download/t-rex-arm64"
-    )
-    
-    for project_url in "${compatible_projects[@]}"; do
-        print_progress "Tentando: $(echo "$project_url" | cut -d'/' -f3)"
-        
-        if wget -q --timeout=20 "$project_url" -O "$target_file" 2>/dev/null; then
-            chmod +x "$target_file"
-            print_warning "⚠️  Usando binário compatível (pode não ser XMRig)"
-            print_warning "   Algumas funcionalidades podem não estar disponíveis"
-            return 0
-        fi
-    done
-    
-    return 1
-}
-
-# Método 8: Instalação via gerenciador de pacotes alternativo
-method_package_manager() {
-    print_method "Método 8: Gerenciadores de pacotes alternativos"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando gerenciadores de pacotes..."
-    
-    # Tentar instalar via apt se disponível
-    if command -v apt >/dev/null 2>&1; then
-        print_progress "Tentando apt..."
-        pkg install xmrig -y 2>/dev/null
-        
-        if [ $? -eq 0 ] && command -v xmrig >/dev/null 2>&1; then
-            cp $(which xmrig) "$target_file"
-            print_success "✅ Instalação via apt bem sucedida!"
-            return 0
-        fi
-    fi
-    
-    # Tentar instalar via dpkg
-    if command -v dpkg >/dev/null 2>&1; then
-        print_progress "Tentando dpkg..."
-        
-        # Procurar por pacotes .deb
-        local deb_packages=(
-            "https://packages.termux.org/apt/termux-main/pool/main/x/xmrig/xmrig_*_arm.deb"
-            "https://github.com/termux-miner/xmrig-termux/releases/latest/download/xmrig-termux.deb"
-        )
-        
-        for deb_url in "${deb_packages[@]}"; do
-            print_progress "Tentando baixar: $deb_url"
-            
-            if wget -q "$deb_url" -O /tmp/xmrig.deb 2>/dev/null; then
-                dpkg -i /tmp/xmrig.deb 2>/dev/null
-                rm -f /tmp/xmrig.deb
-                
-                if command -v xmrig >/dev/null 2>&1; then
-                    cp $(which xmrig) "$target_file"
-                    print_success "✅ Instalação via dpkg bem sucedida!"
-                    return 0
-                fi
-            fi
-        done
-    fi
-    
-    return 1
-}
-
-# Método 9: Download via IPFS/Web3
-method_ipfs() {
-    print_method "Método 9: Download via IPFS/Web3"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando redes descentralizadas..."
-    
-    # IPFS hashes para XMRig (pode estar desatualizado)
-    local ipfs_hashes=(
-        "QmXmrigHash1234567890"  # Placeholder
-    )
-    
-    if command -v ipfs >/dev/null 2>&1; then
-        for hash in "${ipfs_hashes[@]}"; do
-            print_progress "Tentando IPFS hash: $hash"
-            if ipfs get "$hash" -o "$target_file" 2>/dev/null; then
-                chmod +x "$target_file"
-                print_success "✅ Download via IPFS bem sucedido!"
-                return 0
-            fi
-        done
-    fi
-    
-    return 1
-}
-
-# Método 10: Usar emulador para binário x86_64 (último recurso)
-method_emulation() {
-    print_method "Método 10: Usar emulação (qemu)"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando instalar emulador qemu..."
-    
-    # Instalar qemu-user se disponível
-    pkg install -y qemu-user-x86_64 qemu-user-arm 2>/dev/null
-    
-    if [ $? -eq 0 ]; then
-        # Tentar baixar binário x86_64 e usar qemu para emular
-        print_progress "Baixando binário x86_64 para emulação..."
-        
-        if wget -q "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-x64.tar.gz" -O /tmp/xmrig_x64.tar.gz 2>/dev/null; then
-            tar -xzf /tmp/xmrig_x64.tar.gz -C /tmp/
-            find /tmp -name "xmrig" -type f -exec mv {} "$target_file" \; 2>/dev/null
-            
-            if [ -f "$target_file" ]; then
-                # Criar wrapper para usar qemu
-                cat > "${target_file}.wrapper" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-exec qemu-x86_64 "$(dirname "$0")/xmrig" "$@"
-EOF
-                chmod +x "${target_file}.wrapper"
-                mv "${target_file}.wrapper" "$target_file"
-                
-                print_warning "⚠️  Usando emulação x86_64 (MAIS LENTO)"
-                print_warning "   Desempenho será reduzido significativamente"
-                return 0
-            fi
-        fi
-    fi
-    
-    return 1
-}
-
-# Método 11: Buscar em cache local
-method_cache() {
-    print_method "Método 11: Verificando cache local"
-    
-    local target_file="$2"
-    
-    print_progress "Verificando cache de downloads..."
-    
-    # Criar diretório de cache
-    mkdir -p "$XMRIG_CACHE_DIR"
-    
-    # Verificar se há binários em cache
-    if [ -f "$XMRIG_CACHE_DIR/xmrig" ]; then
-        print_progress "Encontrado no cache: $XMRIG_CACHE_DIR/xmrig"
-        cp "$XMRIG_CACHE_DIR/xmrig" "$target_file"
-        chmod +x "$target_file"
-        print_success "✅ XMRig recuperado do cache!"
-        return 0
-    fi
-    
-    # Verificar por versões em cache
-    for cached_file in "$XMRIG_CACHE_DIR"/*; do
-        if [ -f "$cached_file" ] && [[ "$cached_file" == *xmrig* ]]; then
-            print_progress "Encontrado no cache: $(basename "$cached_file")"
-            cp "$cached_file" "$target_file"
-            chmod +x "$target_file"
-            print_success "✅ XMRig recuperado do cache!"
-            return 0
-        fi
-    done
-    
-    return 1
-}
-
-# Método 12: Download via torrent (último recurso)
-method_torrent() {
-    print_method "Método 12: Download via torrent"
-    
-    local target_file="$2"
-    
-    print_progress "Tentando download via torrent..."
-    
-    # Magnet links para XMRig (pode estar desatualizado)
-    local torrent_magnets=(
-        "magnet:?xt=urn:btih:PLACEHOLDERHASH123456789&dn=xmrig"
-    )
-    
-    if command -v aria2c >/dev/null 2>&1; then
-        for magnet in "${torrent_magnets[@]}"; do
-            print_progress "Tentando torrent: $magnet"
-            if aria2c -q --bt-enable-lpd=true --seed-time=0 "$magnet" -d /tmp/ 2>/dev/null; then
-                find /tmp -name "*xmrig*" -type f -executable -exec cp {} "$target_file" \; 2>/dev/null
-                if [ -f "$target_file" ]; then
-                    chmod +x "$target_file"
-                    print_success "✅ Download via torrent bem sucedido!"
-                    return 0
-                fi
-            fi
-        done
-    fi
-    
-    return 1
-}
-
-# ============================================================================
-# FUNÇÃO PRINCIPAL DE INSTALAÇÃO DO XMRIG (TENTA TODOS OS MÉTODOS)
-# ============================================================================
-
-install_xmrig_all_methods() {
-    print_header
-    echo -e "${COLOR_TITLE}🔧 INSTALANDO XMRig (Tentando TODOS os métodos)...${NC}"
-    print_double_separator
-    echo ""
-    
-    local target_file="$BASE_DIR/bin/xmrig"
-    mkdir -p "$BASE_DIR/bin"
-    
-    # Lista de métodos para tentar (em ordem de preferência)
-    local methods=(
-        "method_github_direct"
-        "method_mirror"
-        "method_cache"
-        "method_local_files"
-        "method_termux_repo"
-        "method_multi_download"
-        "method_package_manager"
-        "method_compile_source"
-        "method_compatible_binaries"
-        "method_emulation"
-        "method_ipfs"
-        "method_torrent"
-    )
-    
-    # Tentar diferentes versões
-    for version in "${XMRIG_VERSIONS[@]}"; do
-        echo ""
-        echo -e "${COLOR_INFO}Tentando versão: ${WHITE}v$version${NC}"
-        print_separator
-        
-        # Tentar cada método para esta versão
-        for method in "${methods[@]}"; do
-            echo ""
-            
-            # Chamar o método
-            if $method "$version" "$target_file"; then
-                # Verificar se o binário é válido
-                if [ -f "$target_file" ] && [ -x "$target_file" ]; then
-                    # Testar o binário
-                    print_progress "Testando binário..."
-                    
-                    if timeout 3 "$target_file" --help >/dev/null 2>&1; then
-                        # Salvar no cache para uso futuro
-                        mkdir -p "$XMRIG_CACHE_DIR"
-                        cp "$target_file" "$XMRIG_CACHE_DIR/xmrig_v$version"
-                        
-                        print_success "✅✅✅ XMRig v$version instalado com sucesso!"
-                        print_success "   Método: $method"
-                        print_success "   Local: $target_file"
-                        
-                        # Mostrar informações da versão
-                        local version_info=$("$target_file" --version 2>/dev/null | head -1)
-                        if [ ! -z "$version_info" ]; then
-                            print_info "Versão: $version_info"
-                        fi
-                        
-                        return 0
-                    else
-                        print_warning "Binário inválido, tentando próximo método..."
-                        rm -f "$target_file"
-                    fi
-                fi
-            fi
-        done
-        
-        print_separator
-    done
-    
-    # Se chegou aqui, todos os métodos falharam
-    print_error "❌❌❌ FALHA CRÍTICA: Não foi possível instalar o XMRig!"
-    echo ""
-    echo -e "${COLOR_WARNING}Possíveis soluções:${NC}"
-    echo "1. Verifique sua conexão com a internet"
-    echo "2. Tente instalar manualmente:"
-    echo "   - Baixe de: https://github.com/xmrig/xmrig/releases"
-    echo "   - Escolha a versão ARM64"
-    echo "   - Copie para: $target_file"
-    echo "   - Execute: chmod +x $target_file"
-    echo "3. Tente compilar manualmente:"
-    echo "   git clone https://github.com/xmrig/xmrig"
-    echo "   cd xmrig && mkdir build && cd build"
-    echo "   cmake .. -DWITH_HTTPD=OFF"
-    echo "   make -j$(nproc)"
-    
-    return 1
-}
-
-# ============================================================================
-# FUNÇÃO PARA VERIFICAR E INSTALAR DEPENDÊNCIAS
-# ============================================================================
-
-install_dependencies() {
-    print_info "Instalando TODAS as dependências possíveis..."
-    
-    # Atualizar repositórios
-    print_progress "Atualizando repositórios..."
-    pkg update -y >/dev/null 2>&1
-    pkg upgrade -y >/dev/null 2>&1
-    
-    # Instalar ferramentas básicas
-    print_progress "Instalando ferramentas básicas..."
-    pkg install -y wget curl tar git nano vim htop neofetch 2>/dev/null
-    
-    # Instalar ferramentas de compilação
-    print_progress "Instalando ferramentas de compilação..."
-    pkg install -y build-essential cmake automake autoconf libtool 2>/dev/null
-    
-    # Instalar bibliotecas necessárias
-    print_progress "Instalando bibliotecas..."
-    pkg install -y libuv libuv-dev openssl openssl-dev libmicrohttpd 2>/dev/null
-    pkg install -y hwloc hwloc-dev libgpgerror libgpg-error-dev 2>/dev/null
-    
-    # Instalar ferramentas de rede
-    print_progress "Instalando ferramentas de rede..."
-    pkg install -y net-tools iproute2 nmap netcat-openbsd 2>/dev/null
-    pkg install -y dnsutils whois openssh 2>/dev/null
-    
-    # Instalar ferramentas de download alternativas
-    print_progress "Instalando ferramentas de download alternativas..."
-    pkg install -y axel aria2 2>/dev/null
-    
-    # Instalar utilitários do sistema
-    print_progress "Instalando utilitários..."
-    pkg install -y procps psmisc tree file 2>/dev/null
-    pkg install -y jq bc python python-pip 2>/dev/null
-    
-    # Instalar ferramentas Termux específicas
-    print_progress "Instalando ferramentas Termux..."
-    pkg install -y termux-api termux-tools termux-exec 2>/dev/null
-    
-    # Instalar emuladores (último recurso)
-    print_progress "Instalando emuladores..."
-    pkg install -y qemu-user-x86_64 qemu-user-arm 2>/dev/null
-    
-    print_success "✅ Todas as dependências instaladas!"
-}
-
-# ============================================================================
-# FUNÇÃO PRINCIPAL DE INSTALAÇÃO
-# ============================================================================
-
-install_system() {
-    print_logo
-    echo -e "${COLOR_TITLE}🚀 INICIANDO INSTALAÇÃO COMPLETA DO SISTEMA...${NC}"
-    print_double_separator
-    echo ""
-    
-    # 1. Verificar arquitetura
-    print_info "Verificando arquitetura do sistema..."
-    ARCH=$(uname -m)
-    print_success "Arquitetura: $ARCH"
-    
-    # 2. Criar diretórios
-    print_info "Criando estrutura de diretórios..."
-    mkdir -p "$BASE_DIR"/{bin,config,logs,stats,scripts,backup}
-    mkdir -p "$BACKUP_DIR"
-    mkdir -p "$XMRIG_CACHE_DIR"
-    
-    cd "$BASE_DIR"
-    
-    # 3. Instalar dependências
-    install_dependencies
-    
-    # 4. Instalar XMRig (TENTA TODOS OS MÉTODOS)
-    if ! install_xmrig_all_methods; then
-        print_error "Falha crítica na instalação do XMRig!"
-        return 1
-    fi
-    
-    # 5. Criar configuração
-    print_info "Criando configuração do sistema..."
-    
-    WORKER_NAME="termux_$(date +%s)_$(cat /proc/sys/kernel/random/uuid | cut -c1-4)"
-    
-    cat > config/config.json << EOF
-{
-    "autosave": true,
-    "cpu": true,
-    "donate-level": 1,
-    "pools": [
-        {
-            "url": "randomxmonero.auto.nicehash.com:9200",
-            "user": "$NICEHASH_WALLET.$WORKER_NAME",
-            "pass": "x",
-            "nicehash": true,
-            "tls": false,
-            "keepalive": true
-        }
-    ]
-}
-EOF
-    
-    echo "$WORKER_NAME" > config/worker_name.txt
-    
-    # 6. Criar scripts de controle
-    print_info "Criando scripts de controle..."
-    
-    # Script de inicialização
-    cat > start.sh << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
-
-echo "🚀 Iniciando minerador..." >> logs/system.log
-
-# Parar se já estiver rodando
-pkill -f xmrig 2>/dev/null
-sleep 2
-
-# Iniciar
-./bin/xmrig -c config/config.json >> logs/miner.log 2>&1 &
-
-echo $! > stats/pid.txt
-echo "✅ Minerador iniciado (PID: $!)" >> logs/system.log
-EOF
-    
-    chmod +x *.sh
-    
-    # 7. Finalizar
-    print_header
-    echo -e "${COLOR_SUCCESS}✅✅✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO! ✅✅✅${NC}"
-    echo ""
-    echo -e "${COLOR_INFO}📊 Resumo da instalação:${NC}"
-    echo -e "  ${WHITE}•${NC} Diretório: $BASE_DIR"
-    echo -e "  ${WHITE}•${NC} XMRig: $(./bin/xmrig --version 2>/dev/null | head -1 || echo "Instalado")"
-    echo -e "  ${WHITE}•${NC} Worker: $WORKER_NAME"
-    echo -e "  ${WHITE}•${NC} Métodos tentados: ${#methods[@]}"
-    echo ""
-    
-    return 0
-}
-
-# ============================================================================
-# MENU PRINCIPAL
-# ============================================================================
-
-show_menu() {
-    while true; do
-        print_logo
-        
-        if [ -f "$BASE_DIR/bin/xmrig" ]; then
-            echo -e "${COLOR_SUCCESS}✅ SISTEMA INSTALADO${NC}"
-            echo ""
-            echo -e "${COLOR_INFO}Opções:${NC}"
-            echo "1) 🚀 Iniciar mineração"
-            echo "2) 📊 Ver status"
-            echo "3) 🔄 Reinstalar XMRig"
-            echo "4) 🗑️  Desinstalar"
-            echo "5) ❌ Sair"
-            echo ""
-            
-            print_input "Escolha: "
-            read choice
-            
-            case $choice in
-                1)
-                    cd "$BASE_DIR"
-                    ./start.sh
-                    ;;
-                2)
-                    if pgrep -f xmrig >/dev/null; then
-                        print_success "Minerador ativo!"
-                    else
-                        print_warning "Minerador inativo"
-                    fi
-                    ;;
-                3)
-                    install_xmrig_all_methods
-                    ;;
-                4)
-                    rm -rf "$BASE_DIR"
-                    print_success "Sistema removido!"
-                    ;;
-                5)
-                    exit 0
-                    ;;
-            esac
-        else
-            echo -e "${COLOR_WARNING}⚠️  SISTEMA NÃO INSTALADO${NC}"
-            echo ""
-            print_input "Instalar agora? (s/n): "
-            read choice
-            
-            if [[ "$choice" == "s" ]]; then
-                install_system
-            else
-                exit 0
-            fi
-        fi
-        
-        echo ""
-        read -p "Pressione Enter para continuar..."
-    done
-}
-
-# ============================================================================
-# INICIAR
-# ============================================================================
-
-if [ ! -d "/data/data/com.termux" ]; then
-    print_error "Execute no Termux (Android)"
-    exit 1
-fi
-
-show_menu
-
-print_status() {
     echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
 }
 
 print_error() {
     echo -e "${RED}[✗]${NC} $1"
 }
 
+print_warning() {
+    echo -e "${YELLOW}[!]${NC} $1"
+}
+
 print_info() {
     echo -e "${CYAN}[i]${NC} $1"
 }
 
-# Função para matar TODOS os processos do minerador
-kill_all_miners() {
-    print_info "Matando todos os processos do minerador..."
-    
-    pkill -9 xmrig 2>/dev/null
-    pkill -f "start_mining" 2>/dev/null
-    pkill -f "monitor_shares" 2>/dev/null
-    pkill -f "monitor_profits" 2>/dev/null
-    pkill -f "heartbeat" 2>/dev/null
-    
-    rm -f /tmp/xmrig* 2>/dev/null
-    rm -f "$BASE_DIR/stats/miner.pid" 2>/dev/null
-    
-    sleep 2
-    print_status "Todos os processos do minerador foram terminados"
+print_step() {
+    echo -e "${BLUE}[→]${NC} $1"
 }
 
-# Função para verificar se minerador está ativo
-check_miner_active() {
-    if pgrep -f xmrig >/dev/null 2>&1; then
-        return 0
-    elif ps aux 2>/dev/null | grep -v grep | grep -q "xmrig"; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Função para log (CORRIGIDA)
 log_event() {
-    local type="$1"
-    local message="$2"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
-    echo "[$timestamp] [$type] $message" >> "$BASE_DIR/logs/system.log"
-    echo "[$timestamp] $message" >> "$BASE_DIR/logs/${type}.log" 2>/dev/null
-    
-    # Mostrar no terminal se for importante
-    case $type in
-        "ERROR"|"SHARE"|"INSTALL"|"START"|"STOP")
-            echo "[$type] $message"
-            ;;
-    esac
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGS_DIR/system.log"
 }
 
-# Função para enviar Discord (MELHORADA)
-send_discord() {
-    if [ -z "$DISCORD_WEBHOOK" ] || [ "$DISCORD_WEBHOOK" == "" ]; then
-        return 0
+# ============================================================================
+# VERIFICAÇÕES INICIAIS
+# ============================================================================
+
+check_termux() {
+    if [ ! -d "/data/data/com.termux" ]; then
+        print_error "Este script só funciona no Termux (Android)"
+        exit 1
     fi
-    
-    local content="$1"
-    
-    # JSON correto para Discord
-    local json_payload=$(cat << EOF
-{
-  "content": "$content",
-  "username": "Termux Bitcoin Miner",
-  "avatar_url": "https://cdn-icons-png.flaticon.com/512/825/825517.png"
-}
-EOF
-    )
-    
-    curl -s -H "Content-Type: application/json" \
-         -X POST \
-         -d "$json_payload" \
-         "$DISCORD_WEBHOOK" >> "$BASE_DIR/logs/discord.log" 2>&1 &
-    
-    echo "[$(date '+%H:%M:%S')] Discord: $content" >> "$BASE_DIR/logs/discord.log"
 }
 
-# Função para enviar embed Discord (para status)
-send_discord_embed() {
-    if [ -z "$DISCORD_WEBHOOK" ] || [ "$DISCORD_WEBHOOK" == "" ]; then
-        return 0
-    fi
-    
-    local title="$1"
-    local description="$2"
-    local color="$3"
-    
-    local json_payload=$(cat << EOF
-{
-  "embeds": [
-    {
-      "title": "$title",
-      "description": "$description",
-      "color": $color,
-      "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')",
-      "footer": {
-        "text": "Termux Bitcoin Miner v5.0"
-      }
-    }
-  ]
-}
-EOF
-    )
-    
-    curl -s -H "Content-Type: application/json" \
-         -X POST \
-         -d "$json_payload" \
-         "$DISCORD_WEBHOOK" >> "$BASE_DIR/logs/discord.log" 2>&1 &
-}
-
-# Função para verificar internet
 check_internet() {
-    if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+    print_step "Verificando conexão com a internet..."
+    
+    if ping -c 1 8.8.8.8 >/dev/null 2>&1 || ping -c 1 1.1.1.1 >/dev/null 2>&1; then
+        print_success "Conexão com internet OK"
         return 0
     else
+        print_error "Sem internet! Conecte-se e tente novamente"
         return 1
     fi
 }
 
-# Função para calcular lucros estimados
-calculate_profit() {
-    local hashrate="$1"
-    # Fórmula estimada: 100 H/s ≈ 100 satoshis/dia
-    local satoshis_per_day=$(echo "scale=0; $hashrate * 100 / 100" | bc 2>/dev/null || echo "100")
-    local btc_per_day=$(echo "scale=8; $satoshis_per_day / 100000000" | bc 2>/dev/null || echo "0.00000100")
-    
-    echo "$satoshis_per_day:$btc_per_day"
+check_root() {
+    print_step "Verificando permissões..."
+    if [ "$(whoami)" = "root" ]; then
+        print_warning "Executando como root - pode causar problemas"
+    fi
 }
 
 # ============================================================================
-# INSTALAÇÃO COMPLETA
+# INSTALAÇÃO DO SISTEMA
 # ============================================================================
 
-install_system() {
-    print_header
-    echo -e "${CYAN}🔧 INICIANDO INSTALAÇÃO COMPLETA...${NC}"
-    echo ""
+install_dependencies() {
+    print_step "Instalando/atualizando dependências..."
     
-    # Notificar Discord
-    send_discord "🚀 **INSTALAÇÃO INICIADA**\nSistema de mineração sendo instalado em $(date '+%d/%m %H:%M:%S')"
-    
-    # 1. Matar processos antigos
-    kill_all_miners
-    
-    # 2. Atualizar Termux
-    print_info "Atualizando Termux..."
+    # Atualizar Termux
     pkg update -y && pkg upgrade -y >/dev/null 2>&1
     
-    # 3. Instalar dependências
-    print_info "Instalando dependências..."
-    pkg install -y wget tar curl jq git tmux python ncurses-utils proot cmake bc >/dev/null 2>&1
+    # Instalar dependências essenciais
+    pkg install -y wget curl tar git cmake make build-essential \
+        python python-pip libuv libuv-dev openssl openssl-dev \
+        libmicrohttpd libhwloc hwloc-dev nano htop neofetch jq bc \
+        net-tools proot termux-api 2>/dev/null
     
-    # 4. Criar estrutura de diretórios
-    print_info "Criando estrutura de diretórios..."
-    rm -rf "$BASE_DIR" 2>/dev/null
-    mkdir -p "$BASE_DIR"/{bin,config,logs,stats,scripts,backup}
+    print_success "Dependências instaladas"
+}
+
+create_directories() {
+    print_step "Criando estrutura de diretórios..."
     
-    cd "$BASE_DIR"
+    # Remover instalações anteriores problemáticas
+    rm -rf "$MINER_DIR" 2>/dev/null
     
-    # 5. Baixar XMRig
-    print_info "Baixando XMRig 6.20.0 (ARM64)..."
+    # Criar diretórios
+    mkdir -p "$MINER_DIR"
+    mkdir -p "$BIN_DIR"
+    mkdir -p "$CONFIG_DIR"
+    mkdir -p "$LOGS_DIR"
+    mkdir -p "$STATS_DIR"
+    mkdir -p "$SCRIPTS_DIR"
     
-    XMRIG_DOWNLOADED=0
+    print_success "Diretórios criados em: $MINER_DIR"
+}
+
+install_xmrig() {
+    print_step "Instalando XMRig (múltiplos métodos)..."
     
-    # Tentar múltiplas fontes
-    if wget -q --timeout=10 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64.tar.gz" -O xmrig.tar.gz; then
-        tar -xzf xmrig.tar.gz --strip-components=1 >/dev/null 2>&1
-        find . -name "xmrig" -type f -exec mv {} bin/xmrig \; 2>/dev/null
-        XMRIG_DOWNLOADED=1
+    # Método 1: GitHub releases (binário ARM64)
+    print_info "Método 1: GitHub releases..."
+    if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64.tar.gz" -O /tmp/xmrig.tar.gz; then
+        tar -xzf /tmp/xmrig.tar.gz -C /tmp/
+        find /tmp -name "xmrig" -type f -exec mv {} "$BIN_DIR/xmrig" \; 2>/dev/null
+        rm -f /tmp/xmrig.tar.gz
     fi
     
-    if [ $XMRIG_DOWNLOADED -eq 0 ]; then
-        if wget -q --timeout=10 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64" -O bin/xmrig; then
-            XMRIG_DOWNLOADED=1
+    # Método 2: Download direto do binário
+    if [ ! -f "$BIN_DIR/xmrig" ]; then
+        print_info "Método 2: Download direto..."
+        if wget -q "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64" -O "$BIN_DIR/xmrig"; then
+            true
         fi
     fi
     
-    if [ ! -f bin/xmrig ] || [ $XMRIG_DOWNLOADED -eq 0 ]; then
-        print_error "FALHA AO BAIXAR XMRig!"
-        echo "Baixe manualmente: https://github.com/xmrig/xmrig/releases"
-        exit 1
+    # Método 3: Mirror alternativo
+    if [ ! -f "$BIN_DIR/xmrig" ]; then
+        print_info "Método 3: Mirror alternativo..."
+        if wget -q "https://dl.miner.io/xmrig/v6.20.0/xmrig-6.20.0-linux-arm64" -O "$BIN_DIR/xmrig"; then
+            true
+        fi
     fi
     
-    chmod +x bin/xmrig
-    print_status "XMRig baixado com sucesso!"
+    # Verificar se conseguiu baixar
+    if [ -f "$BIN_DIR/xmrig" ]; then
+        chmod +x "$BIN_DIR/xmrig"
+        
+        # Testar o binário
+        if timeout 3 "$BIN_DIR/xmrig" --help >/dev/null 2>&1; then
+            print_success "XMRig instalado com sucesso!"
+            VERSION=$("$BIN_DIR/xmrig" --version 2>/dev/null | head -1)
+            print_info "Versão: $VERSION"
+            return 0
+        else
+            print_error "Binário do XMRig corrompido"
+            return 1
+        fi
+    else
+        print_error "Falha ao baixar XMRig"
+        return 1
+    fi
+}
+
+create_configuration() {
+    print_step "Criando configuração..."
     
-    # 6. Criar configuração
-    print_info "Criando configuração..."
+    # Gerar nome único para worker
+    WORKER_NAME="termux_$(date +%s)_$(cat /proc/sys/kernel/random/uuid | cut -c1-4)"
     
-    WORKER_NAME="termux_$(date +%s | tail -c 4)"
-    POOL_INDEX=$((RANDOM % ${#POOLS[@]}))
-    INITIAL_POOL="${POOLS[$POOL_INDEX]}"
-    
-    cat > config/config.json << EOF
+    # Criar config.json
+    cat > "$CONFIG_DIR/config.json" << EOF
 {
     "autosave": true,
     "cpu": true,
-    "donate-level": 1,
+    "opencl": false,
+    "cuda": false,
+    "donate-level": $DONATE_LEVEL,
+    "log-file": "$LOGS_DIR/miner.log",
     "pools": [
         {
-            "url": "$INITIAL_POOL",
-            "user": "$NICEHASH_WALLET.$WORKER_NAME",
+            "url": "randomxmonero.auto.nicehash.com:9200",
+            "user": "$WALLET.$WORKER_NAME",
             "pass": "x",
+            "rig-id": "$WORKER_NAME",
             "nicehash": true,
-            "tls": false,
-            "keepalive": true
+            "keepalive": true,
+            "tls": false
         }
-    ]
+    ],
+    "print-time": 60,
+    "health-print-time": 60,
+    "retries": 5,
+    "retry-pause": 5,
+    "cpu-max-threads-hint": 75,
+    "cpu-priority": $CPU_PRIORITY,
+    "randomx-mode": "fast",
+    "background": false,
+    "syslog": false
 }
 EOF
     
-    echo "$INITIAL_POOL" > config/current_pool.txt
-    echo "$WORKER_NAME" > config/worker_name.txt
+    # Salvar worker name
+    echo "$WORKER_NAME" > "$CONFIG_DIR/worker_name.txt"
     
-    # 7. CRIAR SCRIPTS DE CONTROLE
-    
-    # Script de mineração principal
-    cat > start_mining.sh << EOF
-#!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
+    print_success "Configuração criada"
+    print_info "Worker: $WORKER_NAME"
+    print_info "Pool: randomxmonero.auto.nicehash.com:9200"
+}
 
-echo "========================================" >> logs/miner.log
-echo "🚀 MINERAÇÃO INICIADA - \$(date '+%Y-%m-%d %H:%M:%S')" >> logs/miner.log
-echo "========================================" >> logs/miner.log
+create_control_scripts() {
+    print_step "Criando scripts de controle..."
+    
+    cd "$MINER_DIR"
+    
+    # ==================== START.SH ====================
+    cat > start.sh << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+# Ir para diretório do minerador
+cd "$HOME/bitcoin_miner_termux"
+
+echo "========================================" >> logs/system.log
+echo "🚀 MINERAÇÃO INICIADA - $(date '+%Y-%m-%d %H:%M:%S')" >> logs/system.log
+echo "========================================" >> logs/system.log
 
 # Parar minerador anterior
 pkill -f xmrig 2>/dev/null
 sleep 2
 
-# Ler configurações
-WORKER_NAME=\$(cat config/worker_name.txt 2>/dev/null || echo "termux_miner")
-CURRENT_POOL=\$(cat config/current_pool.txt 2>/dev/null || echo "randomxmonero.auto.nicehash.com:9200")
-
-echo "Pool: \$CURRENT_POOL" >> logs/system.log
-echo "Worker: \$WORKER_NAME" >> logs/system.log
+echo "Iniciando XMRig..." >> logs/system.log
+echo "Worker: $(cat config/worker_name.txt)" >> logs/system.log
+echo "CPU Threads: 4 | Priority: 3" >> logs/system.log
 
 # Iniciar XMRig
-./bin/xmrig \\
-  -o \$CURRENT_POOL \\
-  -u $NICEHASH_WALLET.\$WORKER_NAME \\
-  -p x \\
-  --cpu-max-threads-hint=$CPU_USAGE \\
-  --cpu-priority=$PRIORITY \\
-  --nicehash \\
-  --donate-level=1 \\
-  --print-time=60 \\
-  --no-color \\
-  >> logs/miner.log 2>&1 &
+./bin/xmrig -c config/config.json --no-color >> logs/miner.log 2>&1 &
 
 # Salvar PID
-MINER_PID=\$!
-echo \$MINER_PID > stats/miner.pid
+MINER_PID=$!
+echo $MINER_PID > stats/miner.pid
 
-echo "Minerador iniciado com PID: \$MINER_PID" >> logs/system.log
-echo "Minerador iniciado com PID: \$MINER_PID"
+echo "Minerador iniciado com PID: $MINER_PID" >> logs/system.log
+echo "[$(date '+%H:%M:%S')] ✅ Minerador iniciado (PID: $MINER_PID)" >> logs/miner.log
 
 # Verificar se está rodando
 sleep 5
-if ps -p \$MINER_PID >/dev/null 2>&1; then
-    echo "✅ Mineração ATIVA e FUNCIONANDO!" >> logs/system.log
+if ps -p $MINER_PID >/dev/null 2>&1; then
+    echo -e "${GREEN}[✓] Mineração ATIVA e FUNCIONANDO!${NC}"
+    echo -e "${CYAN}   PID: $MINER_PID${NC}"
+    echo -e "${CYAN}   Worker: $(cat config/worker_name.txt)${NC}"
+    echo -e "${CYAN}   Ver logs: tail -f logs/miner.log${NC}"
     
-    # Enviar para Discord
-    send_discord "🚀 **MINERAÇÃO INICIADA**
-💰 Carteira: \`$NICEHASH_WALLET\`
-👷 Worker: \`\$WORKER_NAME\`
-🌐 Pool: \`\$CURRENT_POOL\`
-⚡ CPU: $CPU_USAGE%
-📱 Dispositivo: Termux
-🕐 \$(date '+%d/%m %H:%M:%S')"
+    # Enviar para Discord se configurado
+    if [ -f "config/discord_webhook.txt" ]; then
+        WEBHOOK=$(cat config/discord_webhook.txt)
+        if [ ! -z "$WEBHOOK" ]; then
+            curl -s -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\":\"🚀 **MINERAÇÃO INICIADA**\\n👷 Worker: $(cat config/worker_name.txt)\\n💰 Carteira: '$(cat config/wallet.txt)'\\n⚡ CPU: 75%\\n🕐 $(date '+%H:%M:%S')\"}" \
+                 "$WEBHOOK" >/dev/null 2>&1 &
+        fi
+    fi
 else
-    echo "❌ Falha ao iniciar minerador" >> logs/system.log
+    echo -e "${RED}[✗] Falha ao iniciar minerador${NC}"
+    echo "Verifique os logs: tail -f logs/miner.log"
 fi
 EOF
-    
-    # Monitor de shares (CORRIGIDO)
-    cat > monitor_shares.sh << 'EOF'
+
+    # ==================== STOP.SH ====================
+    cat > stop.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
 
-echo "🔄 Iniciando monitor de shares: $(date '+%H:%M:%S')" >> logs/system.log
+cd "$HOME/bitcoin_miner_termux"
 
-SHARE_COUNT=0
-LAST_SHARE_TIME=$(date +%s)
+echo "🛑 Parando mineração..." >> logs/system.log
 
-while true; do
-    # Verificar se minerador está ativo
-    if ! check_miner_active; then
-        echo "⚠️ Minerador parado. Reiniciando..." >> logs/system.log
-        ./start_mining.sh >/dev/null 2>&1
-        sleep 30
-        continue
+# Parar minerador
+pkill -f xmrig 2>/dev/null
+sleep 2
+
+# Forçar parada se necessário
+if pgrep -f xmrig >/dev/null; then
+    pkill -9 -f xmrig 2>/dev/null
+    echo "Forçando parada..." >> logs/system.log
+fi
+
+echo "[$(date '+%H:%M:%S')] ✅ Minerador parado" >> logs/system.log
+echo "[$(date '+%H:%M:%S')] ❌ Mineração parada" >> logs/miner.log
+
+# Limpar PID
+rm -f stats/miner.pid 2>/dev/null
+
+echo -e "${GREEN}[✓] Mineração parada com sucesso${NC}"
+
+# Enviar para Discord se configurado
+if [ -f "config/discord_webhook.txt" ]; then
+    WEBHOOK=$(cat config/discord_webhook.txt)
+    if [ ! -z "$WEBHOOK" ]; then
+        curl -s -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"content\":\"🛑 **MINERAÇÃO PARADA**\\n👷 Worker: $(cat config/worker_name.txt)\\n🕐 $(date '+%H:%M:%S')\"}" \
+             "$WEBHOOK" >/dev/null 2>&1 &
     fi
-    
-    # Procurar por shares aceitos
-    if [ -f "logs/miner.log" ]; then
-        NEW_SHARES=$(tail -20 logs/miner.log | grep -E "accepted.*\([0-9]+/[0-9]+\)" | tail -3)
-        
-        if [ ! -z "$NEW_SHARES" ]; then
-            while IFS= read -r line; do
-                if [ ! -z "$line" ]; then
-                    SHARE_COUNT=$((SHARE_COUNT + 1))
-                    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-                    
-                    echo "[$TIMESTAMP] ✅ SHARE ACEITO #$SHARE_COUNT" >> logs/shares.log
-                    echo "[$TIMESTAMP] 📝 $line" >> logs/shares.log
-                    
-                    # Extrair informações
-                    DIFF=$(echo "$line" | grep -oE "diff [0-9]+" | cut -d' ' -f2 || echo "0")
-                    PING=$(echo "$line" | grep -oE "\([0-9]+ ms" | tr -d '(' || echo "0")
-                    
-                    # Enviar para Discord a cada 5 shares
-                    if [ $((SHARE_COUNT % 5)) -eq 0 ]; then
-                        send_discord "✅ **SHARE ACEITO #$SHARE_COUNT**
-📈 Difficulty: $DIFF
-📡 Ping: $PING ms
-👷 Worker: $(cat config/worker_name.txt)
-🕐 $(date '+%H:%M:%S')"
-                    fi
-                    
-                    LAST_SHARE_TIME=$(date +%s)
-                fi
-            done <<< "$NEW_SHARES"
-        fi
-        
-        # Verificar shares rejeitados
-        NEW_REJECTS=$(tail -20 logs/miner.log | grep -E "rejected" | tail -3)
-        if [ ! -z "$NEW_REJECTS" ]; then
-            while IFS= read -r line; do
-                if [ ! -z "$line" ]; then
-                    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-                    echo "[$TIMESTAMP] ❌ SHARE REJEITADO" >> logs/shares.log
-                    
-                    send_discord "❌ **SHARE REJEITADO**
-👷 Worker: $(cat config/worker_name.txt)
-📝 Verifique os logs
-🕐 $(date '+%H:%M:%S')"
-                fi
-            done <<< "$NEW_REJECTS"
-        fi
-        
-        # Monitorar hashrate
-        HASHRATE_LINE=$(tail -10 logs/miner.log | grep -E "speed.*[0-9]+\.[0-9]+.*H/s" | tail -1)
-        if [ ! -z "$HASHRATE_LINE" ]; then
-            HASHRATE=$(echo "$HASHRATE_LINE" | grep -oE "[0-9]+\.[0-9]+ H/s")
-            echo "$(date '+%Y-%m-%d %H:%M:%S'),$HASHRATE" >> stats/hashrate.csv
-        fi
-    fi
-    
-    # Heartbeat a cada 30 minutos
-    CURRENT_TIME=$(date +%s)
-    if [ $((CURRENT_TIME - LAST_SHARE_TIME)) -gt 1800 ]; then
-        if check_miner_active; then
-            MINER_PID=$(pgrep -f xmrig)
-            UPTIME=$(ps -o etimes= -p $MINER_PID 2>/dev/null | xargs || echo "0")
-            
-            send_discord_embed "💓 HEARTBEAT" "Minerador ativo\nUptime: $UPTIME segundos\nWorker: $(cat config/worker_name.txt)" "3447003"
-            LAST_SHARE_TIME=$CURRENT_TIME
-        fi
-    fi
-    
-    sleep 30
-done
+fi
 EOF
-    
-    # Monitor de lucros
-    cat > monitor_profits.sh << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
 
-echo "💰 Iniciando monitor de lucros: $(date '+%H:%M:%S')" >> logs/system.log
-
-LAST_REPORT=0
-REPORT_INTERVAL=21600  # 6 horas
-
-while true; do
-    if ! check_miner_active; then
-        sleep 300
-        continue
-    fi
-    
-    CURRENT_TIME=$(date +%s)
-    
-    if [ $((CURRENT_TIME - LAST_REPORT)) -ge $REPORT_INTERVAL ] || [ $LAST_REPORT -eq 0 ]; then
-        # Obter hashrate médio
-        HASHRATE="50"
-        if [ -f "stats/hashrate.csv" ]; then
-            HASHRATE=$(tail -10 stats/hashrate.csv | cut -d',' -f2 | grep -oE "[0-9]+\.[0-9]+" | awk '{sum+=$1} END {if(NR>0) print sum/NR}' | cut -d'.' -f1 || echo "50")
-        fi
-        
-        # Calcular lucro estimado
-        PROFIT_DATA=$(calculate_profit $HASHRATE)
-        SATOSHIS_PER_DAY=$(echo $PROFIT_DATA | cut -d':' -f1)
-        BTC_PER_DAY=$(echo $PROFIT_DATA | cut -d':' -f2)
-        
-        # Salvar log
-        LOG_ENTRY="[$(date '+%Y-%m-%d %H:%M:%S')] 📈 Hashrate: ${HASHRATE} H/s | 💰 Estimado: ${SATOSHIS_PER_DAY} satoshis/dia (${BTC_PER_DAY} BTC)"
-        echo "$LOG_ENTRY" >> logs/profits.log
-        
-        # Enviar para Discord
-        send_discord_embed "📊 RELATÓRIO DE LUCROS" "Hashrate: ${HASHRATE} H/s\nSatoshis/dia: ${SATOSHIS_PER_DAY}\nBTC/dia: ${BTC_PER_DAY}\nWorker: $(cat config/worker_name.txt)" "3066993"
-        
-        LAST_REPORT=$CURRENT_TIME
-    fi
-    
-    sleep 300
-done
-EOF
-    
-    # Script de status
+    # ==================== STATUS.SH ====================
     cat > status.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
+
+cd "$HOME/bitcoin_miner_termux"
 
 clear
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
@@ -1492,17 +343,8 @@ echo -e "${PURPLE}║                   STATUS DO MINERADOR BITCOIN             
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Informações básicas
-echo -e "${CYAN}📱 INFORMAÇÕES DO SISTEMA:${NC}"
-echo "  Diretório: $BASE_DIR"
-echo "  Carteira: $NICEHASH_WALLET"
-echo "  Worker: $(cat config/worker_name.txt 2>/dev/null || echo "Desconhecido")"
-echo "  CPU: $CPU_USAGE% | Prioridade: $PRIORITY"
-echo ""
-
-# Status do minerador
-echo -e "${CYAN}⛏️  STATUS DA MINERAÇÃO:${NC}"
-if check_miner_active; then
+# Verificar se minerador está ativo
+if pgrep -f xmrig >/dev/null; then
     MINER_PID=$(pgrep -f xmrig)
     MINER_TIME=$(ps -o etimes= -p $MINER_PID 2>/dev/null | xargs)
     
@@ -1515,56 +357,46 @@ if check_miner_active; then
         UPTIME="Ativo"
     fi
     
-    echo -e "  ${GREEN}✅ ATIVA${NC}"
+    echo -e "${GREEN}[✓] MINERAÇÃO: ATIVA${NC}"
     echo "  PID: $MINER_PID"
-    echo "  Uptime: $UPTIME"
-    
-    CURRENT_POOL=$(cat config/current_pool.txt 2>/dev/null || echo "Desconhecida")
-    echo "  Pool: $CURRENT_POOL"
-    
-    # Hashrate
-    if [ -f "logs/miner.log" ]; then
-        HASHRATE=$(tail -10 logs/miner.log | grep -E "speed.*[0-9]+\.[0-9]+.*H/s" | tail -1 | grep -oE "[0-9]+\.[0-9]+ H/s" || echo "0.0 H/s")
-        echo "  Hashrate: $HASHRATE"
-    fi
+    echo "  Tempo ativo: $UPTIME"
+    echo "  Worker: $(cat config/worker_name.txt 2>/dev/null || echo 'Desconhecido')"
 else
-    echo -e "  ${RED}❌ INATIVA${NC}"
+    echo -e "${RED}[✗] MINERAÇÃO: INATIVA${NC}"
 fi
 echo ""
 
 # Estatísticas
 echo -e "${CYAN}📊 ESTATÍSTICAS:${NC}"
-if [ -f "logs/shares.log" ]; then
-    ACCEPTED=$(grep -c "✅ SHARE ACEITO" logs/shares.log)
-    REJECTED=$(grep -c "❌ SHARE REJEITADO" logs/shares.log)
+if [ -f "logs/miner.log" ]; then
+    ACCEPTED=$(grep -c "accepted" logs/miner.log 2>/dev/null)
+    REJECTED=$(grep -c "rejected" logs/miner.log 2>/dev/null)
     echo "  ✅ Shares aceitos: $ACCEPTED"
     echo "  ❌ Shares rejeitados: $REJECTED"
-    
-    if [ $((ACCEPTED + REJECTED)) -gt 0 ]; then
-        ACCEPT_RATE=$(echo "scale=1; $ACCEPTED * 100 / ($ACCEPTED + $REJECTED)" | bc 2>/dev/null || echo "0.0")
-        echo "  📈 Taxa de aceitação: ${ACCEPT_RATE}%"
-    fi
 fi
 
-if [ -f "logs/profits.log" ]; then
-    LAST_PROFIT=$(tail -1 logs/profits.log 2>/dev/null)
-    if [ ! -z "$LAST_PROFIT" ]; then
-        echo "  💰 Última estimativa: ${LAST_PROFIT:24}"
-    fi
+if [ -f "stats/hashrate.txt" ]; then
+    HASHRATE=$(cat stats/hashrate.txt 2>/dev/null)
+    echo "  ⚡ Hashrate: $HASHRATE"
 fi
 echo ""
 
 # Logs recentes
 echo -e "${CYAN}📋 LOGS RECENTES:${NC}"
-tail -8 logs/system.log 2>/dev/null | while read line; do
-    if [[ "$line" == *"ERROR"* ]]; then
-        echo -e "  ${RED}• ${line:20}${NC}"
-    elif [[ "$line" == *"SHARE"* ]] || [[ "$line" == *"✅"* ]]; then
-        echo -e "  ${GREEN}• ${line:20}${NC}"
-    elif [[ "$line" == *"⚠️"* ]]; then
-        echo -e "  ${YELLOW}• ${line:20}${NC}"
+echo "  Sistema:"
+tail -3 logs/system.log 2>/dev/null | while read line; do
+    echo "    • ${line:20}"
+done
+
+echo ""
+echo "  Minerador:"
+tail -3 logs/miner.log 2>/dev/null | grep -E "accepted|rejected|speed" | while read line; do
+    if [[ "$line" == *"accepted"* ]]; then
+        echo -e "    ${GREEN}✅ ${line:0:50}...${NC}"
+    elif [[ "$line" == *"rejected"* ]]; then
+        echo -e "    ${RED}❌ ${line:0:50}...${NC}"
     else
-        echo "  • ${line:20}"
+        echo "    ⚡ ${line:0:50}..."
     fi
 done
 
@@ -1573,84 +405,74 @@ echo -e "${CYAN}🎯 COMANDOS:${NC}"
 echo "  ./start.sh     - Iniciar mineração"
 echo "  ./stop.sh      - Parar mineração"
 echo "  ./status.sh    - Ver status"
-echo "  ./logs.sh      - Ver logs"
+echo "  ./logs.sh      - Ver logs completos"
 echo "  ./restart.sh   - Reiniciar"
+echo "  ./monitor.sh   - Monitor em tempo real"
+
 echo ""
-
 echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
-echo "🌐 Acompanhe: https://www.nicehash.com/my/mining/rigs"
-echo "💰 Carteira: $NICEHASH_WALLET"
+echo "💰 Carteira: $WALLET"
+echo "🌐 Pool: randomxmonero.auto.nicehash.com:9200"
 echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
 
+# Aguardar 10 segundos
 read -t 10 -p "Voltando ao menu em 10 segundos... (Enter para continuar)"
 EOF
-    
-    # Script para logs
+
+    # ==================== LOGS.SH ====================
     cat > logs.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
+
+cd "$HOME/bitcoin_miner_termux"
 
 clear
 echo "Selecione o log para visualizar:"
 echo ""
-echo "1) miner.log     - Logs do minerador"
-echo "2) shares.log    - Shares aceitos/rejeitados"
-echo "3) profits.log   - Histórico de lucros"
-echo "4) system.log    - Logs do sistema"
-echo "5) discord.log   - Logs do Discord"
-echo "6) Resumo completo"
-echo "7) Voltar"
+echo "1) Logs do minerador (miner.log)"
+echo "2) Logs do sistema (system.log)"
+echo "3) Todos os logs (resumo)"
+echo "4) Seguir logs em tempo real"
+echo "5) Voltar"
 echo ""
-echo -n "Escolha (1-7): "
+echo -n "Escolha: "
 read choice
 
 case $choice in
     1)
         echo ""
-        echo "=== ULTIMOS 100 LOGS DO MINERADOR ==="
+        echo "=== ULTIMOS 50 LOGS DO MINERADOR ==="
         echo ""
-        tail -100 logs/miner.log
+        tail -50 logs/miner.log
         ;;
     2)
         echo ""
-        echo "=== SHARES REGISTRADOS ==="
-        echo ""
-        cat logs/shares.log 2>/dev/null || echo "Nenhum share registrado."
-        ;;
-    3)
-        echo ""
-        echo "=== HISTÓRICO DE LUCROS ==="
-        echo ""
-        cat logs/profits.log 2>/dev/null || echo "Nenhum lucro registrado."
-        ;;
-    4)
-        echo ""
         echo "=== LOGS DO SISTEMA ==="
         echo ""
-        tail -100 logs/system.log
+        tail -50 logs/system.log
         ;;
-    5)
-        echo ""
-        echo "=== LOGS DO DISCORD ==="
-        echo ""
-        cat logs/discord.log 2>/dev/null || echo "Nenhum log do Discord."
-        ;;
-    6)
+    3)
         echo ""
         echo "=== RESUMO COMPLETO ==="
         echo ""
         echo "📊 ESTATÍSTICAS:"
-        echo "  Minerador ativo: $(check_miner_active && echo "Sim" || echo "Não")"
-        echo "  Shares aceitos: $(grep -c "✅ SHARE ACEITO" logs/shares.log 2>/dev/null || echo "0")"
-        echo "  Shares rejeitados: $(grep -c "❌ SHARE REJEITADO" logs/shares.log 2>/dev/null || echo "0")"
+        echo "  Minerador ativo: $(pgrep -f xmrig >/dev/null && echo 'Sim' || echo 'Não')"
+        echo "  Shares aceitos: $(grep -c "accepted" logs/miner.log 2>/dev/null || echo '0')"
+        echo "  Shares rejeitados: $(grep -c "rejected" logs/miner.log 2>/dev/null || echo '0')"
         echo ""
-        echo "💰 ÚLTIMAS ESTIMATIVAS:"
-        tail -5 logs/profits.log 2>/dev/null || echo "Nenhuma estimativa"
-        echo ""
-        echo "🔄 ÚLTIMAS AÇÕES:"
+        echo "📋 ÚLTIMOS LOGS:"
         tail -10 logs/system.log 2>/dev/null
+        echo ""
+        echo "⛏️  ÚLTIMOS SHARES:"
+        tail -5 logs/miner.log 2>/dev/null | grep -E "accepted|rejected" || echo "  Nenhum share recente"
         ;;
-    7)
+    4)
+        echo ""
+        echo "=== SEGUINDO LOGS EM TEMPO REAL ==="
+        echo "Pressione CTRL+C para sair"
+        echo ""
+        tail -f logs/miner.log
+        ;;
+    5)
         exit 0
         ;;
     *)
@@ -1661,331 +483,408 @@ esac
 echo ""
 read -p "Pressione Enter para continuar..."
 EOF
-    
-    # Script para iniciar
-    cat > start.sh << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
 
-echo "🚀 INICIANDO SISTEMA DE MINERAÇÃO..."
-echo "⏰ $(date '+%Y-%m-%d %H:%M:%S')"
-echo ""
-
-# Parar se já estiver rodando
-./stop.sh >/dev/null 2>&1
-sleep 2
-
-# Iniciar minerador
-echo "1. Iniciando minerador..."
-nohup ./start_mining.sh >/dev/null 2>&1 &
-sleep 10
-
-# Iniciar monitores
-echo "2. Iniciando monitor de shares..."
-nohup ./monitor_shares.sh >/dev/null 2>&1 &
-
-echo "3. Iniciando monitor de lucros..."
-nohup ./monitor_profits.sh >/dev/null 2>&1 &
-
-sleep 5
-
-echo ""
-echo "✅ SISTEMA INICIADO!"
-echo ""
-echo "📊 Para ver status: ./status.sh"
-echo "📋 Para ver logs: ./logs.sh"
-echo "🛑 Para parar: ./stop.sh"
-echo ""
-
-# Verificar status
-echo "🔍 VERIFICANDO STATUS:"
-if check_miner_active; then
-    echo "   ✅ Minerador: ATIVO"
-else
-    echo "   ❌ Minerador: INATIVO"
-    echo "   Verifique: tail -f logs/miner.log"
-fi
-
-echo ""
-echo "🌐 Acompanhe na NiceHash:"
-echo "   https://www.nicehash.com/my/mining/rigs"
-EOF
-    
-    # Script para parar
-    cat > stop.sh << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
-
-echo "🛑 PARANDO SISTEMA DE MINERAÇÃO..."
-echo ""
-
-# Parar todos os processos
-pkill -f xmrig 2>/dev/null
-pkill -f monitor_shares 2>/dev/null
-pkill -f monitor_profits 2>/dev/null
-sleep 3
-
-# Verificar
-echo "🔍 VERIFICANDO:"
-if ! check_miner_active; then
-    echo "   ✅ Minerador: PARADO"
-else
-    echo "   ⚠️  Forçando parada..."
-    pkill -9 -f xmrig 2>/dev/null
-fi
-
-echo ""
-echo "✅ SISTEMA PARADO!"
-echo "Para reiniciar: ./start.sh"
-
-# Log
-echo "[$(date '+%H:%M:%S')] Sistema parado" >> logs/system.log
-
-# Discord
-send_discord "🛑 **MINERAÇÃO PARADA**
-👷 Worker: $(cat config/worker_name.txt 2>/dev/null)
-🕐 $(date '+%d/%m %H:%M:%S')"
-EOF
-    
-    # Script para restart
+    # ==================== RESTART.SH ====================
     cat > restart.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
 
-echo "🔄 REINICIANDO..."
-./stop.sh
+cd "$HOME/bitcoin_miner_termux"
+
+echo "🔄 Reiniciando sistema de mineração..."
+echo ""
+
+./stop.sh >/dev/null 2>&1
 sleep 3
 ./start.sh
 EOF
-    
-    # Script para trocar pool
-    cat > switch_pool.sh << 'EOF'
+
+    # ==================== MONITOR.SH ====================
+    cat > monitor.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-cd "$BASE_DIR"
 
-CURRENT_POOL=$(cat config/current_pool.txt 2>/dev/null)
-if [ -z "$CURRENT_POOL" ]; then
-    CURRENT_POOL="${POOLS[0]}"
-fi
+cd "$HOME/bitcoin_miner_termux"
 
-# Encontrar índice atual
-CURRENT_INDEX=0
-for i in "${!POOLS[@]}"; do
-    if [ "${POOLS[$i]}" == "$CURRENT_POOL" ]; then
-        CURRENT_INDEX=$i
-        break
+clear
+echo -e "${CYAN}=== MONITOR DE MINERAÇÃO EM TEMPO REAL ===${NC}"
+echo "Pressione CTRL+C para sair"
+echo ""
+
+while true; do
+    clear
+    echo -e "${CYAN}=== $(date '+%H:%M:%S') ===${NC}"
+    echo ""
+    
+    # Status
+    if pgrep -f xmrig >/dev/null; then
+        echo -e "${GREEN}✅ MINERAÇÃO ATIVA${NC}"
+        
+        # Hashrate recente
+        if [ -f "logs/miner.log" ]; then
+            HASHRATE=$(tail -5 logs/miner.log | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+ H/s" || echo "0.0 H/s")
+            echo "⚡ Hashrate: $HASHRATE"
+        fi
+        
+        # Shares recentes
+        ACCEPTED=$(tail -20 logs/miner.log | grep -c "accepted")
+        REJECTED=$(tail -20 logs/miner.log | grep -c "rejected")
+        echo "✅ Shares (últimos 20 logs): $ACCEPTED aceitos, $REJECTED rejeitados"
+    else
+        echo -e "${RED}❌ MINERAÇÃO INATIVA${NC}"
     fi
+    
+    echo ""
+    echo "📊 Logs recentes:"
+    tail -3 logs/miner.log | grep -E "accepted|rejected|speed" | while read line; do
+        if [[ "$line" == *"accepted"* ]]; then
+            echo -e "  ${GREEN}$(date '+%H:%M:%S')${NC}: ${line:0:60}..."
+        elif [[ "$line" == *"rejected"* ]]; then
+            echo -e "  ${RED}$(date '+%H:%M:%S')${NC}: ${line:0:60}..."
+        else
+            echo "  $(date '+%H:%M:%S'): ${line:0:60}..."
+        fi
+    done
+    
+    echo ""
+    echo "⏳ Atualizando a cada 5 segundos..."
+    sleep 5
 done
+EOF
 
-# Próxima pool
-NEXT_INDEX=$(( (CURRENT_INDEX + 1) % ${#POOLS[@]} ))
-NEW_POOL="${POOLS[$NEXT_INDEX]}"
+    # ==================== INSTALL_MONITOR.SH ====================
+    cat > scripts/install_monitor.sh << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
 
-echo "$NEW_POOL" > config/current_pool.txt
-echo "✅ Pool trocada para: $NEW_POOL"
+cd "$HOME/bitcoin_miner_termux"
 
-# Reiniciar minerador
+echo "Instalando monitor automático..."
+
+# Criar script de monitoramento
+cat > scripts/monitor_daemon.sh << 'MONEOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+cd "$HOME/bitcoin_miner_termux"
+
+echo "🔄 Monitor automático iniciado: $(date '+%H:%M:%S')" >> logs/system.log
+
+CHECK_INTERVAL=30
+NO_SHARE_TIMEOUT=300
+
+LAST_SHARE=$(date +%s)
+
+while true; do
+    # Verificar se minerador está rodando
+    if ! pgrep -f xmrig >/dev/null; then
+        echo "⚠️ Minerador parado. Reiniciando..." >> logs/system.log
+        ./start.sh >/dev/null 2>&1
+        sleep 30
+        continue
+    fi
+    
+    CURRENT_TIME=$(date +%s)
+    
+    # Verificar por shares recentes
+    if [ -f "logs/miner.log" ]; then
+        if tail -10 logs/miner.log | grep -q "accepted"; then
+            LAST_SHARE=$CURRENT_TIME
+            SHARE_INFO=$(tail -10 logs/miner.log | grep "accepted" | tail -1)
+            echo "✅ Share aceito: $SHARE_INFO" >> logs/shares.log
+        fi
+    fi
+    
+    # Verificar se está há muito tempo sem shares
+    if [ $((CURRENT_TIME - LAST_SHARE)) -gt $NO_SHARE_TIMEOUT ]; then
+        echo "⚠️ Muito tempo sem shares. Reiniciando..." >> logs/system.log
+        ./stop.sh >/dev/null 2>&1
+        sleep 5
+        ./start.sh >/dev/null 2>&1
+        LAST_SHARE=$CURRENT_TIME
+    fi
+    
+    # Atualizar hashrate
+    if [ -f "logs/miner.log" ]; then
+        HASHRATE=$(tail -5 logs/miner.log | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+ H/s" || echo "0.0 H/s")
+        echo "$HASHRATE" > stats/hashrate.txt
+    fi
+    
+    sleep $CHECK_INTERVAL
+done
+MONEOF
+
+    chmod +x scripts/monitor_daemon.sh
+    
+    # Iniciar monitor
+    nohup ./scripts/monitor_daemon.sh >/dev/null 2>&1 &
+    
+    echo "✅ Monitor automático instalado e iniciado"
+    echo "O monitor verificará automaticamente a cada 30 segundos"
+    echo "Reiniciará o minerador se parar ou não encontrar shares por 5 minutos"
+EOF
+
+    chmod +x scripts/install_monitor.sh
+
+    # ==================== UPDATE.SH ====================
+    cat > update.sh << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+cd "$HOME/bitcoin_miner_termux"
+
+echo "🔄 Atualizando XMRig..."
+echo ""
+
+# Parar mineração
 ./stop.sh >/dev/null 2>&1
 sleep 2
-./start_mining.sh >/dev/null 2>&1 &
 
-send_discord "🔄 **TROCA DE POOL**
-🌐 Nova pool: \`$NEW_POOL\`
-👷 Worker: $(cat config/worker_name.txt)
-🕐 $(date '+%H:%M:%S')"
+# Fazer backup da configuração
+cp config/config.json config/config_backup.json 2>/dev/null
+
+# Baixar nova versão
+if wget -q "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64" -O bin/xmrig.new; then
+    mv bin/xmrig bin/xmrig.old
+    mv bin/xmrig.new bin/xmrig
+    chmod +x bin/xmrig
+    
+    echo "✅ XMRig atualizado!"
+    
+    # Testar nova versão
+    if ./bin/xmrig --help >/dev/null 2>&1; then
+        rm -f bin/xmrig.old
+        echo "✅ Nova versão testada e funcional"
+    else
+        echo "⚠️ Nova versão com problemas, revertendo..."
+        mv bin/xmrig.old bin/xmrig
+    fi
+else
+    echo "❌ Falha ao baixar atualização"
+fi
+
+# Restaurar configuração
+mv config/config_backup.json config/config.json 2>/dev/null
+
+echo ""
+echo "Para iniciar: ./start.sh"
 EOF
-    
-    # Dar permissões
-    chmod +x *.sh
-    
-    # 8. Configurar auto-inicialização
-    print_info "Configurando auto-inicialização..."
-    
-    cat > ~/.miner_autostart << EOF
+
+    # ==================== BACKUP.SH ====================
+    cat > backup.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-sleep 30
-cd "$BASE_DIR"
-[ -f start.sh ] && nohup ./start.sh >/dev/null 2>&1 &
+
+cd "$HOME/bitcoin_miner_termux"
+
+BACKUP_FILE="$HOME/backup_miner_$(date +%Y%m%d_%H%M%S).tar.gz"
+
+echo "💾 Criando backup..."
+echo ""
+
+# Parar mineração primeiro
+./stop.sh >/dev/null 2>&1
+sleep 2
+
+# Criar backup
+tar -czf "$BACKUP_FILE" config/ logs/ stats/ 2>/dev/null
+
+if [ $? -eq 0 ]; then
+    echo "✅ Backup criado: $BACKUP_FILE"
+    echo "Tamanho: $(du -h "$BACKUP_FILE" | cut -f1)"
+else
+    echo "❌ Falha ao criar backup"
+fi
+
+echo ""
+echo "Para restaurar:"
+echo "  tar -xzf $BACKUP_FILE -C $HOME/bitcoin_miner_termux/"
 EOF
+
+    # Dar permissões a todos os scripts
+    chmod +x *.sh
+    chmod +x scripts/*.sh 2>/dev/null
     
-    chmod +x ~/.miner_autostart
+    # Salvar wallet
+    echo "$WALLET" > "$CONFIG_DIR/wallet.txt"
+    
+    # Salvar Discord webhook se fornecido
+    if [ ! -z "$DISCORD_WEBHOOK" ]; then
+        echo "$DISCORD_WEBHOOK" > "$CONFIG_DIR/discord_webhook.txt"
+    fi
+    
+    print_success "Scripts de controle criados"
+}
+
+setup_autostart() {
+    print_step "Configurando auto-inicialização..."
     
     # Adicionar ao .bashrc
-    if ! grep -q "miner_autostart" ~/.bashrc; then
-        cat >> ~/.bashrc << 'EOF'
+    if ! grep -q "bitcoin_miner_termux" ~/.bashrc; then
+        cat >> ~/.bashrc << EOF
 
-# Auto-inicialização do minerador
-[ -f ~/.miner_autostart ] && ~/.miner_autostart &
+# Auto-start do minerador Bitcoin
+if [ -f "$HOME/bitcoin_miner_termux/start.sh" ] && [ ! -f /tmp/miner_started ]; then
+    echo "⚡ Iniciando minerador Bitcoin..."
+    cd "$HOME/bitcoin_miner_termux"
+    nohup ./scripts/monitor_daemon.sh >/dev/null 2>&1 &
+    sleep 5
+    ./start.sh >/dev/null 2>&1 &
+    touch /tmp/miner_started
+fi
 
-# Aliases
-alias miner='cd $BASE_DIR && ./status.sh'
-alias miner_start='cd $BASE_DIR && ./start.sh'
-alias miner_stop='cd $BASE_DIR && ./stop.sh'
-alias miner_logs='cd $BASE_DIR && ./logs.sh'
-alias miner_restart='cd $BASE_DIR && ./restart.sh'
+# Aliases úteis
+alias miner='cd $HOME/bitcoin_miner_termux && ./status.sh'
+alias miner_start='cd $HOME/bitcoin_miner_termux && ./start.sh'
+alias miner_stop='cd $HOME/bitcoin_miner_termux && ./stop.sh'
+alias miner_logs='cd $HOME/bitcoin_miner_termux && ./logs.sh'
+alias miner_monitor='cd $HOME/bitcoin_miner_termux && ./monitor.sh'
 EOF
-    fi
-    
-    # 9. Criar arquivo de configuração
-    cat > config/settings.conf << EOF
-# CONFIGURAÇÃO DO MINERADOR
-NICEHASH_WALLET="$NICEHASH_WALLET"
-DISCORD_WEBHOOK="$DISCORD_WEBHOOK"
-CPU_USAGE="$CPU_USAGE"
-PRIORITY="$PRIORITY"
-BASE_DIR="$BASE_DIR"
-VERSION="5.0"
-INSTALL_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
-EOF
-    
-    # 10. Finalizar
-    print_header
-    echo -e "${GREEN}✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO!${NC}"
-    echo ""
-    echo -e "${CYAN}📁 DIRETÓRIO:${NC} $BASE_DIR"
-    echo -e "${CYAN}💰 CARTEIRA:${NC} $NICEHASH_WALLET"
-    echo -e "${CYAN}👷 WORKER:${NC} $WORKER_NAME"
-    echo -e "${CYAN}⚡ CPU:${NC} $CPU_USAGE%"
-    echo ""
-    
-    # Teste final
-    if [ -f bin/xmrig ] && ./bin/xmrig --help >/dev/null 2>&1; then
-        print_status "✅ Minerador testado e funcional!"
-    fi
-    
-    send_discord_embed "✅ INSTALAÇÃO COMPLETA" "Sistema instalado com sucesso!\n\n💰 Carteira: $NICEHASH_WALLET\n👷 Worker: $WORKER_NAME\n⚡ CPU: $CPU_USAGE%\n📁 Diretório: $BASE_DIR" "3066993"
-    
-    # Perguntar se quer iniciar
-    echo ""
-    echo -e "${YELLOW}🚀 Iniciar mineração agora? (s/n)${NC}"
-    read START_NOW
-    
-    if [[ "$START_NOW" == "s" ]]; then
-        cd "$BASE_DIR"
-        ./start.sh
+        print_success "Auto-inicialização configurada"
     else
-        echo ""
-        echo "💡 Para iniciar depois:"
-        echo "   cd $BASE_DIR"
-        echo "   ./start.sh"
-        echo ""
-        echo "📊 Para ver status:"
-        echo "   miner"
+        print_info "Auto-inicialização já configurada"
     fi
+}
+
+# ============================================================================
+# FUNÇÃO DE INSTALAÇÃO PRINCIPAL
+# ============================================================================
+
+install_system_complete() {
+    print_banner
+    
+    echo -e "${CYAN}Este script instalará o minerador Bitcoin completo:${NC}"
+    echo ""
+    echo "✅ Dependências do Termux"
+    echo "✅ XMRig 6.20.0 (minerador)"
+    echo "✅ Configuração automática"
+    echo "✅ Scripts de controle"
+    echo "✅ Sistema de monitoramento"
+    echo "✅ Auto-inicialização"
+    echo ""
+    echo -e "${YELLOW}⚠️  Conecte ao carregador para melhor desempenho${NC}"
+    echo ""
+    
+    read -p "Continuar com a instalação? (s/n): " choice
+    if [ "$choice" != "s" ]; then
+        echo "Instalação cancelada"
+        exit 0
+    fi
+    
+    # Executar etapas de instalação
+    check_termux
+    check_internet || exit 1
+    check_root
+    
+    install_dependencies
+    create_directories
+    install_xmrig || { print_error "Falha crítica na instalação do XMRig"; exit 1; }
+    create_configuration
+    create_control_scripts
+    setup_autostart
+    
+    # Iniciar monitor automático
+    cd "$MINER_DIR"
+    ./scripts/install_monitor.sh >/dev/null 2>&1 &
+    
+    print_banner
+    echo -e "${GREEN}✅✅✅ INSTALAÇÃO COMPLETA COM SUCESSO! ✅✅✅${NC}"
+    echo ""
+    echo -e "${CYAN}📁 DIRETÓRIO:${NC} $MINER_DIR"
+    echo -e "${CYAN}💰 CARTEIRA:${NC} $WALLET"
+    echo -e "${CYAN}👷 WORKER:${NC} $(cat $CONFIG_DIR/worker_name.txt)"
+    echo -e "${CYAN}⚡ XMRIG:${NC} $(./bin/xmrig --version 2>/dev/null | head -1 || echo '6.20.0')"
+    echo ""
+    echo -e "${CYAN}🎯 COMANDOS DISPONÍVEIS:${NC}"
+    echo "  miner        - Ver status (alias)"
+    echo "  miner_start  - Iniciar mineração"
+    echo "  miner_stop   - Parar mineração"
+    echo "  miner_logs   - Ver logs"
+    echo "  miner_monitor - Monitor em tempo real"
+    echo ""
+    echo -e "${CYAN}📊 OU:${NC}"
+    echo "  cd $MINER_DIR"
+    echo "  ./status.sh   - Ver status"
+    echo "  ./start.sh    - Iniciar"
+    echo "  ./stop.sh     - Parar"
+    echo "  ./monitor.sh  - Monitor"
+    echo ""
+    echo -e "${YELLOW}⚠️  O sistema iniciará automaticamente ao abrir o Termux${NC}"
+    echo ""
+    
+    # Perguntar se quer iniciar agora
+    read -p "Iniciar mineração agora? (s/n): " start_now
+    if [ "$start_now" = "s" ]; then
+        cd "$MINER_DIR"
+        ./start.sh
+    fi
+    
+    log_event "Sistema instalado com sucesso"
 }
 
 # ============================================================================
 # MENU PRINCIPAL
 # ============================================================================
 
-show_menu() {
+show_main_menu() {
     while true; do
-        print_header
+        print_banner
         
-        if [ -d "$BASE_DIR" ] && [ -f "$BASE_DIR/bin/xmrig" ]; then
+        if [ -d "$MINER_DIR" ] && [ -f "$BIN_DIR/xmrig" ]; then
             echo -e "${GREEN}✅ SISTEMA INSTALADO${NC}"
             echo ""
-            echo -e "${CYAN}Escolha uma opção:${NC}"
+            
+            # Status rápido
+            if pgrep -f xmrig >/dev/null; then
+                echo -e "   ${GREEN}⛏️  MINERAÇÃO ATIVA${NC}"
+            else
+                echo -e "   ${YELLOW}⛏️  MINERAÇÃO INATIVA${NC}"
+            fi
+            
+            echo ""
+            echo -e "${CYAN}MENU PRINCIPAL:${NC}"
             echo ""
             echo "1) 🚀 Iniciar Mineração"
-            echo "2) 📊 Ver Status"
+            echo "2) 📊 Ver Status Completo"
             echo "3) 📋 Ver Logs"
-            echo "4) 🛑 Parar Mineração"
-            echo "5) 🔄 Reiniciar"
-            echo "6) 🌐 Trocar Pool"
+            echo "4) 📈 Monitor em Tempo Real"
+            echo "5) 🛑 Parar Mineração"
+            echo "6) 🔄 Reiniciar Sistema"
             echo "7) ⚙️  Configurações"
-            echo "8) 🗑️  Desinstalar"
+            echo "8) 🗑️  Desinstalar Tudo"
             echo "9) ❌ Sair"
             echo ""
-            echo -n "Opção: "
-            read choice
+            
+            read -p "Escolha (1-9): " choice
             
             case $choice in
                 1)
-                    cd "$BASE_DIR"
+                    cd "$MINER_DIR"
                     ./start.sh
                     read -p "Pressione Enter para continuar..."
                     ;;
                 2)
-                    cd "$BASE_DIR"
+                    cd "$MINER_DIR"
                     ./status.sh
                     ;;
                 3)
-                    cd "$BASE_DIR"
+                    cd "$MINER_DIR"
                     ./logs.sh
                     ;;
                 4)
-                    cd "$BASE_DIR"
+                    cd "$MINER_DIR"
+                    ./monitor.sh
+                    ;;
+                5)
+                    cd "$MINER_DIR"
                     ./stop.sh
                     sleep 2
                     read -p "Pressione Enter para continuar..."
                     ;;
-                5)
-                    cd "$BASE_DIR"
+                6)
+                    cd "$MINER_DIR"
                     ./restart.sh
                     read -p "Pressione Enter para continuar..."
                     ;;
-                6)
-                    cd "$BASE_DIR"
-                    ./switch_pool.sh
-                    sleep 2
-                    read -p "Pressione Enter para continuar..."
-                    ;;
                 7)
-                    print_header
-                    echo -e "${CYAN}CONFIGURAÇÕES ATUAIS:${NC}"
-                    echo ""
-                    echo "1) Carteira NiceHash: $NICEHASH_WALLET"
-                    echo "2) Uso de CPU: $CPU_USAGE%"
-                    echo "3) Discord Webhook: ${DISCORD_WEBHOOK:0:30}..."
-                    echo ""
-                    echo -n "O que alterar? (1-3 ou 0): "
-                    read config_choice
-                    
-                    case $config_choice in
-                        1)
-                            echo -n "Nova carteira: "
-                            read NEW_WALLET
-                            NICEHASH_WALLET="$NEW_WALLET"
-                            sed -i "s/NICEHASH_WALLET=.*/NICEHASH_WALLET=\"$NEW_WALLET\"/" "$BASE_DIR/config/settings.conf"
-                            echo "✅ Carteira atualizada!"
-                            sleep 2
-                            ;;
-                        2)
-                            echo -n "Novo uso de CPU (10-90): "
-                            read NEW_CPU
-                            CPU_USAGE="$NEW_CPU"
-                            sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"$NEW_CPU\"/" "$BASE_DIR/config/settings.conf"
-                            echo "✅ CPU atualizada!"
-                            sleep 2
-                            ;;
-                        3)
-                            echo -n "Novo webhook (vazio para desativar): "
-                            read NEW_WEBHOOK
-                            DISCORD_WEBHOOK="$NEW_WEBHOOK"
-                            sed -i "s|DISCORD_WEBHOOK=.*|DISCORD_WEBHOOK=\"$NEW_WEBHOOK\"|" "$BASE_DIR/config/settings.conf"
-                            echo "✅ Webhook atualizado!"
-                            sleep 2
-                            ;;
-                    esac
+                    show_config_menu
                     ;;
                 8)
-                    print_header
-                    echo -e "${RED}⚠️  DESINSTALAR TUDO?${NC}"
-                    echo ""
-                    echo -n "Tem certeza? (s/n): "
-                    read confirm
-                    
-                    if [[ "$confirm" == "s" ]]; then
-                        cd "$BASE_DIR" 2>/dev/null
-                        ./stop.sh 2>/dev/null
-                        rm -rf "$BASE_DIR" 2>/dev/null
-                        rm -f ~/.miner_autostart 2>/dev/null
-                        sed -i '/miner_autostart/d' ~/.bashrc 2>/dev/null
-                        sed -i '/alias miner/d' ~/.bashrc 2>/dev/null
-                        echo "✅ Sistema desinstalado!"
-                        sleep 2
-                    fi
+                    uninstall_system
                     ;;
                 9)
                     echo "👋 Saindo..."
@@ -1999,18 +898,12 @@ show_menu() {
         else
             echo -e "${YELLOW}⚠️  SISTEMA NÃO INSTALADO${NC}"
             echo ""
-            echo -e "${CYAN}Deseja instalar o minerador Bitcoin?${NC}"
+            echo "Deseja instalar o minerador Bitcoin completo?"
             echo ""
-            echo -n "Instalar agora? (s/n): "
-            read install_choice
+            read -p "Instalar agora? (s/n): " install_choice
             
-            if [[ "$install_choice" == "s" ]]; then
-                if check_internet; then
-                    install_system
-                else
-                    print_error "Sem internet!"
-                    sleep 3
-                fi
+            if [ "$install_choice" = "s" ]; then
+                install_system_complete
             else
                 echo "👋 Saindo..."
                 exit 0
@@ -2019,39 +912,117 @@ show_menu() {
     done
 }
 
+show_config_menu() {
+    while true; do
+        clear
+        echo -e "${CYAN}⚙️  CONFIGURAÇÕES${NC}"
+        echo ""
+        echo "1) Alterar Carteira"
+        echo "2) Configurar Discord Webhook"
+        echo "3) Atualizar XMRig"
+        echo "4) Criar Backup"
+        echo "5) Restaurar Backup"
+        echo "6) Ver Informações do Sistema"
+        echo "7) Voltar"
+        echo ""
+        
+        read -p "Escolha: " choice
+        
+        case $choice in
+            1)
+                echo ""
+                read -p "Nova carteira: " new_wallet
+                if [ ! -z "$new_wallet" ]; then
+                    echo "$new_wallet" > "$CONFIG_DIR/wallet.txt"
+                    echo "✅ Carteira atualizada"
+                fi
+                sleep 2
+                ;;
+            2)
+                echo ""
+                read -p "Webhook Discord (deixe vazio para remover): " webhook
+                echo "$webhook" > "$CONFIG_DIR/discord_webhook.txt"
+                echo "✅ Webhook atualizado"
+                sleep 2
+                ;;
+            3)
+                cd "$MINER_DIR"
+                ./update.sh
+                read -p "Pressione Enter para continuar..."
+                ;;
+            4)
+                cd "$MINER_DIR"
+                ./backup.sh
+                read -p "Pressione Enter para continuar..."
+                ;;
+            5)
+                echo ""
+                echo "Backups disponíveis:"
+                ls -lh ~/backup_miner_*.tar.gz 2>/dev/null || echo "  Nenhum backup encontrado"
+                echo ""
+                read -p "Nome do arquivo para restaurar: " backup_file
+                if [ -f "$backup_file" ]; then
+                    tar -xzf "$backup_file" -C "$MINER_DIR/"
+                    echo "✅ Backup restaurado"
+                else
+                    echo "❌ Arquivo não encontrado"
+                fi
+                sleep 2
+                ;;
+            6)
+                clear
+                echo "=== INFORMAÇÕES DO SISTEMA ==="
+                echo ""
+                echo "📁 Diretório: $MINER_DIR"
+                echo "💰 Carteira: $(cat $CONFIG_DIR/wallet.txt 2>/dev/null || echo 'Não configurada')"
+                echo "👷 Worker: $(cat $CONFIG_DIR/worker_name.txt 2>/dev/null || echo 'Desconhecido')"
+                echo "⚡ XMRig: $($BIN_DIR/xmrig --version 2>/dev/null | head -1 || echo 'Não encontrado')"
+                echo "📊 Shares aceitos: $(grep -c "accepted" $LOGS_DIR/miner.log 2>/dev/null || echo '0')"
+                echo ""
+                read -p "Pressione Enter para continuar..."
+                ;;
+            7)
+                return 0
+                ;;
+            *)
+                echo "Opção inválida!"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+uninstall_system() {
+    clear
+    echo -e "${RED}⚠️  DESINSTALAR COMPLETAMENTE?${NC}"
+    echo ""
+    echo "Isso removerá:"
+    echo "• Todo o diretório $MINER_DIR"
+    echo "• Configurações e logs"
+    echo "• Auto-inicialização"
+    echo ""
+    read -p "Tem certeza? (s/n): " confirm
+    
+    if [ "$confirm" = "s" ]; then
+        # Parar tudo
+        cd "$MINER_DIR" 2>/dev/null && ./stop.sh >/dev/null 2>&1
+        
+        # Remover diretório
+        rm -rf "$MINER_DIR"
+        
+        # Remover do .bashrc
+        sed -i '/bitcoin_miner_termux/,/^fi$/d' ~/.bashrc 2>/dev/null
+        sed -i '/alias miner/d' ~/.bashrc 2>/dev/null
+        
+        echo "✅ Sistema completamente removido!"
+        sleep 2
+        exit 0
+    fi
+}
+
 # ============================================================================
 # INICIAR SISTEMA
 # ============================================================================
 
-# Verificar Termux
-if [ ! -d "/data/data/com.termux" ]; then
-    print_error "Execute no Termux (Android)"
-    exit 1
-fi
-
-# Verificar arquitetura
-ARCH=$(uname -m)
-if [[ "$ARCH" != "aarch64" ]] && [[ "$ARCH" != "arm" ]]; then
-    print_warning "Arquitetura $ARCH pode ter problemas"
-    sleep 2
-fi
-
-# Aviso inicial
-print_header
-echo -e "${YELLOW}⚠️  AVISO IMPORTANTE${NC}"
-echo ""
-echo "1. Este é um minerador REAL de Bitcoin"
-echo "2. Consome bateria e processamento"
-echo "3. Use carregador e local ventilado"
-echo "4. Você é responsável pelo uso"
-echo ""
-echo -n "Aceita e quer continuar? (s/n): "
-read accept
-
-if [[ "$accept" != "s" ]]; then
-    echo "Cancelado."
-    exit 0
-fi
-
-# Iniciar
-show_menu
+# Executar menu principal
+show_main_menu.
