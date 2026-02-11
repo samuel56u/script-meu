@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v62.0.0
+# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v64.0.0
 # ============================================================================
 #   ███╗   ██╗██╗ ██████╗███████╗██╗  ██╗ █████╗ ███████╗██╗  ██╗
 #   ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██╔════╝██║  ██║
@@ -16,10 +16,9 @@
 #         ✅ TODOS OS 'read' AGORA LEEM DO TERMINAL (/dev/tty)
 #         ✅ NUNCA MAIS "OPÇÃO INVÁLIDA" AUTOMÁTICA
 #         ✅ DESINSTALAÇÃO AUTOMÁTICA DO XMRIG ANTES DE INSTALAR
+#         ✅ CORREÇÃO AUTOMÁTICA DOS REPOSITÓRIOS DO TERMUX (SE NECESSÁRIO)
 #         🔄 TROCA AUTOMÁTICA DE POOLS - 50+ POOLS NICEHASH
 #         🛡️ FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
-#         📦 INSTALAÇÃO DO XMRig EXCLUSIVAMENTE VIA PKG (TERMUX OFICIAL)
-#         ✅ SE FALHAR, O SCRIPT ENSINA A CORRIGIR OS REPOSITÓRIOS
 #         📊 LOGS DISCORD GIGANTESCOS - CADA SATOSHI NOTIFICADO
 #         📈 DASHBOARD EM TEMPO REAL - EXATAMENTE COMO NA IMAGEM
 #         🔧 SISTEMA DE DIAGNÓSTICO COMPLETO
@@ -43,12 +42,12 @@ export WEBHOOK_SLACK=""
 # ----------------------------------------------------------------------------
 # VARIÁVEIS GLOBAIS DO SISTEMA (MEGA ESTRUTURA)
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="62.0.0"
+SYSTEM_VERSION="64.0.0"
 SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
 START_TIME=$(date +%s)
 SCRIPT_NAME="NiceHash Miner Ultimate - God Mode"
 SCRIPT_AUTHOR="Termux God"
-SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e instalação garantida do XMRig via pkg"
+SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e instalação automática do XMRig via pkg com correção de repositórios"
 
 # Diretórios raiz
 MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_god"
@@ -755,17 +754,6 @@ declare -a POOLS_NICEHASH=(
 ACTIVE_POOL_COUNT=${#POOLS_NICEHASH[@]}
 
 # ----------------------------------------------------------------------------
-# ███████╗██╗  ██╗███╗   ███╗██████╗ ██╗ ██████╗
-# ██╔════╝██║  ██║████╗ ████║██╔══██╗██║██╔════╝
-# ███████╗███████║██╔████╔██║██████╔╝██║██║
-# ╚════██║██╔══██║██║╚██╔╝██║██╔══██╗██║██║
-# ███████║██║  ██║██║ ╚═╝ ██║██║  ██║██║╚██████╗
-# ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝
-# ----------------------------------------------------------------------------
-# INSTALAÇÃO GARANTIDA – APENAS PACOTE OFICIAL DO TERMUX
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
 # FUNÇÃO DE DESINSTALAÇÃO DO XMRIG
 # ----------------------------------------------------------------------------
 uninstall_xmrig() {
@@ -798,25 +786,48 @@ uninstall_xmrig() {
 }
 
 # ----------------------------------------------------------------------------
-# INSTALAÇÃO DO XMRig – EXCLUSIVAMENTE VIA PKG (TERMUX OFICIAL)
+# FUNÇÃO DE CORREÇÃO AUTOMÁTICA DOS REPOSITÓRIOS DO TERMUX (NOVO)
+# ----------------------------------------------------------------------------
+fix_termux_repos() {
+    log_sys "🔧 Verificando configuração dos repositórios Termux..."
+    
+    local sources_file="$PREFIX/etc/apt/sources.list"
+    
+    # Faz backup do arquivo original, se existir
+    if [ -f "$sources_file" ]; then
+        cp "$sources_file" "$sources_file.bak.$(date +%s)"
+        log_sys "Backup do sources.list criado."
+    fi
+    
+    # Escreve um mirror confiável (termux-packages oficial)
+    cat > "$sources_file" << EOF
+deb https://packages.termux.org/apt/termux-main stable main
+EOF
+    
+    log_success "Repositórios Termux reconfigurados para o mirror oficial."
+    
+    # Atualiza a lista de pacotes
+    log_sys "Atualizando lista de pacotes..."
+    pkg update -y -o Dpkg::Options::="--force-confnew" > /dev/null 2>&1
+    log_success "Lista de pacotes atualizada."
+}
+
+# ----------------------------------------------------------------------------
+# INSTALAÇÃO DO XMRIG – VIA PKG COM CORREÇÃO AUTOMÁTICA DE REPOSITÓRIOS
 # ----------------------------------------------------------------------------
 install_xmrig_god() {
     clear
     echo -e "${COLOR_GOD}╔══════════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${COLOR_GOD}║           🔥 INSTALAÇÃO DO XMRIG – MODO DEUS 🔥                    ║${NC}"
-    echo -e "${COLOR_GOD}║              MÉTODO ÚNICO E GARANTIDO: PKG TERMUX                 ║${NC}"
+    echo -e "${COLOR_GOD}║           REPOSITÓRIOS CORRIGIDOS AUTOMATICAMENTE                 ║${NC}"
     echo -e "${COLOR_GOD}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
     # Remove instalações anteriores
     uninstall_xmrig
 
-    # Atualiza lista de pacotes
-    log_info "Atualizando lista de pacotes do Termux..."
-    pkg update -y -o Dpkg::Options::="--force-confnew" 2>&1 | tee -a "$MINER_LOGS/install.log"
-
-    # Tenta instalar o pacote
-    log_info "Instalando xmrig via pkg..."
+    # Primeira tentativa de instalação
+    log_sys "Tentando instalar xmrig via pkg..."
     if pkg install -y xmrig 2>&1 | tee -a "$MINER_LOGS/install.log"; then
         if command -v xmrig &>/dev/null; then
             cp "$(command -v xmrig)" "$MINER_BIN/xmrig"
@@ -827,14 +838,40 @@ install_xmrig_god() {
         fi
     fi
 
-    # Se chegou aqui, falhou miseravelmente
-    log_error "❌ FALHA NA INSTALAÇÃO DO XMRig."
+    # Se falhou, verifica se o erro é "Unable to locate package"
+    if grep -q "Unable to locate package xmrig" "$MINER_LOGS/install.log"; then
+        log_warn "❌ Pacote xmrig não encontrado nos repositórios atuais."
+        echo ""
+        echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║   Repositórios do Termux desatualizados ou incorretos.             ║${NC}"
+        echo -e "${YELLOW}║   Corrigindo automaticamente...                                    ║${NC}"
+        echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        
+        # Corrige os repositórios
+        fix_termux_repos
+        
+        # Segunda tentativa de instalação
+        log_sys "Tentando novamente instalar xmrig após correção dos repositórios..."
+        if pkg install -y xmrig 2>&1 | tee -a "$MINER_LOGS/install.log"; then
+            if command -v xmrig &>/dev/null; then
+                cp "$(command -v xmrig)" "$MINER_BIN/xmrig"
+                chmod +x "$MINER_BIN/xmrig"
+                log_success "✅ XMRig instalado com sucesso após correção dos repositórios!"
+                discord_send "✅ **XMRig instalado** (após correção de repositórios)" "3066993" "✅ INSTALAÇÃO OK"
+                return 0
+            fi
+        fi
+    fi
+
+    # Se ainda falhou, exibe mensagem de erro final
+    log_error "❌ FALHA NA INSTALAÇÃO DO XMRIG MESMO APÓS CORREÇÃO DOS REPOSITÓRIOS."
     echo ""
     echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║   O Termux não conseguiu instalar o pacote xmrig.                   ║${NC}"
-    echo -e "${YELLOW}║   Isso ocorre quando os repositórios estão desatualizados.          ║${NC}"
+    echo -e "${YELLOW}║   O Termux ainda não conseguiu instalar o pacote xmrig.             ║${NC}"
+    echo -e "${YELLOW}║   Isso pode ocorrer por falta de espaço ou problemas de rede.       ║${NC}"
     echo -e "${YELLOW}║                                                                    ║${NC}"
-    echo -e "${YELLOW}║   Para corrigir, execute os seguintes comandos:                    ║${NC}"
+    echo -e "${YELLOW}║   Tente resolver manualmente com os comandos:                      ║${NC}"
     echo -e "${YELLOW}║                                                                    ║${NC}"
     echo -e "${YELLOW}║      termux-change-repo                                           ║${NC}"
     echo -e "${YELLOW}║      pkg update && pkg upgrade                                    ║${NC}"
@@ -843,7 +880,7 @@ install_xmrig_god() {
     echo -e "${YELLOW}║   Após corrigir, execute a opção 9 novamente.                     ║${NC}"
     echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    discord_send "❌ **Falha na instalação do XMRig** – repositórios desatualizados" "15158332" "❌ ERRO INSTALAÇÃO"
+    discord_send "❌ **Falha na instalação do XMRig** – mesmo após correção de repositórios" "15158332" "❌ ERRO INSTALAÇÃO"
     safe_read "Pressione Enter para voltar ao menu..." dummy
     return 1
 }
@@ -856,7 +893,6 @@ test_pool_latency() {
     local host=$(echo "$pool" | cut -d: -f1)
     local port=$(echo "$pool" | cut -d: -f2)
 
-    # Garante que nc esteja instalado
     if ! command -v nc &>/dev/null; then
         pkg install -y netcat-openbsd 2>/dev/null
     fi
@@ -865,7 +901,6 @@ test_pool_latency() {
     if timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null; then
         local end_time=$(date +%s%3N)
         local latency=$((end_time - start_time))
-        # Garante que latency seja um número inteiro positivo
         latency=${latency:-0}
         echo "$latency"
         return 0
@@ -2054,7 +2089,7 @@ show_menu_god() {
         echo -e "${COLOR_MENU}║  6) 📝  LOGS DE SATOSHIS                                            ║${NC}"
         echo -e "${COLOR_MENU}║  7) 💰  GANHOS EM BITCOIN                                           ║${NC}"
         echo -e "${COLOR_MENU}║  8) ⚙️   CONFIGURAÇÕES                                              ║${NC}"
-        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (✅ GARANTIDO)                     ║${NC}"
+        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (✅ COM CORREÇÃO AUTOMÁTICA)       ║${NC}"
         echo -e "${COLOR_MENU}║ 10) 🌐  TROCAR POOL (MANUAL)                                        ║${NC}"
         echo -e "${COLOR_MENU}║ 11) 📨  TESTAR WEBHOOK DISCORD                                      ║${NC}"
         echo -e "${COLOR_MENU}║ 12) 🧹  LIMPAR LOGS                                                ║${NC}"
@@ -2134,7 +2169,7 @@ echo -e "${COLOR_GOD}🔥 NICEHASH MINER ULTIMATE - MODO DEUS v$SYSTEM_VERSION �
 echo -e "${COLOR_POOL_AUTO}   ⚡ TROCA AUTOMÁTICA DE POOLS - 50+ POOLS NICEHASH - FALLBACK AUTOMÁTICO${NC}"
 echo -e "${COLOR_SUCCESS}   📨 DISCORD CONFIGURADO - NOTIFICAÇÕES ATIVADAS${NC}"
 echo -e "${COLOR_WALLET}   👛 CARTEIRA: ${WALLET_NICEHASH}${NC}"
-echo -e "${COLOR_GOD}   🔥 INSTALAÇÃO GARANTIDA – APENAS PKG TERMUX${NC}"
+echo -e "${COLOR_GOD}   🔥 INSTALAÇÃO DO XMRig COM CORREÇÃO AUTOMÁTICA DE REPOSITÓRIOS${NC}"
 echo ""
 sleep 2
 
@@ -2152,7 +2187,7 @@ log_sys "Carteira: ${WALLET_NICEHASH:0:15}..."
 discord_system_start
 
 if [ ! -f "$MINER_BIN/xmrig" ] && ! command -v xmrig &>/dev/null; then
-    log_warn "XMRig não encontrado. Use a opção 9 do menu para instalar (pacote oficial)."
+    log_warn "XMRig não encontrado. Use a opção 9 do menu para instalar (correção automática ativada)."
 fi
 
 show_menu_god
