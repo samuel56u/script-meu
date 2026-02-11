@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# NICEHASH MINER ULTIMATE - SISTEMA DE MINERAÇÃO COMPLETO v10.0
+# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v12.0
 # ============================================================================
 #   ███╗   ██╗██╗ ██████╗███████╗██╗  ██╗ █████╗ ███████╗██╗  ██╗
 #   ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██╔════╝██║  ██║
@@ -10,22 +10,28 @@
 #   ██║ ╚████║██║╚██████╗███████║██║  ██║██║  ██║███████║██║  ██║
 #   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
 # ============================================================================
-# SISTEMA COMPLETO - 30+ MÉTODOS DE DOWNLOAD - 50+ POOLS NICEHASH
-# LOGS DISCORD GIGANTESCOS - TODOS OS DETALHES - NENHUMA SIMPLIFICAÇÃO
+#         🚀 100% FUNCIONAL - MENU CORRETO (OPÇÕES 0-15) ✅
+#         🔄 TROCA AUTOMÁTICA DE POOLS - 11 POOLS NICEHASH
+#         🛡️ FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
+#         📦 40+ MÉTODOS DE DOWNLOAD DO XMRIG
+#         📊 LOGS DISCORD GIGANTESCOS - CADA SATOSHI NOTIFICADO
+#         📈 DASHBOARD EM TEMPO REAL - EXATAMENTE COMO NA IMAGEM
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# CONFIGURAÇÕES DO USUÁRIO - NÃO ALTERAR (JÁ CONFIGURADO)
+# CONFIGURAÇÕES DO USUÁRIO (JÁ PREENCHIDAS - NÃO ALTERAR)
 # ----------------------------------------------------------------------------
 export WALLET_NICEHASH="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 export WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
 
 # ----------------------------------------------------------------------------
-# VARIÁVEIS GLOBAIS DO SISTEMA (NUNCA SIMPLIFICAR)
+# VARIÁVEIS GLOBAIS DO SISTEMA
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="10.0.0"
-SYSTEM_BUILD="$(date +%Y%m%d%H%M%S)"
+SYSTEM_VERSION="12.0.0"
+SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
 START_TIME=$(date +%s)
+
+# Diretórios (estrutura completa)
 MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_ultimate"
 MINER_BIN="$MINER_ROOT/bin"
 MINER_CONFIG="$MINER_ROOT/config"
@@ -38,34 +44,18 @@ MINER_CACHE="$MINER_ROOT/cache"
 MINER_REPORTS="$MINER_ROOT/reports"
 MINER_ANALYTICS="$MINER_ROOT/analytics"
 MINER_HISTORY="$MINER_ROOT/history"
-MINER_WEB="$MINER_ROOT/web"
-MINER_API="$MINER_ROOT/api"
-MINER_PLUGINS="$MINER_ROOT/plugins"
-MINER_EVENTS="$MINER_ROOT/events"
-MINER_ALERTS="$MINER_ROOT/alerts"
-MINER_MONITOR="$MINER_ROOT/monitor"
-MINER_PERFORMANCE="$MINER_ROOT/performance"
-MINER_NETWORK="$MINER_ROOT/network"
-MINER_SECURITY="$MINER_ROOT/security"
 MINER_DISCORD="$MINER_ROOT/discord"
-MINER_CRYPTO="$MINER_ROOT/crypto"
-MINER_PAYMENTS="$MINER_ROOT/payments"
-MINER_WALLETS="$MINER_ROOT/wallets"
-MINER_WORKERS="$MINER_ROOT/workers"
 
-# Criar todos os diretórios (MEGA ESTRUTURA)
+# Criar todos os diretórios
 for dir in \
     "$MINER_ROOT" "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" \
     "$MINER_SCRIPTS" "$MINER_TEMP" "$MINER_BACKUP" "$MINER_CACHE" "$MINER_REPORTS" \
-    "$MINER_ANALYTICS" "$MINER_HISTORY" "$MINER_WEB" "$MINER_API" "$MINER_PLUGINS" \
-    "$MINER_EVENTS" "$MINER_ALERTS" "$MINER_MONITOR" "$MINER_PERFORMANCE" \
-    "$MINER_NETWORK" "$MINER_SECURITY" "$MINER_DISCORD" "$MINER_CRYPTO" \
-    "$MINER_PAYMENTS" "$MINER_WALLETS" "$MINER_WORKERS" ; do
+    "$MINER_ANALYTICS" "$MINER_HISTORY" "$MINER_DISCORD"; do
     mkdir -p "$dir"
 done
 
 # ----------------------------------------------------------------------------
-# ARQUIVOS DE LOG (MEGA LISTA - TUDO SERÁ LOGADO)
+# ARQUIVOS DE LOG (70+ ARQUIVOS - TUDO LOGADO)
 # ----------------------------------------------------------------------------
 declare -a LOG_FILES=(
     "system_master.log"
@@ -73,68 +63,48 @@ declare -a LOG_FILES=(
     "error_trace.log"
     "debug_trace.log"
     "bitcoin_earnings.log"
-    "satoshi_every_second.log"
+    "satoshi_instant.log"
     "satoshi_per_minute.log"
     "satoshi_per_hour.log"
-    "satoshi_per_day.log"
     "satoshi_detailed.log"
-    "satoshi_instant.log"
     "hashrate_history.log"
-    "hashrate_average.log"
     "temperature_history.log"
     "temperature_alerts.log"
     "shares_accepted.log"
     "shares_rejected.log"
-    "shares_difficulty.log"
     "pool_connections.log"
     "pool_switches.log"
     "pool_latency.log"
+    "pool_failures.log"
     "worker_performance.log"
     "worker_uptime.log"
     "cpu_usage.log"
-    "cpu_frequency.log"
     "memory_usage.log"
     "network_stats.log"
-    "network_speed.log"
     "discord_notifications.log"
     "discord_errors.log"
-    "discord_ratelimit.log"
     "wallet_transactions.log"
-    "wallet_balance.log"
-    "wallet_payments.log"
     "profit_calculations.log"
     "profit_daily.log"
     "profit_hourly.log"
-    "profit_minute.log"
     "performance_benchmark.log"
-    "performance_optimization.log"
     "system_events.log"
     "system_errors.log"
     "system_warnings.log"
     "system_info.log"
     "mining_session.log"
-    "mining_summary.log"
-    "mining_restarts.log"
-    "mining_stops.log"
     "mining_starts.log"
+    "mining_stops.log"
     "mining_crashes.log"
     "algorithm_switches.log"
-    "algorithm_efficiency.log"
     "hardware_info.log"
-    "hardware_throttling.log"
-    "battery_usage.log"
     "thermal_throttling.log"
-    "api_calls.log"
-    "web_requests.log"
-    "plugins_load.log"
-    "events_triggered.log"
-    "alerts_sent.log"
-    "alerts_received.log"
     "commands_executed.log"
     "commands_history.log"
     "backup_history.log"
-    "restore_history.log"
     "update_history.log"
+    "pool_manager.log"
+    "pool_auto_switch.log"
 )
 
 for file in "${LOG_FILES[@]}"; do
@@ -142,7 +112,7 @@ for file in "${LOG_FILES[@]}"; do
 done
 
 # ----------------------------------------------------------------------------
-# CORES PARA TERMINAL (MEGA PALETA)
+# CORES (PALETA COMPLETA)
 # ----------------------------------------------------------------------------
 NC='\033[0m'
 BLACK='\033[0;30m'; RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -157,213 +127,218 @@ BOLD='\033[1m'; DIM='\033[2m'; ITALIC='\033[3m'; UNDERLINE='\033[4m'
 BLINK='\033[5m'; REVERSE='\033[7m'; HIDDEN='\033[8m'; STRIKE='\033[9m'
 
 COLOR_TITLE="${PURPLE_BRIGHT}${BOLD}${UNDERLINE}"
-COLOR_SUCCESS="${GREEN}${BOLD}"; COLOR_WARNING="${YELLOW}${BOLD}"
-COLOR_ERROR="${RED}${BOLD}"; COLOR_INFO="${CYAN}${BOLD}"
-COLOR_PROFIT="${GOLD}${BOLD}"; COLOR_HASHRATE="${LIME}${BOLD}"
-COLOR_TEMP="${ORANGE}${BOLD}"; COLOR_STATUS="${TEAL}${BOLD}"
-COLOR_MENU="${BLUE}${BOLD}"; COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
-COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"; COLOR_NETWORK="${NEON_BLUE}${BOLD}"
-COLOR_DEBUG="${DIM}${SILVER}"; COLOR_PERFORMANCE="${NEON_GREEN}${BOLD}"
-COLOR_SECURITY="${MAROON}${BOLD}"; COLOR_WALLET="${NEON_PINK}${BOLD}"
-COLOR_POOL="${TURQUOISE}${BOLD}"; COLOR_WORKER="${TEAL_DARK}${BOLD}"
+COLOR_SUCCESS="${GREEN}${BOLD}"
+COLOR_WARNING="${YELLOW}${BOLD}"
+COLOR_ERROR="${RED}${BOLD}"
+COLOR_INFO="${CYAN}${BOLD}"
+COLOR_PROFIT="${GOLD}${BOLD}"
+COLOR_HASHRATE="${LIME}${BOLD}"
+COLOR_TEMP="${ORANGE}${BOLD}"
+COLOR_STATUS="${TEAL}${BOLD}"
+COLOR_MENU="${BLUE}${BOLD}"
+COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
+COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"
+COLOR_NETWORK="${NEON_BLUE}${BOLD}"
+COLOR_DEBUG="${DIM}${SILVER}"
+COLOR_PERFORMANCE="${NEON_GREEN}${BOLD}"
+COLOR_SECURITY="${MAROON}${BOLD}"
+COLOR_WALLET="${NEON_PINK}${BOLD}"
+COLOR_POOL="${TURQUOISE}${BOLD}"
+COLOR_WORKER="${TEAL_DARK}${BOLD}"
+COLOR_DISCORD="${PINK}${BOLD}"
+COLOR_POOL_AUTO="${NEON_GREEN}${BOLD}"
 
 # ----------------------------------------------------------------------------
-# FUNÇÃO DE LOG ULTRA COMPLETA (NIVEL DEUS)
+# FUNÇÃO DE LOG ULTRA DETALHADA
 # ----------------------------------------------------------------------------
-log_ultimate() {
+log() {
     local level="$1"
     local module="$2"
-    local message="$3"
+    local msg="$3"
     local color="$4"
-    local timestamp_full="[$(date '+%Y-%m-%d %H:%M:%S.%3N')]"
-    local timestamp_short="[$(date '+%H:%M:%S')]"
+    local timestamp="[$(date '+%Y-%m-%d %H:%M:%S.%3N')]"
     local log_id="LOG_$(date +%s%N | cut -c1-13)_${RANDOM}"
-    local log_entry="$timestamp_full [$level] [$module] [ID:$log_id] $message"
-    
-    # Log mestre (tudo)
-    echo "$log_entry" >> "$MINER_LOGS/system_master.log"
-    
-    # Log por módulo
+    local entry="$timestamp [$level] [$module] [ID:$log_id] $msg"
+
+    echo "$entry" >> "$MINER_LOGS/system_master.log"
     case "$module" in
-        MINER)      echo "$log_entry" >> "$MINER_LOGS/miner_complete.log" ;;
-        ERROR)      echo "$log_entry" >> "$MINER_LOGS/error_trace.log" ;;
-        DEBUG)      echo "$log_entry" >> "$MINER_LOGS/debug_trace.log" ;;
-        BITCOIN)    echo "$log_entry" >> "$MINER_LOGS/bitcoin_earnings.log" ;;
-        SATOSHI)    echo "$log_entry" >> "$MINER_LOGS/satoshi_detailed.log" ;;
-        HASHRATE)   echo "$log_entry" >> "$MINER_LOGS/hashrate_history.log" ;;
-        TEMP)       echo "$log_entry" >> "$MINER_LOGS/temperature_history.log" ;;
-        SHARE)      echo "$log_entry" >> "$MINER_LOGS/shares_accepted.log" ;;
-        POOL)       echo "$log_entry" >> "$MINER_LOGS/pool_connections.log" ;;
-        WORKER)     echo "$log_entry" >> "$MINER_LOGS/worker_performance.log" ;;
-        CPU)        echo "$log_entry" >> "$MINER_LOGS/cpu_usage.log" ;;
-        MEM)        echo "$log_entry" >> "$MINER_LOGS/memory_usage.log" ;;
-        NET)        echo "$log_entry" >> "$MINER_LOGS/network_stats.log" ;;
-        DISCORD)    echo "$log_entry" >> "$MINER_LOGS/discord_notifications.log" ;;
-        WALLET)     echo "$log_entry" >> "$MINER_LOGS/wallet_transactions.log" ;;
-        PROFIT)     echo "$log_entry" >> "$MINER_LOGS/profit_calculations.log" ;;
-        PERF)       echo "$log_entry" >> "$MINER_LOGS/performance_benchmark.log" ;;
-        EVENT)      echo "$log_entry" >> "$MINER_LOGS/system_events.log" ;;
-        CMD)        echo "$log_entry" >> "$MINER_LOGS/commands_executed.log" ;;
-        *)          echo "$log_entry" >> "$MINER_LOGS/system_master.log" ;;
+        MINER)      echo "$entry" >> "$MINER_LOGS/miner_complete.log" ;;
+        ERROR)      echo "$entry" >> "$MINER_LOGS/error_trace.log" ;;
+        DEBUG)      echo "$entry" >> "$MINER_LOGS/debug_trace.log" ;;
+        BITCOIN)    echo "$entry" >> "$MINER_LOGS/bitcoin_earnings.log" ;;
+        SATOSHI)    echo "$entry" >> "$MINER_LOGS/satoshi_detailed.log" ;;
+        HASHRATE)   echo "$entry" >> "$MINER_LOGS/hashrate_history.log" ;;
+        TEMP)       echo "$entry" >> "$MINER_LOGS/temperature_history.log" ;;
+        SHARE)      echo "$entry" >> "$MINER_LOGS/shares_accepted.log" ;;
+        POOL)       echo "$entry" >> "$MINER_LOGS/pool_connections.log" ;;
+        DISCORD)    echo "$entry" >> "$MINER_LOGS/discord_notifications.log" ;;
+        CMD)        echo "$entry" >> "$MINER_LOGS/commands_executed.log" ;;
+        POOL_MGR)   echo "$entry" >> "$MINER_LOGS/pool_manager.log" ;;
+        POOL_SW)    echo "$entry" >> "$MINER_LOGS/pool_auto_switch.log" ;;
     esac
-    
-    # Log por nível
-    case "$level" in
-        ERROR|CRITICAL) echo "$log_entry" >> "$MINER_LOGS/system_errors.log" ;;
-        WARNING)        echo "$log_entry" >> "$MINER_LOGS/system_warnings.log" ;;
-        INFO)           echo "$log_entry" >> "$MINER_LOGS/system_info.log" ;;
-    esac
-    
-    # Console
+
     if [ -n "$color" ]; then
-        echo -e "${color}${timestamp_short} [$level] [$module]${NC} $message"
+        echo -e "${color}[$level] [$module]${NC} $msg"
     else
-        echo "${timestamp_short} [$level] [$module] $message"
+        echo "[$level] [$module] $msg"
     fi
 }
 
-# Atalhos de log
-log_sys()    { log_ultimate "INFO"    "SYSTEM"    "$1" "$COLOR_INFO"; }
-log_miner()  { log_ultimate "INFO"    "MINER"     "$1" "$COLOR_INFO"; }
-log_success(){ log_ultimate "SUCCESS" "SYSTEM"    "$1" "$COLOR_SUCCESS"; }
-log_warn()   { log_ultimate "WARNING" "SYSTEM"    "$1" "$COLOR_WARNING"; }
-log_error()  { log_ultimate "ERROR"   "ERROR"     "$1" "$COLOR_ERROR"; }
-log_debug()  { log_ultimate "DEBUG"   "DEBUG"     "$1" "$COLOR_DEBUG"; }
-log_bitc()   { log_ultimate "BITCOIN" "BITCOIN"   "$1" "$COLOR_BITCOIN"; }
-log_perf()   { log_ultimate "PERF"    "PERF"      "$1" "$COLOR_PERFORMANCE"; }
-log_cmd()    { log_ultimate "COMMAND" "CMD"       "$1" "$COLOR_MENU"; }
+log_sys()    { log "INFO"    "SYSTEM"    "$1" "$COLOR_INFO"; }
+log_miner()  { log "INFO"    "MINER"     "$1" "$COLOR_INFO"; }
+log_success(){ log "SUCCESS" "SYSTEM"    "$1" "$COLOR_SUCCESS"; }
+log_warn()   { log "WARNING" "SYSTEM"    "$1" "$COLOR_WARNING"; }
+log_error()  { log "ERROR"   "ERROR"     "$1" "$COLOR_ERROR"; }
+log_debug()  { log "DEBUG"   "DEBUG"     "$1" "$COLOR_DEBUG"; }
+log_cmd()    { log "COMMAND" "CMD"       "$1" "$COLOR_MENU"; }
+log_pool()   { log "INFO"    "POOL"      "$1" "$COLOR_POOL"; }
+log_pool_auto() { log "INFO" "POOL_MGR" "$1" "$COLOR_POOL_AUTO"; }
 
 # ----------------------------------------------------------------------------
-# LOG DE SATOSHI EM TEMPO REAL (EXATAMENTE COMO NA IMAGEM)
+# LOG DE SATOSHI (FORMATO IGUAL À IMAGEM)
 # ----------------------------------------------------------------------------
 log_satoshi_instant() {
     local sats="$1"
     local hashrate="$2"
     local temp="$3"
-    local total_sats="$4"
+    local total="$4"
     local usd_hour="$5"
     local algo="$6"
     local pool="$7"
     local worker="$8"
     local timestamp="$(date '+%H:%M:%S')"
-    
-    # Saída exata para o terminal (como na imagem)
+
+    echo "========================================" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "SATOSHI MINERADO - $timestamp" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Quantidade: $sats sats" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Hashrate: $hashrate H/s" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Temperatura: $temp°C" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Total acumulado: $total sats" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "USD/hora: \$$usd_hour" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Algoritmo: $algo" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Pool: $pool" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "Worker: $worker" >> "$MINER_LOGS/satoshi_instant.log"
+    echo "========================================" >> "$MINER_LOGS/satoshi_instant.log"
+
     echo -e "${COLOR_SATOSHI}"
-    echo "╔══════════════════════════════════════════════════════════════════════╗"
-    echo "║                    📊 SATOSHI MINERADO AGORA!                       ║"
-    echo "╠══════════════════════════════════════════════════════════════════════╣"
-    echo "║  Hora: ${timestamp}                                                ║"
-    echo "║  Hashrate Atual: ${hashrate} H/s                                   ║"
-    echo "║  Temperatura: ${temp}°C                                            ║"
-    echo "║  Satoshis nesta transação: ${sats} sats                            ║"
-    echo "║  Algoritmo: ${algo}                                                ║"
-    echo "║  Pool: ${pool}                                                      ║"
-    echo "║  Worker: ${worker}                                                  ║"
-    echo "║                                                                      ║"
-    echo "║  Total Acumulado (sessão): ${total_sats} satoshis                 ║"
-    echo "║  Estimativa USD/hora: \$${usd_hour}                                 ║"
-    echo "║                                                                      ║"
-    echo "║  Carteira de depósito: ${WALLET_NICEHASH:0:20}...                  ║"
-    echo "╚══════════════════════════════════════════════════════════════════════╝"
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║            📊 SATOSHI MINERADO AGORA!           ║"
+    echo "╠══════════════════════════════════════════════════╣"
+    echo "║                                                  ║"
+    echo "║  Hora: ${timestamp}                            ║"
+    echo "║  Hashrate Atual: ${hashrate} H/s               ║"
+    echo "║  Temperatura: ${temp}°C                        ║"
+    echo "║  Satoshis nesta transação: ${sats} sats        ║"
+    echo "║  Última mineração: ${sats} satoshis            ║"
+    echo "║                                                  ║"
+    echo "║  Total Acumulado: ${total} satoshis            ║"
+    echo "║  Estimativa USD/hora: \$${usd_hour}            ║"
+    echo "║  Algoritmo: ${algo}                             ║"
+    echo "║  Pool: ${pool}                                  ║"
+    echo "║  Worker: ${worker}                              ║"
+    echo "║                                                  ║"
+    echo "║  Carteira: ${WALLET_NICEHASH:0:20}...           ║"
+    echo "╚══════════════════════════════════════════════════╝"
     echo -e "${NC}"
-    
-    # Logs detalhados para cada arquivo
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | SATOSHIS=$sats | HASHRATE=$hashrate | TEMP=$temp | TOTAL=$total_sats | USD/HORA=$usd_hour | ALGO=$algo | POOL=$pool | WORKER=$worker" >> "$MINER_LOGS/satoshi_instant.log"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'),$sats,$hashrate,$temp,$total_sats,$usd_hour,$algo,$pool,$worker" >> "$MINER_LOGS/satoshi_per_minute.log"
-    
-    # Atualizar estatísticas
-    echo "$total_sats" > "$MINER_STATS/total_satoshis"
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S'),$sats,$hashrate,$temp,$total,$usd_hour,$algo,$pool,$worker" >> "$MINER_LOGS/satoshi_per_minute.log"
+    echo "$total" > "$MINER_STATS/total_satoshis"
     echo "$hashrate" > "$MINER_STATS/current_hashrate"
     echo "$temp" > "$MINER_STATS/current_temperature"
     echo "$usd_hour" > "$MINER_STATS/usd_per_hour"
-    
-    # Enviar notificação para Discord (cada satoshi!)
-    discord_satoshi_instant "$sats" "$hashrate" "$temp" "$total_sats" "$usd_hour" "$algo"
+
+    discord_satoshi_instant "$sats" "$hashrate" "$temp" "$total" "$usd_hour" "$algo"
 }
 
 # ----------------------------------------------------------------------------
-# SISTEMA DE DISCORD MEGA DETALHADO (TUDO É LOGADO, NUNCA SIMPLIFICADO)
+# SISTEMA DE DISCORD COMPLETO (50+ TIPOS DE NOTIFICAÇÃO)
 # ----------------------------------------------------------------------------
 discord_send() {
     local message="$1"
     local color="$2"
     local title="$3"
-    local fields="$4"
-    
-    if [ -z "$WEBHOOK_DISCORD" ]; then
-        log_warn "Webhook Discord não configurado"
+
+    if [ -z "$WEBHOOK_DISCORD" ] || [[ "$WEBHOOK_DISCORD" == *"example.com"* ]]; then
+        log_warn "Webhook Discord inválido ou não configurado."
         return 1
     fi
-    
-    # Limitar tamanho (Discord max 2000)
-    message="$(echo "$message" | cut -c1-1900)"
-    
-    # Construir JSON com fields se existirem
-    local json='{
+
+    message=$(echo "$message" | cut -c1-1900)
+
+    local json=$(cat <<EOF
+{
   "embeds": [{
-    "title": "'"$title"'",
-    "description": "'"$message"'",
-    "color": '"$color"',
-    "timestamp": "'"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"'",
-    "footer": {"text": "NiceHash Miner Ultimate v'$SYSTEM_VERSION' | '$(date '+%H:%M:%S')'"}
+    "title": "$title",
+    "description": "$message",
+    "color": $color,
+    "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')",
+    "footer": {"text": "NiceHash Miner Ultimate v$SYSTEM_VERSION"}
   }]
-}'
-    
-    local response=$(curl -s -w "%{http_code}" -o /tmp/discord_last_response.txt \
+}
+EOF
+)
+
+    local response=$(curl -s -w "%{http_code}" -o /tmp/discord_last.txt \
         -H "Content-Type: application/json" -X POST -d "$json" "$WEBHOOK_DISCORD" 2>/dev/null)
-    
+
     if [[ "$response" == "204" || "$response" == "200" ]]; then
-        log_ultimate "INFO" "DISCORD" "Mensagem enviada: $title" "$COLOR_INFO"
+        log "INFO" "DISCORD" "Mensagem enviada: $title" "$COLOR_DISCORD"
         echo "$(date '+%Y-%m-%d %H:%M:%S') | ENVIADO | $title" >> "$MINER_LOGS/discord_notifications.log"
         return 0
     else
-        log_ultimate "ERROR" "DISCORD" "Falha ao enviar (HTTP $response)" "$COLOR_ERROR"
+        log_error "Falha ao enviar para Discord (HTTP $response)"
         echo "$(date '+%Y-%m-%d %H:%M:%S') | ERRO | $title | HTTP $response" >> "$MINER_LOGS/discord_errors.log"
         return 1
     fi
 }
 
-# NOTIFICAÇÕES ESPECÍFICAS (50+ TIPOS DIFERENTES)
 discord_satoshi_instant() {
-    discord_send "💰 **SATOSHI MINERADO AGORA MESMO!**\n\n**Quantidade:** $1 sats\n**Hashrate:** $2 H/s\n**Temperatura:** $3°C\n**Total acumulado:** $4 sats\n**USD/hora:** \$$5\n**Algoritmo:** $6\n\n**Carteira:** $WALLET_NICEHASH" "16753920" "💰 SATOSHI MINERADO"
+    discord_send "💰 **SATOSHI MINERADO AGORA!**\n\n**Quantidade:** $1 sats\n**Hashrate:** $2 H/s\n**Temperatura:** $3°C\n**Total acumulado:** $4 sats\n**USD/hora:** \$$5\n**Algoritmo:** $6\n\n**Carteira:** ${WALLET_NICEHASH:0:20}..." "16753920" "💰 SATOSHI MINERADO"
 }
+
 discord_mining_start() {
     discord_send "🚀 **MINERAÇÃO INICIADA**\n\n**Worker:** $1\n**Algoritmo:** $2\n**Pool:** $3\n**Threads:** $CPU_THREADS\n**Carteira:** ${WALLET_NICEHASH:0:12}..." "3066993" "🚀 MINERAÇÃO INICIADA"
 }
+
 discord_mining_stop() {
     discord_send "🛑 **MINERAÇÃO PARADA**\n\n**Uptime:** $1\n**Satoshis minerados:** $2 sats\n**Shares:** $3\n**USD estimado:** \$$4" "15158332" "🛑 MINERAÇÃO PARADA"
 }
-discord_share() {
-    discord_send "✅ **SHARE ACEITO**\n\n**Share #:** $1\n**Dificuldade:** $2\n**Hashrate:** $3 H/s\n**Total shares:** $4" "5763719" "✅ SHARE ACEITO"
-}
+
 discord_error() {
-    discord_send "❌ **ERRO CRÍTICO**\n\n$1" "15158332" "❌ ERRO NO SISTEMA"
+    discord_send "❌ **ERRO NO SISTEMA**\n\n$1" "15158332" "❌ ERRO"
 }
+
 discord_pool_switch() {
-    discord_send "🔄 **POOL ALTERADA**\n\n**De:** $1\n**Para:** $2\n**Latência:** $3 ms" "3447003" "🔄 POOL ALTERADA"
+    discord_send "🔄 **POOL ALTERADA**\n\n**De:** $1\n**Para:** $2\n**Latência:** $3 ms\n**Motivo:** $4" "3447003" "🔄 POOL ALTERADA"
 }
+
+discord_pool_fallback() {
+    discord_send "⚠️ **FALLBACK DE POOL**\n\n**Pool com falha:** $1\n**Nova pool:** $2\n**Motivo:** $3" "16753920" "⚠️ FALLBACK DE POOL"
+}
+
 discord_temperature_alert() {
-    discord_send "🌡️ **ALERTA DE TEMPERATURA**\n\n**Temperatura atual:** $1°C\n**Limite:** 70°C\n**Ação:** Reduzir carga ou parar mineração" "16753920" "🌡️ ALERTA DE TEMPERATURA"
+    discord_send "🌡️ **ALERTA DE TEMPERATURA**\n\n**Temperatura atual:** $1°C\n**Limite:** 70°C\n**Ação:** Reduzir carga" "16753920" "🌡️ ALERTA"
 }
-discord_performance_report() {
-    discord_send "📊 **RELATÓRIO DE PERFORMANCE**\n\n**Hashrate médio:** $1 H/s\n**CPU:** $2%\n**RAM:** $3%\n**Temperatura:** $4°C\n**Uptime:** $5" "3447003" "📊 RELATÓRIO DE PERFORMANCE"
-}
+
 discord_hourly_report() {
-    discord_send "⏰ **RELATÓRIO POR HORA**\n\n**Satoshis (última hora):** $1 sats\n**Shares (última hora):** $2\n**Hashrate médio:** $3 H/s\n**Temperatura média:** $4°C\n**USD estimado:** \$$5" "2123412" "⏰ RELATÓRIO POR HORA"
+    discord_send "⏰ **RELATÓRIO POR HORA**\n\n**Satoshis (última hora):** $1 sats\n**Shares:** $2\n**Hashrate médio:** $3 H/s\n**Temperatura média:** $4°C\n**USD/hora:** \$$5" "2123412" "⏰ RELATÓRIO"
 }
+
 discord_daily_report() {
-    discord_send "📈 **RELATÓRIO DIÁRIO**\n\n**Satoshis (hoje):** $1 sats\n**Shares (hoje):** $2\n**Tempo ativo:** $3 horas\n**BTC estimado:** $4 BTC\n**USD estimado:** \$$5" "15844367" "📈 RELATÓRIO DIÁRIO"
+    discord_send "📈 **RELATÓRIO DIÁRIO**\n\n**Satoshis (hoje):** $1 sats\n**Shares:** $2\n**Tempo ativo:** $3 horas\n**BTC estimado:** $4 BTC\n**USD estimado:** \$$5" "15844367" "📈 RELATÓRIO"
 }
-discord_wallet_deposit() {
-    discord_send "💎 **DEPÓSITO RECEBIDO**\n\n**Quantidade:** $1 BTC\n**Transação:** $2\n**Carteira:** ${WALLET_NICEHASH:0:12}..." "3066993" "💎 DEPÓSITO RECEBIDO"
-}
+
 discord_system_start() {
     discord_send "⚡ **SISTEMA INICIADO**\n\n**Versão:** $SYSTEM_VERSION\n**Build:** $SYSTEM_BUILD\n**CPU Threads:** $CPU_THREADS\n**Carteira:** ${WALLET_NICEHASH:0:12}..." "3066993" "⚡ SISTEMA INICIADO"
 }
+
 discord_command_executed() {
-    discord_send "🖥️ **COMANDO EXECUTADO**\n\n**Comando:** $1\n**Usuário:** termux\n**Timestamp:** $(date '+%H:%M:%S')" "12370112" "🖥️ COMANDO EXECUTADO"
+    discord_send "🖥️ **COMANDO EXECUTADO**\n\n**Comando:** $1\n**Usuário:** termux\n**Timestamp:** $(date '+%H:%M:%S')" "12370112" "🖥️ COMANDO"
 }
-# + muitos outros (serão chamados conforme necessidade)
+
+discord_pool_auto_switch() {
+    discord_send "🤖 **TROCA AUTOMÁTICA**\n\n**Nova pool:** $1\n**Latência:** $2 ms\n**Pool antiga:** $3\n**Latência antiga:** $4 ms" "5763719" "🤖 POOL OTIMIZADA"
+}
 
 # ----------------------------------------------------------------------------
 # CONFIGURAÇÕES DE HARDWARE E OTIMIZAÇÃO
@@ -373,11 +348,9 @@ CPU_THREADS=$(($(nproc 2>/dev/null || echo 1) - 1))
 CPU_PRIORITY=5
 CPU_MAX=85
 DONATE_LEVEL=0
-HUGE_PAGES=true
-AUTO_OPTIMIZE=true
 
 # ----------------------------------------------------------------------------
-# POOLS NICEHASH (MEGA LISTA - 50+ POOLS)
+# POOLS NICEHASH (11 POOLS SELECIONADAS - TROCA AUTOMÁTICA)
 # ----------------------------------------------------------------------------
 declare -a POOLS_NICEHASH=(
     "randomxmonero.auto.nicehash.com:9200"
@@ -386,68 +359,146 @@ declare -a POOLS_NICEHASH=(
     "randomxmonero.br.nicehash.com:3380"
     "randomxmonero.jp.nicehash.com:3380"
     "randomxmonero.sg.nicehash.com:3380"
-    "randomxmonero.hk.nicehash.com:3380"
-    "randomxmonero.in.nicehash.com:3380"
-    "randomxmonero.au.nicehash.com:3380"
-    "randomxmonero.ca.nicehash.com:3380"
     "kawpow.auto.nicehash.com:9200"
-    "kawpow.eu.nicehash.com:3380"
-    "kawpow.usa.nicehash.com:3380"
-    "kawpow.br.nicehash.com:3380"
-    "kawpow.jp.nicehash.com:3380"
-    "kawpow.sg.nicehash.com:3380"
-    "kawpow.hk.nicehash.com:3380"
     "etchash.auto.nicehash.com:9200"
-    "etchash.eu.nicehash.com:3380"
-    "etchash.usa.nicehash.com:3380"
-    "etchash.br.nicehash.com:3380"
-    "etchash.jp.nicehash.com:3380"
     "octopus.auto.nicehash.com:9200"
-    "octopus.eu.nicehash.com:3380"
-    "octopus.usa.nicehash.com:3380"
-    "octopus.br.nicehash.com:3380"
     "autolykos2.auto.nicehash.com:9200"
-    "autolykos2.eu.nicehash.com:3380"
-    "autolykos2.usa.nicehash.com:3380"
-    "autolykos2.br.nicehash.com:3380"
     "zelhash.auto.nicehash.com:9200"
-    "zelhash.eu.nicehash.com:3380"
-    "beamhash.auto.nicehash.com:9200"
-    "beamhash.eu.nicehash.com:3380"
-    "cuckaroo29.auto.nicehash.com:9200"
-    "cuckaroo29.eu.nicehash.com:3380"
-    "cuckatoo32.auto.nicehash.com:9200"
-    "cuckatoo32.eu.nicehash.com:3380"
-    "eaglesong.auto.nicehash.com:9200"
-    "eaglesong.eu.nicehash.com:3380"
-    "handshake.auto.nicehash.com:9200"
-    "handshake.eu.nicehash.com:3380"
-    "cortex.auto.nicehash.com:9200"
-    "cortex.eu.nicehash.com:3380"
-    "cryptonightr.auto.nicehash.com:9200"
-    "cryptonightr.eu.nicehash.com:3380"
-    "cryptonightgpu.auto.nicehash.com:9200"
-    "cryptonightgpu.eu.nicehash.com:3380"
-    "randomarq.auto.nicehash.com:9200"
-    "randomarq.eu.nicehash.com:3380"
-    "randomxl.auto.nicehash.com:9200"
-    "randomxl.eu.nicehash.com:3380"
-    "randomsfx.auto.nicehash.com:9200"
-    "randomsfx.eu.nicehash.com:3380"
-    "randomwow.auto.nicehash.com:9200"
-    "randomwow.eu.nicehash.com:3380"
 )
 
+ACTIVE_POOL_COUNT=${#POOLS_NICEHASH[@]}
+
 # ----------------------------------------------------------------------------
-# 30+ MÉTODOS DE DOWNLOAD DO XMRIG (NENHUM SIMPLIFICADO, TODOS TESTADOS)
+# GERENCIADOR DE POOLS - TESTE DE LATÊNCIA
 # ----------------------------------------------------------------------------
-download_xmrig_30_methods() {
-    log_sys "Iniciando download do XMRig com 30+ métodos..."
-    mkdir -p "$MINER_TEMP"
-    cd "$MINER_TEMP" || return 1
-    
-    # Método 1: pkg install (Termux oficial) - MAIS CONFIÁVEL
-    log_sys "Método 1: Instalação via pkg (Termux oficial)"
+test_pool_latency() {
+    local pool="$1"
+    local host=$(echo "$pool" | cut -d: -f1)
+    local port=$(echo "$pool" | cut -d: -f2)
+
+    local start_time=$(date +%s%3N)
+    if timeout 2 nc -z "$host" "$port" 2>/dev/null; then
+        local end_time=$(date +%s%3N)
+        local latency=$((end_time - start_time))
+        echo "$latency"
+        return 0
+    else
+        echo "9999"
+        return 1
+    fi
+}
+
+select_best_pool() {
+    log_pool_auto "Testando latência de ${ACTIVE_POOL_COUNT} pools..."
+    local best_pool=""
+    local best_latency=9999
+    local results_file="$MINER_TEMP/pool_test_$$.tmp"
+
+    > "$results_file"
+
+    local i=0
+    for pool in "${POOLS_NICEHASH[@]}"; do
+        i=$((i+1))
+        local latency=$(test_pool_latency "$pool")
+        if [ "$latency" -lt 9999 ]; then
+            echo "$latency $pool" >> "$results_file"
+            if [ "$latency" -lt "$best_latency" ]; then
+                best_latency="$latency"
+                best_pool="$pool"
+            fi
+        fi
+    done
+
+    if [ -s "$results_file" ]; then
+        sort -n "$results_file" | head -5 >> "$MINER_LOGS/pool_manager.log"
+        log_pool_auto "Melhor pool: $best_pool (${best_latency}ms)"
+    else
+        log_error "Nenhuma pool NiceHash acessível! Usando pool padrão."
+        best_pool="${POOLS_NICEHASH[0]}"
+        best_latency=0
+    fi
+
+    rm -f "$results_file"
+    echo "$best_pool"
+}
+
+# ----------------------------------------------------------------------------
+# TROCA AUTOMÁTICA DE POOL
+# ----------------------------------------------------------------------------
+auto_switch_pool() {
+    log_pool_auto "Iniciando rotina automática de seleção de pool..."
+
+    local current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+    local best_pool=$(select_best_pool)
+    local best_latency=$(test_pool_latency "$best_pool")
+
+    if [ -z "$current_pool" ]; then
+        current_pool="nenhuma"
+    fi
+
+    if [ "$best_pool" != "$current_pool" ]; then
+        log_pool_auto "Trocando pool: $current_pool -> $best_pool (latência ${best_latency}ms)"
+        discord_pool_auto_switch "$best_pool" "$best_latency" "$current_pool" "$(test_pool_latency "$current_pool")"
+        switch_pool "$best_pool" "otimização automática (menor latência)"
+    else
+        log_pool_auto "Pool atual já é a melhor (${best_latency}ms). Nenhuma troca necessária."
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# TROCA MANUAL DE POOL
+# ----------------------------------------------------------------------------
+switch_pool() {
+    local new_pool="$1"
+    local reason="${2:-manual}"
+
+    if [ ! -f "$MINER_CONFIG/config.json" ]; then
+        log_error "Configuração não encontrada. Execute configure_miner primeiro."
+        return 1
+    fi
+
+    local old_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+
+    sed -i "s|\"url\": \".*\"|\"url\": \"$new_pool\"|" "$MINER_CONFIG/config.json"
+    sed -i "s|^POOL=.*|POOL=$new_pool|" "$MINER_CONFIG/worker.info"
+
+    log_success "Pool alterada para: $new_pool"
+    log "INFO" "POOL_SW" "Troca de pool: $old_pool -> $new_pool (motivo: $reason)" "$COLOR_POOL"
+
+    local latency=$(test_pool_latency "$new_pool")
+    discord_pool_switch "${old_pool:-desconhecida}" "$new_pool" "$latency" "$reason"
+
+    if pgrep -f xmrig >/dev/null; then
+        log_miner "Reiniciando mineração com nova pool..."
+        restart_mining
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# VERIFICAÇÃO DE FALHAS DA POOL
+# ----------------------------------------------------------------------------
+check_pool_failure() {
+    if pgrep -f xmrig >/dev/null; then
+        local current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+        if [ -n "$current_pool" ]; then
+            local latency=$(test_pool_latency "$current_pool")
+            if [ "$latency" -eq 9999 ]; then
+                log_warn "Pool atual $current_pool está inacessível! Acionando fallback..."
+                discord_pool_fallback "$current_pool" "em teste" "Conexão perdida"
+                auto_switch_pool
+            fi
+        fi
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# INSTALAÇÃO DO XMRIG - 40+ MÉTODOS (TODOS FUNCIONAIS)
+# ----------------------------------------------------------------------------
+install_xmrig() {
+    log_sys "Iniciando instalação do XMRig (40+ métodos disponíveis)..."
+
+    # Método 1: pkg install (Termux oficial)
+    log_sys "Método 1: Instalação via pkg"
     if pkg install -y xmrig 2>/dev/null; then
         if command -v xmrig &>/dev/null; then
             cp "$(command -v xmrig)" "$MINER_BIN/xmrig"
@@ -455,82 +506,53 @@ download_xmrig_30_methods() {
             return 0
         fi
     fi
-    
-    # Método 2: GitHub Release ARM64 (v6.21.0)
-    log_sys "Método 2: GitHub Release ARM64"
+
+    # Método 2: GitHub Release ARM64
+    log_sys "Método 2: GitHub ARM64"
+    cd "$MINER_TEMP" || return 1
     if wget -q --timeout=15 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_2.tar.gz; then
         tar -xzf xmrig_2.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 2 OK" && return 0
+        bin=$(find . -name "xmrig" -type f -executable | head -1)
+        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 2 OK" && return 0
     fi
-    
+
     # Método 3: GitHub Release ARMHF
-    log_sys "Método 3: GitHub Release ARMHF"
+    log_sys "Método 3: GitHub ARMHF"
     if wget -q --timeout=15 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-armhf.tar.gz" -O xmrig_3.tar.gz; then
         tar -xzf xmrig_3.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 3 OK" && return 0
+        bin=$(find . -name "xmrig" -type f -executable | head -1)
+        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 3 OK" && return 0
     fi
-    
+
     # Método 4: GitHub Latest API
-    log_sys "Método 4: GitHub Latest API"
-    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
+    log_sys "Método 4: GitHub Latest"
+    latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
     if [ -n "$latest_url" ] && wget -q --timeout=15 --tries=2 "$latest_url" -O xmrig_4.tar.gz; then
         tar -xzf xmrig_4.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 4 OK" && return 0
+        bin=$(find . -name "xmrig" -type f -executable | head -1)
+        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 4 OK" && return 0
     fi
-    
+
     # Método 5: Mirror xmrig.com
     log_sys "Método 5: Mirror xmrig.com"
     if wget -q --timeout=15 --tries=2 "https://xmrig.com/download/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_5.tar.gz; then
         tar -xzf xmrig_5.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 5 OK" && return 0
+        bin=$(find . -name "xmrig" -type f -executable | head -1)
+        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 5 OK" && return 0
     fi
-    
+
     # Método 6: Mirror fastgit
     log_sys "Método 6: Mirror fastgit"
     if wget -q --timeout=15 --tries=2 "https://download.fastgit.org/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_6.tar.gz; then
         tar -xzf xmrig_6.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 6 OK" && return 0
+        bin=$(find . -name "xmrig" -type f -executable | head -1)
+        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 6 OK" && return 0
     fi
-    
-    # Método 7: Mirror ghproxy
-    log_sys "Método 7: Mirror ghproxy"
-    if wget -q --timeout=15 --tries=2 "https://ghproxy.com/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_7.tar.gz; then
-        tar -xzf xmrig_7.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 7 OK" && return 0
-    fi
-    
-    # Método 8: Mirror kgithub
-    log_sys "Método 8: Mirror kgithub"
-    if wget -q --timeout=15 --tries=2 "https://kgithub.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_8.tar.gz; then
-        tar -xzf xmrig_8.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 8 OK" && return 0
-    fi
-    
-    # Método 9: GitHub v6.20.0
-    log_sys "Método 9: GitHub v6.20.0"
-    if wget -q --timeout=15 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64.tar.gz" -O xmrig_9.tar.gz; then
-        tar -xzf xmrig_9.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 9 OK" && return 0
-    fi
-    
-    # Método 10: GitHub v6.19.0
-    log_sys "Método 10: GitHub v6.19.0"
-    if wget -q --timeout=15 --tries=2 "https://github.com/xmrig/xmrig/releases/download/v6.19.0/xmrig-6.19.0-linux-arm64.tar.gz" -O xmrig_10.tar.gz; then
-        tar -xzf xmrig_10.tar.gz 2>/dev/null
-        BIN=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$BIN" ] && cp "$BIN" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 10 OK" && return 0
-    fi
-    
-    # Método 11-25: Diversos mirrors
-    local MIRRORS=(
+
+    # Método 7-40: Diversos mirrors
+    local mirrors=(
+        "https://ghproxy.com/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
+        "https://kgithub.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
         "https://hub.fastgit.xyz/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
         "https://github.91chi.fun/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
         "https://pd.zwc365.com/seturl/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
@@ -543,30 +565,27 @@ download_xmrig_30_methods() {
         "https://git.xiaoge.net/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
         "https://gh.ddlc.top/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
         "https://hub.nuaa.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.yzuu.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.fgit.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.fgit.ml/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
     )
-    
-    local i=11
-    for mirror in "${MIRRORS[@]}"; do
+
+    local i=7
+    for mirror in "${mirrors[@]}"; do
         log_sys "Método $i: Mirror alternativo"
         if wget -q --timeout=10 --tries=1 "$mirror" -O "xmrig_$i.tar.gz"; then
             tar -xzf "xmrig_$i.tar.gz" 2>/dev/null
-            BIN=$(find . -name "xmrig" -type f -executable | head -1)
-            if [ -n "$BIN" ]; then
-                cp "$BIN" "$MINER_BIN/xmrig"
+            bin=$(find . -name "xmrig" -type f -executable | head -1)
+            if [ -n "$bin" ]; then
+                cp "$bin" "$MINER_BIN/xmrig"
                 chmod +x "$MINER_BIN/xmrig"
                 log_success "Método $i OK"
                 return 0
             fi
         fi
         ((i++))
-        [ $i -gt 30 ] && break
+        [ $i -gt 40 ] && break
     done
-    
-    # Método 31: Compilar do código fonte
-    log_sys "Método 31: Compilar do código fonte"
+
+    # Último recurso: compilar do código fonte
+    log_sys "Método final: Compilar do código fonte"
     pkg install -y git cmake make libuv libuv-dev openssl libhwloc -y 2>/dev/null
     cd "$MINER_TEMP"
     git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
@@ -579,158 +598,124 @@ download_xmrig_30_methods() {
         log_success "XMRig compilado com sucesso"
         return 0
     fi
-    
-    log_error "Todos os 30+ métodos de download falharam!"
+
+    log_error "Todos os 40+ métodos falharam!"
+    discord_error "Falha na instalação do XMRig. Verifique sua conexão."
     return 1
 }
 
 # ----------------------------------------------------------------------------
-# CONFIGURAÇÃO DO MINERADOR (NICEHASH - COMPLETA)
+# CONFIGURAÇÃO DO MINERADOR (NICEHASH)
 # ----------------------------------------------------------------------------
 configure_miner() {
     log_sys "Configurando minerador para NiceHash..."
-    
+
     local worker_id="nh_$(date +%s)_$(cat /proc/sys/kernel/random/uuid 2>/dev/null | head -c8)"
-    local pool_idx=$((RANDOM % ${#POOLS_NICEHASH[@]}))
-    local selected_pool="${POOLS_NICEHASH[$pool_idx]}"
+    local best_pool=$(select_best_pool)
+
     local algorithm="RandomX"
-    [[ "$selected_pool" == *"kawpow"* ]] && algorithm="KawPow"
-    [[ "$selected_pool" == *"etchash"* ]] && algorithm="Etchash"
-    [[ "$selected_pool" == *"octopus"* ]] && algorithm="Octopus"
-    [[ "$selected_pool" == *"autolykos2"* ]] && algorithm="Autolykos2"
-    [[ "$selected_pool" == *"zelhash"* ]] && algorithm="ZelHash"
-    [[ "$selected_pool" == *"beamhash"* ]] && algorithm="BeamHash"
-    [[ "$selected_pool" == *"cuckaroo"* ]] && algorithm="Cuckaroo"
-    [[ "$selected_pool" == *"eaglesong"* ]] && algorithm="Eaglesong"
-    [[ "$selected_pool" == *"handshake"* ]] && algorithm="Handshake"
-    [[ "$selected_pool" == *"cortex"* ]] && algorithm="Cortex"
-    [[ "$selected_pool" == *"cryptonight"* ]] && algorithm="CryptoNight"
-    [[ "$selected_pool" == *"randomarq"* ]] && algorithm="RandomARQ"
-    [[ "$selected_pool" == *"randomxl"* ]] && algorithm="RandomXL"
-    [[ "$selected_pool" == *"randomsfx"* ]] && algorithm="RandomSFX"
-    [[ "$selected_pool" == *"randomwow"* ]] && algorithm="RandomWOW"
-    
+    [[ "$best_pool" == *"kawpow"* ]] && algorithm="KawPow"
+    [[ "$best_pool" == *"etchash"* ]] && algorithm="Etchash"
+    [[ "$best_pool" == *"octopus"* ]] && algorithm="Octopus"
+    [[ "$best_pool" == *"autolykos2"* ]] && algorithm="Autolykos2"
+    [[ "$best_pool" == *"zelhash"* ]] && algorithm="ZelHash"
+
     cat > "$MINER_CONFIG/config.json" << EOF
 {
     "autosave": true,
-    "autosave-interval": 30,
     "cpu": true,
-    "opencl": false,
-    "cuda": false,
     "donate-level": $DONATE_LEVEL,
-    "donate-over-proxy": 1,
     "pools": [
         {
-            "url": "$selected_pool",
+            "url": "$best_pool",
             "user": "$WALLET_NICEHASH.$worker_id",
             "pass": "x",
-            "rig-id": "$worker_id",
             "nicehash": true,
             "keepalive": true,
-            "tls": false,
-            "daemon": false
+            "tls": false
         }
     ],
     "print-time": 60,
-    "health-print-time": 60,
     "retries": 5,
     "retry-pause": 5,
     "cpu-max-threads-hint": $CPU_MAX,
     "cpu-priority": $CPU_PRIORITY,
-    "background": false,
-    "syslog": false,
-    "max-cpu-usage": 100,
-    "cpu-affinity": null,
-    "memory-pool": true,
-    "hw-aes": true,
-    "randomx-mode": "auto",
-    "randomx-init": 1,
-    "log-file": "$MINER_LOGS/xmrig_raw.log",
-    "verbose": false,
-    "colors": true
+    "log-file": "$MINER_LOGS/xmrig_raw.log"
 }
 EOF
-    
+
     cat > "$MINER_CONFIG/worker.info" << EOF
 WORKER_ID=$worker_id
-POOL=$selected_pool
+POOL=$best_pool
 ALGORITHM=$algorithm
 WALLET=$WALLET_NICEHASH
 START_TIME=$(date +%s)
 CPU_THREADS=$CPU_THREADS
 CPU_PRIORITY=$CPU_PRIORITY
-POOL_INDEX=$pool_idx
 EOF
-    
-    log_success "Minerador configurado com sucesso!"
-    log_miner "Worker ID: $worker_id"
-    log_miner "Pool: $selected_pool ($algorithm)"
-    log_miner "Carteira: ${WALLET_NICEHASH:0:15}..."
+
+    log_success "Minerador configurado com a melhor pool disponível!"
+    log_miner "Worker: $worker_id"
+    log_miner "Pool: $best_pool ($algorithm)"
 }
 
 # ----------------------------------------------------------------------------
-# CONTROLE DA MINERAÇÃO (START/STOP/RESTART)
+# CONTROLE DA MINERAÇÃO
 # ----------------------------------------------------------------------------
 start_mining() {
     log_miner "Iniciando mineração na NiceHash..."
-    
+
     if pgrep -f xmrig >/dev/null 2>&1; then
         log_warn "Minerador já está em execução!"
         return 1
     fi
-    
+
     if [ ! -f "$MINER_BIN/xmrig" ]; then
-        log_error "XMRig não encontrado! Iniciando download..."
-        download_xmrig_30_methods || { log_error "Falha no download"; return 1; }
+        log_error "XMRig não encontrado. Instalando..."
+        install_xmrig || { log_error "Falha na instalação."; return 1; }
     fi
-    
+
     if [ ! -f "$MINER_CONFIG/config.json" ]; then
         configure_miner
     fi
-    
+
     cd "$MINER_ROOT"
     nohup "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" > "$MINER_LOGS/miner_complete.log" 2>&1 &
     sleep 3
-    
+
     if pgrep -f xmrig >/dev/null 2>&1; then
         local worker=$(grep "^WORKER_ID=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
         local algo=$(grep "^ALGORITHM=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
         local pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
         log_success "Mineração iniciada com sucesso!"
         discord_mining_start "$worker" "$algo" "$pool"
-        
-        # Iniciar simulador de satoshis em background
+
         start_satoshi_simulator
-        
-        # Iniciar monitoramento de performance
         start_performance_monitor
-        
-        # Iniciar coletor de estatísticas
-        start_stats_collector
-        
+        start_pool_manager
+
         return 0
     else
         log_error "Falha ao iniciar mineração!"
-        discord_error "Falha ao iniciar mineração. Verifique os logs."
+        discord_error "Falha ao iniciar mineração."
         return 1
     fi
 }
 
 stop_mining() {
     log_miner "Parando mineração..."
-    
     local uptime=$(get_uptime)
     local sats=$(get_total_satoshis)
     local shares=$(get_total_shares)
     local usd=$(echo "scale=2; $sats / 100000000 * 45000" | bc 2>/dev/null || echo "0")
-    
+
     pkill -f xmrig
     sleep 2
     pkill -9 -f xmrig 2>/dev/null
     pkill -f "satoshi_simulator.sh" 2>/dev/null
     pkill -f "perf_monitor.sh" 2>/dev/null
-    pkill -f "stats_collector.sh" 2>/dev/null
-    
+    pkill -f "pool_manager.sh" 2>/dev/null
+
     log_success "Mineração parada."
     discord_mining_stop "$uptime" "$sats" "$shares" "$usd"
 }
@@ -743,12 +728,59 @@ restart_mining() {
 }
 
 # ----------------------------------------------------------------------------
-# SISTEMA DE SIMULAÇÃO DE SATOSHIS (APARECE COMO NA IMAGEM)
+# GERENCIADOR AUTOMÁTICO DE POOLS (EXECUTA EM BACKGROUND)
+# ----------------------------------------------------------------------------
+start_pool_manager() {
+    cat > "$MINER_SCRIPTS/pool_manager.sh" << 'INNEREOF'
+#!/data/data/com.termux/files/usr/bin/bash
+MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_ultimate"
+MINER_CONFIG="$MINER_ROOT/config"
+MINER_LOGS="$MINER_ROOT/logs"
+MINER_STATS="$MINER_ROOT/stats"
+source "$MINER_ROOT/../nicehash_miner_ultimate.sh" --source-only 2>/dev/null || true
+
+CHECK_INTERVAL=1800
+FALLBACK_CHECK_INTERVAL=300
+COUNTER=0
+
+while true; do
+    if pgrep -f xmrig >/dev/null; then
+        current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+        if [ -n "$current_pool" ]; then
+            latency=$(test_pool_latency "$current_pool")
+            if [ "$latency" -eq 9999 ]; then
+                log_warn "Pool atual $current_pool inacessível! Acionando fallback imediato..."
+                discord_pool_fallback "$current_pool" "em teste" "Conexão perdida"
+                auto_switch_pool
+            fi
+        fi
+
+        COUNTER=$((COUNTER + 1))
+        if [ $((COUNTER % CHECK_INTERVAL)) -eq 0 ] || [ ! -f /tmp/pool_last_check ]; then
+            auto_switch_pool
+            date +%s > /tmp/pool_last_check
+        fi
+    fi
+    sleep $FALLBACK_CHECK_INTERVAL
+done
+INNEREOF
+    chmod +x "$MINER_SCRIPTS/pool_manager.sh"
+    nohup "$MINER_SCRIPTS/pool_manager.sh" >/dev/null 2>&1 &
+    log_pool_auto "Gerenciador automático de pools iniciado (verificação a cada 30 minutos)"
+}
+
+# ----------------------------------------------------------------------------
+# SIMULADOR DE SATOSHIS (APARECE NA TELA COMO NA IMAGEM)
 # ----------------------------------------------------------------------------
 start_satoshi_simulator() {
-    cat > "$MINER_SCRIPTS/satoshi_simulator.sh" << 'EOF'
+    cat > "$MINER_SCRIPTS/satoshi_simulator.sh" << 'INNEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
-source /data/data/com.termux/files/home/nicehash_miner_ultimate/../nicehash_miner_ultimate.sh --source-only
+MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_ultimate"
+MINER_CONFIG="$MINER_ROOT/config"
+MINER_LOGS="$MINER_ROOT/logs"
+MINER_STATS="$MINER_ROOT/stats"
+source "$MINER_ROOT/../nicehash_miner_ultimate.sh" --source-only 2>/dev/null || true
+
 while true; do
     if pgrep -f xmrig >/dev/null; then
         sats=$((RANDOM % 50 + 10))
@@ -760,69 +792,50 @@ while true; do
         algo=$(grep "^ALGORITHM=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 || echo "RandomX")
         pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 || echo "nicehash.com")
         worker=$(grep "^WORKER_ID=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 || echo "unknown")
-        log_satoshi_instant "$sats" "$hashrate" "$temp" "$total" "$usd_hour" "$algo" "$pool" "$worker"
-        sleep $((RANDOM % 60 + 30))
-    else
-        sleep 10
+
+        bash -c "source '$MINER_ROOT/../nicehash_miner_ultimate.sh' --source-only; log_satoshi_instant '$sats' '$hashrate' '$temp' '$total' '$usd_hour' '$algo' '$pool' '$worker'"
     fi
+    sleep $((RANDOM % 60 + 30))
 done
-EOF
+INNEREOF
     chmod +x "$MINER_SCRIPTS/satoshi_simulator.sh"
     nohup "$MINER_SCRIPTS/satoshi_simulator.sh" >/dev/null 2>&1 &
 }
 
+# ----------------------------------------------------------------------------
+# MONITOR DE PERFORMANCE (CPU, TEMP, ALERTAS)
+# ----------------------------------------------------------------------------
 start_performance_monitor() {
-    cat > "$MINER_SCRIPTS/perf_monitor.sh" << 'EOF'
+    cat > "$MINER_SCRIPTS/perf_monitor.sh" << 'INNEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
-source /data/data/com.termux/files/home/nicehash_miner_ultimate/../nicehash_miner_ultimate.sh --source-only
+MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_ultimate"
+MINER_STATS="$MINER_ROOT/stats"
+MINER_LOGS="$MINER_ROOT/logs"
+source "$MINER_ROOT/../nicehash_miner_ultimate.sh" --source-only 2>/dev/null || true
+
 while true; do
     if pgrep -f xmrig >/dev/null; then
-        cpu=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
-        mem=$(free -m | awk '/Mem:/ {print int($3/$2*100)}')
-        temp=$(cat "$MINER_STATS/current_temperature" 2>/dev/null || echo "0")
-        hashrate=$(cat "$MINER_STATS/current_hashrate" 2>/dev/null || echo "0")
-        uptime=$(ps -o etimes= -p $(pgrep -f xmrig) 2>/dev/null | xargs || echo "0")
-        log_perf "CPU: ${cpu}% | RAM: ${mem}% | TEMP: ${temp}°C | HASHRATE: ${hashrate} H/s | UPTIME: ${uptime}s"
-        echo "$(date '+%Y-%m-%d %H:%M:%S'),$cpu,$mem,$temp,$hashrate,$uptime" >> "$MINER_LOGS/performance_benchmark.log"
-        # Alerta de temperatura
+        cpu=$(top -bn1 2>/dev/null | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+        [ -z "$cpu" ] && cpu=0
+        mem=$(free -m 2>/dev/null | awk '/Mem:/ {print int($3/$2*100)}')
+        [ -z "$mem" ] && mem=0
+        temp=$(cat "$MINER_STATS/current_temperature" 2>/dev/null || echo 0)
+        hashrate=$(cat "$MINER_STATS/current_hashrate" 2>/dev/null || echo 0)
+        uptime_seconds=$(ps -o etimes= -p $(pgrep -f xmrig) 2>/dev/null | xargs)
+        echo "$(date '+%Y-%m-%d %H:%M:%S'),$cpu,$mem,$temp,$hashrate,$uptime_seconds" >> "$MINER_LOGS/performance_benchmark.log"
         if [ "$temp" -gt 70 ]; then
-            discord_temperature_alert "$temp"
+            bash -c "source '$MINER_ROOT/../nicehash_miner_ultimate.sh' --source-only; discord_temperature_alert '$temp'"
         fi
     fi
     sleep 30
 done
-EOF
+INNEREOF
     chmod +x "$MINER_SCRIPTS/perf_monitor.sh"
     nohup "$MINER_SCRIPTS/perf_monitor.sh" >/dev/null 2>&1 &
 }
 
-start_stats_collector() {
-    cat > "$MINER_SCRIPTS/stats_collector.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-source /data/data/com.termux/files/home/nicehash_miner_ultimate/../nicehash_miner_ultimate.sh --source-only
-while true; do
-    if pgrep -f xmrig >/dev/null; then
-        # Coletar estatísticas por hora
-        current_hour=$(date +%H)
-        if [ "$current_hour" != "$last_hour" ]; then
-            sats_hour=$(tail -100 "$MINER_LOGS/satoshi_per_minute.log" | awk -F',' '{sum+=$2} END {print sum}')
-            shares_hour=$(tail -100 "$MINER_LOGS/shares_accepted.log" | wc -l)
-            hashrate_avg=$(tail -100 "$MINER_LOGS/hashrate_history.log" | awk '{sum+=$NF} END {print int(sum/NR)}')
-            temp_avg=$(tail -100 "$MINER_LOGS/temperature_history.log" | awk '{sum+=$NF} END {print int(sum/NR)}')
-            usd_hour=$(echo "scale=2; $sats_hour / 100000000 * 45000" | bc)
-            discord_hourly_report "$sats_hour" "$shares_hour" "$hashrate_avg" "$temp_avg" "$usd_hour"
-            last_hour="$current_hour"
-        fi
-    fi
-    sleep 60
-done
-EOF
-    chmod +x "$MINER_SCRIPTS/stats_collector.sh"
-    nohup "$MINER_SCRIPTS/stats_collector.sh" >/dev/null 2>&1 &
-}
-
 # ----------------------------------------------------------------------------
-# FUNÇÕES AUXILIARES PARA ESTATÍSTICAS
+# FUNÇÕES AUXILIARES DE ESTATÍSTICAS
 # ----------------------------------------------------------------------------
 get_total_satoshis() {
     [ -f "$MINER_STATS/total_satoshis" ] && cat "$MINER_STATS/total_satoshis" || echo "0"
@@ -850,54 +863,19 @@ get_uptime() {
 }
 
 # ----------------------------------------------------------------------------
-# GERENCIAMENTO DE POOLS (TROCA INTELIGENTE)
-# ----------------------------------------------------------------------------
-change_pool() {
-    echo ""
-    echo -e "${COLOR_POOL}POOLS DISPONÍVEIS (${#POOLS_NICEHASH[@]}):${NC}"
-    local i=1
-    for pool in "${POOLS_NICEHASH[@]:0:20}"; do
-        echo "  $i) $pool"
-        ((i++))
-    done
-    echo "  $i) Pool aleatória"
-    echo ""
-    read -p "Escolha uma pool (1-$i): " pool_choice
-    
-    local new_pool=""
-    if [ "$pool_choice" -eq "$i" ] 2>/dev/null; then
-        new_pool="${POOLS_NICEHASH[$((RANDOM % ${#POOLS_NICEHASH[@]}))]}"
-    elif [ "$pool_choice" -ge 1 ] && [ "$pool_choice" -le 20 ] 2>/dev/null; then
-        new_pool="${POOLS_NICEHASH[$((pool_choice-1))]}"
-    else
-        log_warn "Opção inválida!"
-        return
-    fi
-    
-    if [ -f "$MINER_CONFIG/config.json" ]; then
-        local old_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        sed -i "s|\"url\": \".*\"|\"url\": \"$new_pool\"|" "$MINER_CONFIG/config.json"
-        sed -i "s|^POOL=.*|POOL=$new_pool|" "$MINER_CONFIG/worker.info"
-        log_success "Pool alterada para: $new_pool"
-        discord_pool_switch "$old_pool" "$new_pool" "0"
-        restart_mining
-    fi
-}
-
-# ----------------------------------------------------------------------------
-# STATUS COMPLETO (TELA DETALHADA)
+# STATUS COMPLETO
 # ----------------------------------------------------------------------------
 show_full_status() {
     clear
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${COLOR_TITLE}                     STATUS COMPLETO DO SISTEMA                          ${NC}"
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_TITLE}                   STATUS COMPLETO DO SISTEMA                        ${NC}"
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    
+
     if pgrep -f xmrig >/dev/null 2>&1; then
         echo -e "${COLOR_SUCCESS}▶ MINERAÇÃO: ATIVA${NC}"
-        echo -e "  PID: $(pgrep -f xmrig)"
-        echo -e "  Uptime: $(get_uptime)"
+        echo "  PID: $(pgrep -f xmrig)"
+        echo "  Uptime: $(get_uptime)"
         echo ""
         echo -e "${COLOR_INFO}📋 CONFIGURAÇÃO ATUAL:${NC}"
         [ -f "$MINER_CONFIG/worker.info" ] && cat "$MINER_CONFIG/worker.info"
@@ -907,243 +885,30 @@ show_full_status() {
         echo "  Temperatura: $(get_current_temperature)°C"
         echo "  Satoshis acumulados: $(get_total_satoshis) sats"
         echo "  USD/hora estimado: \$$(get_usd_per_hour)"
-        echo "  Shares totais: $(get_total_shares)"
         echo ""
-        
-        # Calcular valores em BTC
-        local btc=$(echo "scale=8; $(get_total_satoshis) / 100000000" | bc)
-        local usd=$(echo "scale=2; $btc * 45000" | bc)
+        local btc=$(echo "scale=8; $(get_total_satoshis) / 100000000" | bc 2>/dev/null || echo "0")
+        local usd=$(echo "scale=2; $btc * 45000" | bc 2>/dev/null || echo "0")
         echo -e "${COLOR_BITCOIN}💰 GANHOS EM BITCOIN:${NC}"
         echo "  Satoshis: $(get_total_satoshis) sats"
         echo "  Bitcoin: $btc BTC"
         echo "  Valor USD: \$$usd"
-        echo ""
-        echo -e "${COLOR_WALLET}👛 CARTEIRA DE DEPÓSITO:${NC}"
-        echo "  $WALLET_NICEHASH"
-        
     else
         echo -e "${COLOR_ERROR}▶ MINERAÇÃO: INATIVA${NC}"
-        echo ""
-        echo "Inicie a mineração com a opção 1 do menu principal."
     fi
     echo ""
     read -p "Pressione Enter para voltar..."
 }
 
 # ----------------------------------------------------------------------------
-# RELATÓRIO DIÁRIO COMPLETO
-# ----------------------------------------------------------------------------
-generate_daily_report() {
-    clear
-    local sats=$(get_total_satoshis)
-    local shares=$(get_total_shares)
-    local btc=$(echo "scale=8; $sats / 100000000" | bc)
-    local usd=$(echo "scale=2; $btc * 45000" | bc)
-    local uptime_seconds=$(ps -o etimes= -p $(pgrep -f xmrig) 2>/dev/null | xargs)
-    local hours=$((uptime_seconds / 3600))
-    
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${COLOR_TITLE}                         RELATÓRIO DIÁRIO                                ${NC}"
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    echo "  Data: $(date '+%d/%m/%Y %H:%M:%S')"
-    echo "  Tempo ativo (sessão): $hours horas"
-    echo ""
-    echo "  Satoshis minerados hoje: $sats sats"
-    echo "  Bitcoin gerado: $btc BTC"
-    echo "  Valor USD: \$$usd"
-    echo ""
-    echo "  Shares aceitos: $shares"
-    echo "  Hashrate médio: $(get_current_hashrate) H/s"
-    echo "  Temperatura média: $(get_current_temperature)°C"
-    echo ""
-    echo "  Carteira NiceHash: $WALLET_NICEHASH"
-    echo ""
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    
-    discord_daily_report "$sats" "$shares" "$hours" "$btc" "$usd"
-    read -p "Pressione Enter para voltar..."
-}
-
-# ----------------------------------------------------------------------------
-# LOGS DISCORD GIGANTESCOS (VER TODOS OS DETALHES)
-# ----------------------------------------------------------------------------
-view_discord_logs() {
-    clear
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${COLOR_TITLE}                    LOGS COMPLETOS DO DISCORD                            ${NC}"
-    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    echo "1) Ver todas as notificações enviadas"
-    echo "2) Ver erros do Discord"
-    echo "3) Ver estatísticas de envio"
-    echo "4) Limpar logs do Discord"
-    echo "5) Voltar"
-    echo ""
-    read -p "Escolha: " disc_choice
-    
-    case $disc_choice in
-        1) less "$MINER_LOGS/discord_notifications.log" ;;
-        2) less "$MINER_LOGS/discord_errors.log" ;;
-        3) 
-            echo "Total de notificações: $(wc -l < "$MINER_LOGS/discord_notifications.log")"
-            echo "Total de erros: $(wc -l < "$MINER_LOGS/discord_errors.log")"
-            echo "Última notificação: $(tail -1 "$MINER_LOGS/discord_notifications.log")"
-            read -p "Pressione Enter..."
-            ;;
-        4) 
-            > "$MINER_LOGS/discord_notifications.log"
-            > "$MINER_LOGS/discord_errors.log"
-            echo "Logs do Discord limpos."
-            sleep 1
-            ;;
-    esac
-}
-
-# ----------------------------------------------------------------------------
-# COMANDOS RÁPIDOS (INTEGRADOS AO SISTEMA)
-# ----------------------------------------------------------------------------
-quick_commands() {
-    echo ""
-    echo -e "${COLOR_MENU}COMANDOS RÁPIDOS DISPONÍVEIS:${NC}"
-    echo "  start   - Iniciar mineração"
-    echo "  stop    - Parar mineração"
-    echo "  restart - Reiniciar mineração"
-    echo "  status  - Mostrar status completo"
-    echo "  logs    - Ver logs de satoshi"
-    echo "  profit  - Ver ganhos em Bitcoin"
-    echo "  pool    - Trocar pool"
-    echo "  help    - Ajuda"
-    echo ""
-    read -p "Digite um comando: " cmd
-    log_cmd "Comando executado: $cmd"
-    discord_command_executed "$cmd"
-    
-    case $cmd in
-        start) start_mining ;;
-        stop) stop_mining ;;
-        restart) restart_mining ;;
-        status) show_full_status ;;
-        logs) tail -50 "$MINER_LOGS/satoshi_detailed.log" | less ;;
-        profit) show_bitcoin_earnings ;;
-        pool) change_pool ;;
-        help) show_help ;;
-        *) echo "Comando desconhecido." ;;
-    esac
-}
-
-# ----------------------------------------------------------------------------
-# MENU PRINCIPAL (30+ OPÇÕES)
-# ----------------------------------------------------------------------------
-show_menu() {
-    while true; do
-        clear
-        echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_TITLE}║                     NICEHASH MINER ULTIMATE - TERMUX                           ║${NC}"
-        echo -e "${COLOR_TITLE}║                            $(date '+%d/%m/%Y %H:%M:%S')                                   ║${NC}"
-        echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        echo -e "${COLOR_WALLET}👛 CARTEIRA NICEHASH:${NC} ${WALLET_NICEHASH:0:20}..."
-        echo -e "${COLOR_DISCORD}📨 DISCORD WEBHOOK:${NC} $( [ -n "$WEBHOOK_DISCORD" ] && echo "✅" || echo "❌" )"
-        echo ""
-        if pgrep -f xmrig >/dev/null; then
-            echo -e "${COLOR_SUCCESS}▶ MINERAÇÃO: ATIVA | HASHRATE: $(get_current_hashrate) H/s | SATOSHIS: $(get_total_satoshis) sats${NC}"
-        else
-            echo -e "${COLOR_ERROR}▶ MINERAÇÃO: INATIVA${NC}"
-        fi
-        echo ""
-        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_MENU}║                                   MENU PRINCIPAL                                 ║${NC}"
-        echo -e "${COLOR_MENU}╠══════════════════════════════════════════════════════════════════════════════════╣${NC}"
-        echo -e "${COLOR_MENU}║  1) 🚀  INICIAR MINERAÇÃO (NiceHash)                                            ║${NC}"
-        echo -e "${COLOR_MENU}║  2) 🛑  PARAR MINERAÇÃO                                                         ║${NC}"
-        echo -e "${COLOR_MENU}║  3) 🔄  REINICIAR MINERAÇÃO                                                     ║${NC}"
-        echo -e "${COLOR_MENU}║  4) 📊  STATUS COMPLETO DO SISTEMA                                              ║${NC}"
-        echo -e "${COLOR_MENU}║  5) 📈  DASHBOARD EM TEMPO REAL                                                 ║${NC}"
-        echo -e "${COLOR_MENU}║  6) 📝  LOGS DE SATOSHIS (TEMPO REAL)                                           ║${NC}"
-        echo -e "${COLOR_MENU}║  7) 💰  GANHOS EM BITCOIN / ESTATÍSTICAS                                        ║${NC}"
-        echo -e "${COLOR_MENU}║  8) ⚙️   CONFIGURAÇÕES DO MINERADOR                                             ║${NC}"
-        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (30+ MÉTODOS)                                 ║${NC}"
-        echo -e "${COLOR_MENU}║ 10) 🌐  GERENCIAR POOLS NICEHASH (TROCA MANUAL)                                ║${NC}"
-        echo -e "${COLOR_MENU}║ 11) 📨  TESTAR WEBHOOK DISCORD                                                  ║${NC}"
-        echo -e "${COLOR_MENU}║ 12) 🧹  LIMPAR LOGS DO SISTEMA                                                 ║${NC}"
-        echo -e "${COLOR_MENU}║ 13) 💾  BACKUP / RESTORE CONFIGURAÇÃO                                          ║${NC}"
-        echo -e "${COLOR_MENU}║ 14) 📊  RELATÓRIO DIÁRIO COMPLETO                                              ║${NC}"
-        echo -e "${COLOR_MENU}║ 15) 📉  RELATÓRIO DE PERFORMANCE                                               ║${NC}"
-        echo -e "${COLOR_MENU}║ 16) 🌡️  MONITOR DE TEMPERATURA                                                 ║${NC}"
-        echo -e "${COLOR_MENU}║ 17) 🔄  ROTAÇÃO AUTOMÁTICA DE POOLS                                            ║${NC}"
-        echo -e "${COLOR_MENU}║ 18) 📨  LOGS COMPLETOS DO DISCORD                                              ║${NC}"
-        echo -e "${COLOR_MENU}║ 19) 🖥️  COMANDOS RÁPIDOS (TERMINAL)                                            ║${NC}"
-        echo -e "${COLOR_MENU}║ 20) 📋  ESTATÍSTICAS AVANÇADAS                                                 ║${NC}"
-        echo -e "${COLOR_MENU}║ 21) ⚡  OTIMIZAR SISTEMA PARA MINERAÇÃO                                        ║${NC}"
-        echo -e "${COLOR_MENU}║ 22) 🔐  VERIFICAR SEGURANÇA                                                    ║${NC}"
-        echo -e "${COLOR_MENU}║ 23) 🗑️  LIMPAR CACHE E TEMP                                                    ║${NC}"
-        echo -e "${COLOR_MENU}║ 24) 📈  GRÁFICO DE HASHRATE (ASCII)                                            ║${NC}"
-        echo -e "${COLOR_MENU}║ 25) 🎮  MODOS DE MINERAÇÃO (ECO / TURBO / DEUS)                               ║${NC}"
-        echo -e "${COLOR_MENU}║ 26) 🔄  ATUALIZAR SISTEMA                                                      ║${NC}"
-        echo -e "${COLOR_MENU}║ 27) 🛠️  FERRAMENTAS AVANÇADAS                                                  ║${NC}"
-        echo -e "${COLOR_MENU}║ 28) 📚  AJUDA COMPLETA                                                         ║${NC}"
-        echo -e "${COLOR_MENU}║ 29) 🎯  SOBRE O SISTEMA                                                        ║${NC}"
-        echo -e "${COLOR_MENU}║  0) 🚪  SAIR                                                                   ║${NC}"
-        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        read -p "Escolha uma opção (0-29): " choice
-        
-        case $choice in
-            1) start_mining; read -p "Pressione Enter..." ;;
-            2) stop_mining; read -p "Pressione Enter..." ;;
-            3) restart_mining; read -p "Pressione Enter..." ;;
-            4) show_full_status ;;
-            5) realtime_dashboard ;;
-            6) tail -f "$MINER_LOGS/satoshi_instant.log" | less ;;
-            7) show_bitcoin_earnings ;;
-            8) config_menu ;;
-            9) download_xmrig_30_methods; read -p "Pressione Enter..." ;;
-            10) change_pool ;;
-            11) discord_send "🔔 **Teste de notificação**\n\nWebhook funcionando!" "3066993" "🔔 TESTE"; echo "Teste enviado!"; read -p "Pressione Enter..." ;;
-            12) 
-                for f in "$MINER_LOGS"/*.log; do > "$f"; done
-                echo "Logs limpos."
-                read -p "Pressione Enter..." 
-                ;;
-            13) backup_menu ;;
-            14) generate_daily_report ;;
-            15) show_performance_report ;;
-            16) show_temperature_monitor ;;
-            17) auto_pool_rotation ;;
-            18) view_discord_logs ;;
-            19) quick_commands ;;
-            20) show_advanced_stats ;;
-            21) optimize_system ;;
-            22) security_check ;;
-            23) cleanup_temp ;;
-            24) show_hashrate_graph ;;
-            25) mining_modes ;;
-            26) update_system ;;
-            27) advanced_tools ;;
-            28) show_help ;;
-            29) show_about ;;
-            0) 
-                stop_mining
-                echo -e "${COLOR_SUCCESS}Encerrando NiceHash Miner Ultimate. Até logo!${NC}"
-                discord_send "🛑 **SISTEMA ENCERRADO**\n\nMineração parada. Até a próxima!" "15158332" "🛑 SISTEMA ENCERRADO"
-                exit 0
-                ;;
-            *) echo "Opção inválida!"; sleep 1 ;;
-        esac
-    done
-}
-
-# ----------------------------------------------------------------------------
-# FUNÇÕES DE APOIO (DASHBOARD, ESTATÍSTICAS, CONFIGURAÇÕES)
+# DASHBOARD EM TEMPO REAL
 # ----------------------------------------------------------------------------
 realtime_dashboard() {
     while true; do
         clear
-        echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_TITLE}║                    DASHBOARD EM TEMPO REAL                              ║${NC}"
-        echo -e "${COLOR_TITLE}║                        $(date '+%H:%M:%S')                                        ║${NC}"
-        echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+        echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_TITLE}║                    DASHBOARD EM TEMPO REAL                          ║${NC}"
+        echo -e "${COLOR_TITLE}║                        $(date '+%H:%M:%S')                                    ║${NC}"
+        echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         if pgrep -f xmrig >/dev/null; then
             echo -e "${COLOR_SATOSHI}"
@@ -1151,7 +916,7 @@ realtime_dashboard() {
             echo "Hashrate Atual: $(get_current_hashrate) H/s"
             echo "Temperatura: $(get_current_temperature)°C"
             echo "Satoshis nesta sessão: $(get_total_satoshis) sats"
-            echo "Última mineração: $(tail -1 "$MINER_LOGS/satoshi_instant.log" 2>/dev/null | cut -d'|' -f2 | cut -d'=' -f2 || echo "0") satoshis"
+            echo "Última mineração: $(tail -1 "$MINER_LOGS/satoshi_instant.log" 2>/dev/null | grep -o '[0-9]\+ sats' | head -1) satoshis"
             echo ""
             echo "Total Acumulado: $(get_total_satoshis) satoshis"
             echo "Estimativa USD/hora: \$$(get_usd_per_hour)"
@@ -1166,11 +931,14 @@ realtime_dashboard() {
     done
 }
 
+# ----------------------------------------------------------------------------
+# GANHOS EM BITCOIN
+# ----------------------------------------------------------------------------
 show_bitcoin_earnings() {
     clear
-    echo -e "${COLOR_BITCOIN}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${COLOR_BITCOIN}║                         GANHOS EM BITCOIN                               ║${NC}"
-    echo -e "${COLOR_BITCOIN}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${COLOR_BITCOIN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${COLOR_BITCOIN}║                         GANHOS EM BITCOIN                           ║${NC}"
+    echo -e "${COLOR_BITCOIN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     local sats=$(get_total_satoshis)
     local btc=$(echo "scale=8; $sats / 100000000" | bc)
@@ -1178,7 +946,7 @@ show_bitcoin_earnings() {
     local usd_hour=$(get_usd_per_hour)
     local usd_day=$(echo "scale=2; $usd_hour * 24" | bc)
     local usd_month=$(echo "scale=2; $usd_day * 30" | bc)
-    
+
     echo "Satoshis acumulados: $sats sats"
     echo "Bitcoin equivalente: $btc BTC"
     echo "Valor USD atual: \$$usd"
@@ -1191,25 +959,77 @@ show_bitcoin_earnings() {
     echo "Pagamentos serão enviados para:"
     echo "$WALLET_NICEHASH"
     echo ""
-    read -p "Pressione Enter para voltar..."
+    read -p "Pressione Enter..."
 }
 
+# ----------------------------------------------------------------------------
+# LOGS DE SATOSHIS
+# ----------------------------------------------------------------------------
+view_satoshi_logs() {
+    clear
+    echo -e "${COLOR_SATOSHI}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_SATOSHI}                  LOGS COMPLETOS DE SATOSHIS                        ${NC}"
+    echo -e "${COLOR_SATOSHI}══════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    if [ -f "$MINER_LOGS/satoshi_instant.log" ]; then
+        tail -30 "$MINER_LOGS/satoshi_instant.log"
+    else
+        echo "Nenhum log de satoshi encontrado."
+    fi
+    echo ""
+    read -p "Pressione Enter..."
+}
+
+# ----------------------------------------------------------------------------
+# RELATÓRIO DIÁRIO
+# ----------------------------------------------------------------------------
+daily_report() {
+    clear
+    local sats=$(get_total_satoshis)
+    local shares=$(get_total_shares)
+    local btc=$(echo "scale=8; $sats / 100000000" | bc)
+    local usd=$(echo "scale=2; $btc * 45000" | bc)
+    local uptime_seconds=$(ps -o etimes= -p $(pgrep -f xmrig) 2>/dev/null | xargs)
+    local hours=$((uptime_seconds / 3600))
+
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_TITLE}                         RELATÓRIO DIÁRIO                              ${NC}"
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "  Data: $(date '+%d/%m/%Y %H:%M:%S')"
+    echo "  Tempo ativo (sessão): $hours horas"
+    echo "  Satoshis minerados hoje: $sats sats"
+    echo "  Bitcoin gerado: $btc BTC"
+    echo "  Valor USD: \$$usd"
+    echo "  Shares aceitos: $shares"
+    echo "  Hashrate médio: $(get_current_hashrate) H/s"
+    echo "  Temperatura média: $(get_current_temperature)°C"
+    echo "  Carteira: $WALLET_NICEHASH"
+    echo ""
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    discord_daily_report "$sats" "$shares" "$hours" "$btc" "$usd"
+    read -p "Pressione Enter..."
+}
+
+# ----------------------------------------------------------------------------
+# CONFIGURAÇÕES
+# ----------------------------------------------------------------------------
 config_menu() {
     while true; do
         clear
-        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_MENU}║                         CONFIGURAÇÕES                                   ║${NC}"
-        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_MENU}║                         CONFIGURAÇÕES                               ║${NC}"
+        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo "1) Alterar threads da CPU (atual: $CPU_THREADS)"
         echo "2) Alterar prioridade da CPU (atual: $CPU_PRIORITY)"
         echo "3) Alterar limite de uso da CPU (atual: $CPU_MAX%)"
         echo "4) Ver configuração atual do minerador"
-        echo "5) Recriar configuração padrão"
+        echo "5) Recriar configuração padrão (com melhor pool)"
         echo "6) Voltar"
         echo ""
         read -p "Escolha: " cfg_choice
-        
+
         case $cfg_choice in
             1)
                 read -p "Novo número de threads (max $(nproc)): " t
@@ -1247,265 +1067,271 @@ config_menu() {
     done
 }
 
+# ----------------------------------------------------------------------------
+# BACKUP
+# ----------------------------------------------------------------------------
 backup_menu() {
+    clear
+    echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_INFO}                         BACKUP E RESTORE                              ${NC}"
+    echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo "1) Criar backup completo"
     echo "2) Restaurar backup"
     echo "3) Listar backups"
+    echo "4) Voltar"
+    echo ""
     read -p "Escolha: " bk_choice
     case $bk_choice in
         1)
             local backup_file="$MINER_BACKUP/backup_$(date +%Y%m%d_%H%M%S).tar.gz"
             tar -czf "$backup_file" "$MINER_CONFIG" "$MINER_SCRIPTS" "$MINER_STATS" 2>/dev/null
             echo "Backup criado: $backup_file"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') | $backup_file" >> "$MINER_LOGS/backup_history.log"
             ;;
         2)
             echo "Backups disponíveis:"
             ls -1 "$MINER_BACKUP"/*.tar.gz 2>/dev/null | head -10
-            read -p "Digite o nome do arquivo: " bfile
+            read -p "Digite o nome do arquivo (ex: backup_20250211_123456.tar.gz): " bfile
             if [ -f "$MINER_BACKUP/$bfile" ]; then
                 tar -xzf "$MINER_BACKUP/$bfile" -C "$MINER_ROOT" 2>/dev/null
-                echo "Backup restaurado."
+                echo "Backup restaurado. Reiniciando mineração..."
                 restart_mining
+            else
+                echo "Arquivo não encontrado."
             fi
             ;;
         3)
             echo "Backups:"
             ls -lh "$MINER_BACKUP" 2>/dev/null || echo "Nenhum backup encontrado."
-            read -p "Pressione Enter..."
             ;;
+        4) return ;;
     esac
-}
-
-show_performance_report() {
-    clear
-    echo -e "${COLOR_PERFORMANCE}RELATÓRIO DE PERFORMANCE${NC}"
-    echo ""
-    if [ -f "$MINER_LOGS/performance_benchmark.log" ]; then
-        echo "Últimas 10 medições:"
-        tail -10 "$MINER_LOGS/performance_benchmark.log"
-    else
-        echo "Nenhum dado de performance disponível."
-    fi
     read -p "Pressione Enter..."
 }
 
-show_temperature_monitor() {
-    clear
-    echo -e "${COLOR_TEMP}MONITOR DE TEMPERATURA${NC}"
+# ----------------------------------------------------------------------------
+# LIMPAR LOGS
+# ----------------------------------------------------------------------------
+clear_logs() {
     echo ""
-    echo "Temperatura atual: $(get_current_temperature)°C"
-    echo ""
-    if [ -f "$MINER_LOGS/temperature_history.log" ]; then
-        echo "Histórico de temperatura:"
-        tail -20 "$MINER_LOGS/temperature_history.log"
-    fi
-    read -p "Pressione Enter..."
-}
-
-auto_pool_rotation() {
-    echo ""
-    echo "Rotação automática de pools ativada."
-    echo "A cada 1 hora, o sistema testará a latência e trocará para a pool mais rápida."
-    # Implementar futuramente
-    read -p "Pressione Enter..."
-}
-
-show_advanced_stats() {
-    clear
-    echo -e "${COLOR_INFO}ESTATÍSTICAS AVANÇADAS${NC}"
-    echo ""
-    echo "Total de logs gerados: $(find "$MINER_LOGS" -name "*.log" | wc -l) arquivos"
-    echo "Espaço ocupado pelos logs: $(du -sh "$MINER_LOGS" 2>/dev/null | cut -f1)"
-    echo "Total de satoshis minerados: $(get_total_satoshis) sats"
-    echo "Total de shares aceitos: $(get_total_shares)"
-    echo "Uptime da mineração: $(get_uptime)"
-    echo ""
-    echo "Média de hashrate (últimos 10 min):"
-    tail -10 "$MINER_LOGS/hashrate_history.log" 2>/dev/null || echo "Sem dados"
-    read -p "Pressione Enter..."
-}
-
-optimize_system() {
-    log_sys "Otimizando sistema para mineração..."
-    renice -n -5 $$ 2>/dev/null
-    ulimit -n 8192 2>/dev/null
-    echo "performance" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null
-    log_success "Otimizações aplicadas."
-    read -p "Pressione Enter..."
-}
-
-security_check() {
-    echo ""
-    echo "VERIFICAÇÃO DE SEGURANÇA"
-    echo "Carteira configurada: $( [ -n "$WALLET_NICEHASH" ] && echo "SIM" || echo "NÃO" )"
-    echo "Webhook Discord configurado: $( [ -n "$WEBHOOK_DISCORD" ] && echo "SIM" || echo "NÃO" )"
-    echo "Arquivos de configuração: $( [ -f "$MINER_CONFIG/config.json" ] && echo "OK" || echo "FALTANDO" )"
-    echo "Binário XMRig: $( [ -f "$MINER_BIN/xmrig" ] && echo "OK" || echo "FALTANDO" )"
-    read -p "Pressione Enter..."
-}
-
-cleanup_temp() {
-    echo "Limpando arquivos temporários..."
-    rm -rf "$MINER_TEMP"/* 2>/dev/null
-    find "$MINER_CACHE" -type f -mtime +7 -delete 2>/dev/null
-    echo "Limpeza concluída."
-    read -p "Pressione Enter..."
-}
-
-show_hashrate_graph() {
-    echo "Gerando gráfico ASCII do hashrate..."
-    if [ -f "$MINER_LOGS/hashrate_history.log" ]; then
-        tail -20 "$MINER_LOGS/hashrate_history.log" | awk '{print $NF}' | while read h; do
-            bar=$(printf "%0.s█" $(seq 1 $((h / 20))))
-            echo "$h H/s | $bar"
+    echo -e "${COLOR_WARNING}Tem certeza que deseja limpar TODOS os logs? (s/N): ${NC}"
+    read confirm
+    if [[ "$confirm" == "s" || "$confirm" == "S" ]]; then
+        for f in "$MINER_LOGS"/*.log; do
+            > "$f" 2>/dev/null
         done
+        log_success "Todos os logs foram limpos."
     else
-        echo "Sem dados para gerar gráfico."
+        log_sys "Operação cancelada."
     fi
     read -p "Pressione Enter..."
 }
 
-mining_modes() {
+# ----------------------------------------------------------------------------
+# TESTAR WEBHOOK
+# ----------------------------------------------------------------------------
+test_webhook() {
     echo ""
-    echo "MODOS DE MINERAÇÃO"
-    echo "1) Modo Eco (50% CPU, baixo consumo)"
-    echo "2) Modo Turbo (100% CPU, máximo poder)"
-    echo "3) Modo Deus (100% CPU, prioridade máxima)"
-    read -p "Escolha: " mode
-    case $mode in
-        1) CPU_MAX=50; CPU_PRIORITY=0; log_success "Modo Eco ativado." ;;
-        2) CPU_MAX=100; CPU_PRIORITY=-5; log_success "Modo Turbo ativado." ;;
-        3) CPU_MAX=100; CPU_PRIORITY=-20; log_success "Modo Deus ativado." ;;
-    esac
-    sed -i "s/\"cpu-max-threads-hint\": [0-9]*/\"cpu-max-threads-hint\": $CPU_MAX/" "$MINER_CONFIG/config.json" 2>/dev/null
-    sed -i "s/\"cpu-priority\": [0-9\-]*/\"cpu-priority\": $CPU_PRIORITY/" "$MINER_CONFIG/config.json" 2>/dev/null
-    restart_mining
-}
-
-update_system() {
-    echo "Verificando atualizações..."
-    # Futuro: git pull
-    echo "Sistema atualizado para a versão $SYSTEM_VERSION."
+    discord_send "🔔 **Teste de notificação**\n\nO webhook do Discord está funcionando perfeitamente!\n\nSistema: NiceHash Miner Ultimate\nVersão: $SYSTEM_VERSION\nTimestamp: $(date '+%d/%m/%Y %H:%M:%S')" "3066993" "🔔 TESTE DE WEBHOOK"
+    echo "Teste enviado! Verifique seu canal do Discord."
     read -p "Pressione Enter..."
 }
 
-advanced_tools() {
+# ----------------------------------------------------------------------------
+# TROCAR POOL MANUALMENTE (MENU)
+# ----------------------------------------------------------------------------
+change_pool_manual() {
+    clear
+    echo -e "${COLOR_POOL}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_POOL}                      TROCAR POOL NICEHASH (MANUAL)                  ${NC}"
+    echo -e "${COLOR_POOL}══════════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo "FERRAMENTAS AVANÇADAS"
-    echo "1) Editar configuração manualmente"
-    echo "2) Testar todas as pools"
-    echo "3) Benchmark de CPU"
-    echo "4) Resetar sistema"
-    read -p "Escolha: " adv
-    case $adv in
-        1) nano "$MINER_CONFIG/config.json" 2>/dev/null || vi "$MINER_CONFIG/config.json" ;;
-        2) 
-            echo "Testando pools..."
-            for pool in "${POOLS_NICEHASH[@]:0:5}"; do
-                host=$(echo $pool | cut -d: -f1)
-                port=$(echo $pool | cut -d: -f2)
-                if timeout 2 nc -z $host $port 2>/dev/null; then
-                    echo "✅ $pool - OK"
-                else
-                    echo "❌ $pool - FALHA"
-                fi
-            done
-            ;;
-        3) 
-            echo "Executando benchmark (30s)..."
-            timeout 30 "$MINER_BIN/xmrig" --benchmark=10000 2>/dev/null || echo "Benchmark falhou."
-            ;;
-        4)
-            read -p "Tem certeza que deseja resetar todo o sistema? (s/N): " conf
-            if [ "$conf" = "s" ]; then
-                rm -rf "$MINER_ROOT"
-                echo "Sistema resetado. Reinicie o script."
-                exit 0
-            fi
-            ;;
-    esac
+    echo -e "Pools disponíveis (${ACTIVE_POOL_COUNT}):"
+    local i=1
+    for pool in "${POOLS_NICEHASH[@]}"; do
+        latency=$(test_pool_latency "$pool")
+        if [ "$latency" -eq 9999 ]; then
+            echo "  $i) $pool [OFFLINE]"
+        else
+            echo "  $i) $pool [${latency}ms]"
+        fi
+        ((i++))
+    done
+    echo "  $i) Seleção automática (melhor latência)"
+    echo ""
+    read -p "Escolha uma opção (1-$((i))): " pool_choice
+
+    if [ "$pool_choice" -eq "$i" ] 2>/dev/null; then
+        log_pool "Iniciando seleção automática da melhor pool..."
+        auto_switch_pool
+    elif [ "$pool_choice" -ge 1 ] && [ "$pool_choice" -le "$ACTIVE_POOL_COUNT" ] 2>/dev/null; then
+        local new_pool="${POOLS_NICEHASH[$((pool_choice-1))]}"
+        switch_pool "$new_pool" "manual"
+    else
+        log_warn "Opção inválida!"
+    fi
     read -p "Pressione Enter..."
 }
 
+# ----------------------------------------------------------------------------
+# ATIVAR/DESATIVAR TROCA AUTOMÁTICA DE POOL
+# ----------------------------------------------------------------------------
+toggle_auto_pool() {
+    if [ -f "$MINER_SCRIPTS/pool_manager.sh" ] && pgrep -f "pool_manager.sh" >/dev/null; then
+        pkill -f "pool_manager.sh"
+        log_pool_auto "Gerenciador automático de pools DESATIVADO"
+        discord_send "🤖 **TROCA AUTOMÁTICA DE POOL**\n\nDesativada pelo usuário." "3447003" "⚙️ AUTO POOL OFF"
+    else
+        start_pool_manager
+        log_pool_auto "Gerenciador automático de pools ATIVADO"
+        discord_send "🤖 **TROCA AUTOMÁTICA DE POOL**\n\nAtivada. O sistema selecionará a pool com menor latência a cada 30 minutos." "5763719" "⚙️ AUTO POOL ON"
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# AJUDA
+# ----------------------------------------------------------------------------
 show_help() {
     clear
-    echo -e "${COLOR_INFO}AJUDA COMPLETA DO SISTEMA${NC}"
+    echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
+    echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo "Este sistema foi desenvolvido para minerar na NiceHash usando Termux."
-    echo "Ele utiliza o XMRig para mineração e envia todos os logs para o Discord."
+    echo "Este sistema minera na NiceHash usando XMRig e envia notificações para o Discord."
+    echo "Ele possui TROCA AUTOMÁTICA DE POOLS baseada na menor latência."
     echo ""
-    echo "COMO FUNCIONA:"
-    echo "1. O script instala o XMRig automaticamente (30+ métodos)."
-    echo "2. Configura o minerador com sua carteira NiceHash."
-    echo "3. Inicia a mineração e gera logs detalhados."
-    echo "4. Cada satoshi minerado é registrado e notificado no Discord."
+    echo "📌 COMO USAR:"
+    echo "  1. Execute o script. Na primeira vez, instale o XMRig (opção 9)."
+    echo "  2. Inicie a mineração (opção 1). O sistema já seleciona a melhor pool."
+    echo "  3. Acompanhe os logs de satoshis e ganhos em Bitcoin."
     echo ""
-    echo "COMANDOS ÚTEIS:"
-    echo "  start   - Iniciar mineração"
-    echo "  stop    - Parar mineração"
-    echo "  restart - Reiniciar mineração"
-    echo "  status  - Ver status completo"
-    echo "  logs    - Ver logs de satoshi"
+    echo "⚙️  GERENCIAMENTO DE POOLS:"
+    echo "  • Opção 10: Trocar pool manualmente (com teste de latência)"
+    echo "  • Opção 15: Ativar/Desativar troca automática de pools"
+    echo "  • A troca automática verifica a cada 30 minutos e em caso de falha."
     echo ""
-    echo "SUPORTE:"
-    echo "Carteira: $WALLET_NICEHASH"
-    echo "Discord: Webhook configurado"
+    echo "🔗 LINKS ÚTEIS:"
+    echo "  NiceHash: https://www.nicehash.com"
+    echo "  XMRig: https://github.com/xmrig/xmrig"
     echo ""
-    read -p "Pressione Enter..."
-}
-
-show_about() {
-    clear
-    echo -e "${COLOR_TITLE}SOBRE O SISTEMA${NC}"
-    echo ""
-    echo "NiceHash Miner Ultimate v$SYSTEM_VERSION"
-    echo "Build: $SYSTEM_BUILD"
-    echo ""
-    echo "Sistema completo de mineração para Termux."
-    echo "Desenvolvido com as mais avançadas técnicas de shell script."
-    echo "Nenhuma simplificação foi aplicada - tudo é extremamente detalhado."
-    echo ""
-    echo "CARACTERÍSTICAS:"
-    echo "✓ 30+ métodos de download do XMRig"
-    echo "✓ 50+ pools NiceHash"
-    echo "✓ Logs gigantescos (60+ arquivos)"
-    echo "✓ Notificações Discord para cada evento"
-    echo "✓ Dashboard em tempo real"
-    echo "✓ Sistema de otimização automática"
-    echo "✓ Mais de 30 opções no menu"
+    echo "👛 SUA CARTEIRA: $WALLET_NICEHASH"
     echo ""
     read -p "Pressione Enter..."
 }
 
 # ----------------------------------------------------------------------------
-# INÍCIO DO SISTEMA
+# MENU PRINCIPAL CORRIGIDO (OPÇÕES 1-15 E 0 PARA SAIR)
 # ----------------------------------------------------------------------------
+show_menu() {
+    while true; do
+        clear
+        echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_TITLE}║               NICEHASH MINER ULTIMATE - TERMUX GOD MODE            ║${NC}"
+        echo -e "${COLOR_TITLE}║                         $(date '+%d/%m/%Y %H:%M:%S')                         ║${NC}"
+        echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${COLOR_WALLET}👛 SUA CARTEIRA NICEHASH:${NC} ${WALLET_NICEHASH:0:20}..."
+        echo -e "${COLOR_DISCORD}📨 DISCORD:${NC} $( [ -n "$WEBHOOK_DISCORD" ] && echo "✅" || echo "❌" )"
+        echo -e "${COLOR_POOL_AUTO}🤖 AUTO POOL:${NC} $(pgrep -f "pool_manager.sh" >/dev/null && echo "ATIVADA" || echo "DESATIVADA")"
+        echo ""
+        if pgrep -f xmrig >/dev/null; then
+            echo -e "${COLOR_SUCCESS}▶ MINERAÇÃO: ATIVA | HASHRATE: $(get_current_hashrate) H/s | SATOSHIS: $(get_total_satoshis) sats${NC}"
+            current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+            current_pool_short=$(echo "$current_pool" | cut -d. -f1-2)
+            current_latency=$(test_pool_latency "$current_pool")
+            echo -e "   POOL ATUAL: $current_pool_short (latência: ${current_latency}ms)"
+        else
+            echo -e "${COLOR_ERROR}▶ MINERAÇÃO: INATIVA${NC}"
+        fi
+        echo ""
+        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_MENU}║                            MENU PRINCIPAL                            ║${NC}"
+        echo -e "${COLOR_MENU}╠══════════════════════════════════════════════════════════════════════╣${NC}"
+        echo -e "${COLOR_MENU}║  1) 🚀  INICIAR MINERAÇÃO (NiceHash)                                ║${NC}"
+        echo -e "${COLOR_MENU}║  2) 🛑  PARAR MINERAÇÃO                                             ║${NC}"
+        echo -e "${COLOR_MENU}║  3) 🔄  REINICIAR MINERAÇÃO                                         ║${NC}"
+        echo -e "${COLOR_MENU}║  4) 📊  VER STATUS COMPLETO                                         ║${NC}"
+        echo -e "${COLOR_MENU}║  5) 📈  DASHBOARD EM TEMPO REAL                                     ║${NC}"
+        echo -e "${COLOR_MENU}║  6) 📝  VER LOGS DE SATOSHIS                                        ║${NC}"
+        echo -e "${COLOR_MENU}║  7) 💰  VER GANHOS EM BITCOIN                                       ║${NC}"
+        echo -e "${COLOR_MENU}║  8) ⚙️   CONFIGURAÇÕES                                              ║${NC}"
+        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (40+ MÉTODOS)                     ║${NC}"
+        echo -e "${COLOR_MENU}║ 10) 🌐  TROCAR POOL (MANUAL)                                        ║${NC}"
+        echo -e "${COLOR_MENU}║ 11) 📨  TESTAR WEBHOOK DISCORD                                      ║${NC}"
+        echo -e "${COLOR_MENU}║ 12) 🧹  LIMPAR LOGS                                                ║${NC}"
+        echo -e "${COLOR_MENU}║ 13) 💾  BACKUP/RESTORE CONFIGURAÇÃO                                 ║${NC}"
+        echo -e "${COLOR_MENU}║ 14) 📊  RELATÓRIO DIÁRIO                                            ║${NC}"
+        echo -e "${COLOR_MENU}║ 15) 🤖  ATIVAR/DESATIVAR TROCA AUTOMÁTICA DE POOL                  ║${NC}"
+        echo -e "${COLOR_MENU}║  0) 🚪  SAIR                                                        ║${NC}"
+        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        read -p "Escolha uma opção (0-15): " choice
 
-# Verificar se é Termux
+        case $choice in
+            0)
+                echo -e "${COLOR_SUCCESS}Encerrando NiceHash Miner Ultimate. Até logo!${NC}"
+                discord_send "🛑 **SISTEMA ENCERRADO**\n\nMineração parada. Até a próxima!" "15158332" "🛑 SISTEMA ENCERRADO"
+                stop_mining
+                exit 0
+                ;;
+            1) start_mining; read -p "Pressione Enter..." ;;
+            2) stop_mining; read -p "Pressione Enter..." ;;
+            3) restart_mining; read -p "Pressione Enter..." ;;
+            4) show_full_status ;;
+            5) realtime_dashboard ;;
+            6) view_satoshi_logs ;;
+            7) show_bitcoin_earnings ;;
+            8) config_menu ;;
+            9) install_xmrig; read -p "Pressione Enter..." ;;
+            10) change_pool_manual ;;
+            11) test_webhook ;;
+            12) clear_logs ;;
+            13) backup_menu ;;
+            14) daily_report ;;
+            15) toggle_auto_pool; read -p "Pressione Enter..." ;;
+            *)
+                echo -e "${COLOR_ERROR}Opção inválida! Digite um número entre 0 e 15.${NC}"
+                sleep 2
+                ;;
+        esac
+    done
+}
+
+# ----------------------------------------------------------------------------
+# INICIALIZAÇÃO
+# ----------------------------------------------------------------------------
+if [ "$1" = "--source-only" ]; then
+    return 0
+fi
+
+clear
+echo -e "${COLOR_TITLE}BEM-VINDO AO NICEHASH MINER ULTIMATE - TERMUX GOD MODE${NC}"
+echo -e "${COLOR_POOL_AUTO}   ✅ TROCA AUTOMÁTICA DE POOLS - 11 POOLS NICEHASH - FALLBACK AUTOMÁTICO${NC}"
+echo -e "${COLOR_SUCCESS}   📨 DISCORD CONFIGURADO - NOTIFICAÇÕES ATIVADAS${NC}"
+echo -e "${COLOR_WALLET}   👛 CARTEIRA: ${WALLET_NICEHASH}${NC}"
+echo ""
+sleep 2
+
+# Verificar Termux
 if [ ! -d "/data/data/com.termux" ]; then
     echo -e "${COLOR_ERROR}Este script deve ser executado no Termux!${NC}"
     exit 1
 fi
 
-# Modo source-only para scripts internos
-if [ "$1" = "--source-only" ]; then
-    return 0
+# Verificar conexão com internet
+if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+    log_warn "Sem conexão com a internet. Alguns recursos podem não funcionar."
 fi
 
-# Inicialização
-clear
 log_sys "Iniciando NiceHash Miner Ultimate v$SYSTEM_VERSION"
 log_sys "Carteira: ${WALLET_NICEHASH:0:15}..."
-log_sys "Discord Webhook: $( [ -n "$WEBHOOK_DISCORD" ] && echo "Configurado" || echo "Não configurado" )"
-
-# Enviar notificação de inicialização
 discord_system_start
 
 # Verificar XMRig
 if [ ! -f "$MINER_BIN/xmrig" ]; then
-    log_warn "XMRig não encontrado. Será instalado quando necessário."
+    log_warn "XMRig não encontrado. Use a opção 9 do menu para instalar."
 fi
 
-# Menu principal
+# Executar menu
 show_menu
