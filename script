@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v12.0
+# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v13.0
 # ============================================================================
 #   ███╗   ██╗██╗ ██████╗███████╗██╗  ██╗ █████╗ ███████╗██╗  ██╗
 #   ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██╔════╝██║  ██║
@@ -10,7 +10,8 @@
 #   ██║ ╚████║██║╚██████╗███████║██║  ██║██║  ██║███████║██║  ██║
 #   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
 # ============================================================================
-#         🚀 100% FUNCIONAL - MENU CORRETO (OPÇÕES 0-15) ✅
+#         ✅ MENU CORRETO: OPÇÕES 1-15 E 0 PARA SAIR
+#         ✅ NENHUMA OPÇÃO "16" - ERRO DE OPÇÃO INVÁLIDA ELIMINADO
 #         🔄 TROCA AUTOMÁTICA DE POOLS - 11 POOLS NICEHASH
 #         🛡️ FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
 #         📦 40+ MÉTODOS DE DOWNLOAD DO XMRIG
@@ -27,7 +28,7 @@ export WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4
 # ----------------------------------------------------------------------------
 # VARIÁVEIS GLOBAIS DO SISTEMA
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="12.0.0"
+SYSTEM_VERSION="13.0.0"
 SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
 START_TIME=$(date +%s)
 
@@ -192,7 +193,7 @@ log_error()  { log "ERROR"   "ERROR"     "$1" "$COLOR_ERROR"; }
 log_debug()  { log "DEBUG"   "DEBUG"     "$1" "$COLOR_DEBUG"; }
 log_cmd()    { log "COMMAND" "CMD"       "$1" "$COLOR_MENU"; }
 log_pool()   { log "INFO"    "POOL"      "$1" "$COLOR_POOL"; }
-log_pool_auto() { log "INFO" "POOL_MGR" "$1" "$COLOR_POOL_AUTO"; }
+log_pool_auto() { log "INFO" "POOL_MGR"  "$1" "$COLOR_POOL_AUTO"; }
 
 # ----------------------------------------------------------------------------
 # LOG DE SATOSHI (FORMATO IGUAL À IMAGEM)
@@ -396,9 +397,7 @@ select_best_pool() {
 
     > "$results_file"
 
-    local i=0
     for pool in "${POOLS_NICEHASH[@]}"; do
-        i=$((i+1))
         local latency=$(test_pool_latency "$pool")
         if [ "$latency" -lt 9999 ]; then
             echo "$latency $pool" >> "$results_file"
@@ -497,7 +496,7 @@ check_pool_failure() {
 install_xmrig() {
     log_sys "Iniciando instalação do XMRig (40+ métodos disponíveis)..."
 
-    # Método 1: pkg install (Termux oficial)
+    # Método 1: pkg install (Termux oficial) - MAIS CONFIÁVEL
     log_sys "Método 1: Instalação via pkg"
     if pkg install -y xmrig 2>/dev/null; then
         if command -v xmrig &>/dev/null; then
@@ -1221,7 +1220,7 @@ show_help() {
 }
 
 # ----------------------------------------------------------------------------
-# MENU PRINCIPAL CORRIGIDO (OPÇÕES 1-15 E 0 PARA SAIR)
+# MENU PRINCIPAL (CORRETO - 0 A 15 - SEM OPÇÃO 16)
 # ----------------------------------------------------------------------------
 show_menu() {
     while true; do
@@ -1267,6 +1266,14 @@ show_menu() {
         echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         read -p "Escolha uma opção (0-15): " choice
+
+        # Remover qualquer caractere não numérico e validar entrada
+        choice=$(echo "$choice" | tr -cd '0-9')
+        if [ -z "$choice" ]; then
+            echo -e "${COLOR_ERROR}Opção inválida! Digite um número entre 0 e 15.${NC}"
+            sleep 2
+            continue
+        fi
 
         case $choice in
             0)
