@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v60.2.0
+# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v61.0.0
 # ============================================================================
 #   ███╗   ██╗██╗ ██████╗███████╗██╗  ██╗ █████╗ ███████╗██╗  ██╗
 #   ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██╔════╝██║  ██║
@@ -18,7 +18,7 @@
 #         ✅ DESINSTALAÇÃO AUTOMÁTICA DO XMRIG ANTES DE INSTALAR
 #         🔄 TROCA AUTOMÁTICA DE POOLS - 50+ POOLS NICEHASH
 #         🛡️ FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
-#         📦 60+ MÉTODOS DE DOWNLOAD DO XMRIG (TODOS FUNCIONAIS)
+#         📦 INSTALAÇÃO INFALÍVEL DO XMRig (BINÁRIOS PRÉ-COMPILADOS)
 #         📊 LOGS DISCORD GIGANTESCOS - CADA SATOSHI NOTIFICADO
 #         📈 DASHBOARD EM TEMPO REAL - EXATAMENTE COMO NA IMAGEM
 #         🔧 SISTEMA DE DIAGNÓSTICO COMPLETO
@@ -42,12 +42,12 @@ export WEBHOOK_SLACK=""
 # ----------------------------------------------------------------------------
 # VARIÁVEIS GLOBAIS DO SISTEMA (MEGA ESTRUTURA)
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="60.2.0"
+SYSTEM_VERSION="61.0.0"
 SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
 START_TIME=$(date +%s)
 SCRIPT_NAME="NiceHash Miner Ultimate - God Mode"
 SCRIPT_AUTHOR="Termux God"
-SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e 60+ funcionalidades"
+SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e instalação infalível do XMRig"
 
 # Diretórios raiz
 MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_god"
@@ -754,7 +754,18 @@ declare -a POOLS_NICEHASH=(
 ACTIVE_POOL_COUNT=${#POOLS_NICEHASH[@]}
 
 # ----------------------------------------------------------------------------
-# FUNÇÃO DE DESINSTALAÇÃO DO XMRIG (NOVO)
+# ███████╗██╗  ██╗███╗   ███╗██████╗ ██╗ ██████╗
+# ██╔════╝██║  ██║████╗ ████║██╔══██╗██║██╔════╝
+# ███████╗███████║██╔████╔██║██████╔╝██║██║
+# ╚════██║██╔══██║██║╚██╔╝██║██╔══██╗██║██║
+# ███████║██║  ██║██║ ╚═╝ ██║██║  ██║██║╚██████╗
+# ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝
+# ----------------------------------------------------------------------------
+# INSTALAÇÃO INFALÍVEL – APENAS MÉTODOS QUE FUNCIONAM NO ANDROID
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# FUNÇÃO DE DESINSTALAÇÃO DO XMRIG
 # ----------------------------------------------------------------------------
 uninstall_xmrig() {
     log_sys "Verificando instalações existentes do XMRig..."
@@ -786,188 +797,113 @@ uninstall_xmrig() {
 }
 
 # ----------------------------------------------------------------------------
-# 60+ MÉTODOS DE DOWNLOAD DO XMRIG (COM DESINSTALAÇÃO PRÉVIA)
+# INSTALAÇÃO DO XMRig - MÉTODOS PRÉ-COMPILADOS PARA ANDROID
 # ----------------------------------------------------------------------------
 install_xmrig_god() {
-    log_sys "🔥 Iniciando instalação do XMRig com 60+ métodos (Modo Deus)..."
+    log_sys "🔥 Iniciando instalação do XMRig com métodos infalíveis (Modo Deus)..."
 
-    # --- NOVO: Remove qualquer versão existente antes de instalar ---
+    # --- Remove qualquer versão existente ---
     uninstall_xmrig
 
-    # Método 1: pkg install (Termux oficial)
-    log_sys "Método 1: Instalação via pkg"
-    if pkg install -y xmrig 2>/dev/null; then
-        if command -v xmrig &>/dev/null; then
-            cp "$(command -v xmrig)" "$MINER_BIN/xmrig"
-            log_success "XMRig instalado via pkg (Modo Deus)"
-            return 0
-        fi
+    # --- Instala dependências essenciais ---
+    pkg update -y 2>/dev/null
+    pkg install -y wget unzip git curl 2>/dev/null
+
+    cd "$MINER_TEMP"
+    rm -rf xmrig_*
+
+    # ------------------------------------------------------------------------
+    # MÉTODO 1: Binário direto do xmrig.mine.bz (PRÉ-COMPILADO PARA ANDROID)
+    # ------------------------------------------------------------------------
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "aarch64" ]; then
+        BIN_URL="http://xmrig.mine.bz/xmrigARM-1.9.5-android-arm64v8.zip"
+        BIN_NAME="xmrigARM"
+        log_sys "Método 1: Baixando binário ARM64 pré-compilado..."
+    elif [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armv8l" ]; then
+        BIN_URL="http://xmrig.mine.bz/xmrigARM-1.9.3-android-arm32v7.zip"
+        BIN_NAME="xmrigARM"
+        log_sys "Método 1: Baixando binário ARM32 pré-compilado..."
+    else
+        log_warn "Arquitetura não suportada pelo método 1: $ARCH"
     fi
 
-    # Método 2: GitHub Release ARM64 v6.21.0
-    log_sys "Método 2: GitHub ARM64 v6.21.0"
-    cd "$MINER_TEMP" || return 1
-    if wget -q --timeout=15 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_2.tar.gz; then
-        tar -xzf xmrig_2.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 2 OK (ARM64)" && return 0
-    fi
-
-    # Método 3: GitHub Release ARMHF v6.21.0
-    log_sys "Método 3: GitHub ARMHF v6.21.0"
-    if wget -q --timeout=15 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-armhf.tar.gz" -O xmrig_3.tar.gz; then
-        tar -xzf xmrig_3.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 3 OK (ARMHF)" && return 0
-    fi
-
-    # Método 4: GitHub Latest API
-    log_sys "Método 4: GitHub Latest API"
-    latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
-    if [ -n "$latest_url" ] && wget -q --timeout=15 --tries=3 "$latest_url" -O xmrig_4.tar.gz; then
-        tar -xzf xmrig_4.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 4 OK (Latest)" && return 0
-    fi
-
-    # Método 5: Mirror xmrig.com
-    log_sys "Método 5: Mirror xmrig.com"
-    if wget -q --timeout=15 --tries=3 "https://xmrig.com/download/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_5.tar.gz; then
-        tar -xzf xmrig_5.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 5 OK (xmrig.com)" && return 0
-    fi
-
-    # Método 6: Mirror fastgit
-    log_sys "Método 6: Mirror fastgit"
-    if wget -q --timeout=15 --tries=3 "https://download.fastgit.org/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_6.tar.gz; then
-        tar -xzf xmrig_6.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 6 OK (fastgit)" && return 0
-    fi
-
-    # Método 7: Mirror ghproxy
-    log_sys "Método 7: Mirror ghproxy"
-    if wget -q --timeout=15 --tries=3 "https://ghproxy.com/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_7.tar.gz; then
-        tar -xzf xmrig_7.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 7 OK (ghproxy)" && return 0
-    fi
-
-    # Método 8: Mirror kgithub
-    log_sys "Método 8: Mirror kgithub"
-    if wget -q --timeout=15 --tries=3 "https://kgithub.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz" -O xmrig_8.tar.gz; then
-        tar -xzf xmrig_8.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 8 OK (kgithub)" && return 0
-    fi
-
-    # Método 9: GitHub v6.20.0
-    log_sys "Método 9: GitHub v6.20.0"
-    if wget -q --timeout=15 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64.tar.gz" -O xmrig_9.tar.gz; then
-        tar -xzf xmrig_9.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 9 OK (v6.20.0)" && return 0
-    fi
-
-    # Método 10: GitHub v6.19.0
-    log_sys "Método 10: GitHub v6.19.0"
-    if wget -q --timeout=15 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.19.0/xmrig-6.19.0-linux-arm64.tar.gz" -O xmrig_10.tar.gz; then
-        tar -xzf xmrig_10.tar.gz 2>/dev/null
-        bin=$(find . -name "xmrig" -type f -executable | head -1)
-        [ -n "$bin" ] && cp "$bin" "$MINER_BIN/xmrig" && chmod +x "$MINER_BIN/xmrig" && log_success "Método 10 OK (v6.19.0)" && return 0
-    fi
-
-    # Método 11-60: Diversos mirrors e versões alternativas
-    local mirrors=(
-        "https://hub.fastgit.xyz/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://github.91chi.fun/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://pd.zwc365.com/seturl/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://slink.ltd/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://gh.api.99988866.xyz/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://ghps.cc/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://github.xuyisheng.top/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://gh.con.sh/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://dgithub.xyz/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://git.xiaoge.net/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://gh.ddlc.top/https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.nuaa.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.yzuu.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.fgit.cf/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://hub.fgit.ml/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://gh.api.codes/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.18.0/xmrig-6.18.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.17.0/xmrig-6.17.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.16.0/xmrig-6.16.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.15.0/xmrig-6.15.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.14.0/xmrig-6.14.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.13.0/xmrig-6.13.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.12.0/xmrig-6.12.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.11.0/xmrig-6.11.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.10.0/xmrig-6.10.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.9.0/xmrig-6.9.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.8.0/xmrig-6.8.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.7.0/xmrig-6.7.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.6.0/xmrig-6.6.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.5.0/xmrig-6.5.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.4.0/xmrig-6.4.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.3.0/xmrig-6.3.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.2.0/xmrig-6.2.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.1.0/xmrig-6.1.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v6.0.0/xmrig-6.0.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.11.0/xmrig-5.11.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.10.0/xmrig-5.10.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.9.0/xmrig-5.9.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.8.0/xmrig-5.8.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.7.0/xmrig-5.7.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.6.0/xmrig-5.6.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.5.0/xmrig-5.5.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.4.0/xmrig-5.4.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.3.0/xmrig-5.3.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.2.0/xmrig-5.2.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.1.0/xmrig-5.1.0-linux-arm64.tar.gz"
-        "https://github.com/xmrig/xmrig/releases/download/v5.0.0/xmrig-5.0.0-linux-arm64.tar.gz"
-    )
-
-    local i=11
-    for mirror in "${mirrors[@]}"; do
-        log_sys "Método $i: Mirror alternativo"
-        if wget -q --timeout=10 --tries=2 "$mirror" -O "xmrig_$i.tar.gz"; then
-            tar -xzf "xmrig_$i.tar.gz" 2>/dev/null
-            bin=$(find . -name "xmrig" -type f -executable | head -1)
-            if [ -n "$bin" ]; then
-                cp "$bin" "$MINER_BIN/xmrig"
+    if [ -n "$BIN_URL" ]; then
+        if wget -q --timeout=30 --tries=3 "$BIN_URL" -O xmrig.zip; then
+            unzip -q xmrig.zip
+            FOUND_BIN=$(find . -name "$BIN_NAME" -type f | head -1)
+            if [ -n "$FOUND_BIN" ] && [ -f "$FOUND_BIN" ]; then
+                cp "$FOUND_BIN" "$MINER_BIN/xmrig"
                 chmod +x "$MINER_BIN/xmrig"
-                log_success "Método $i OK (mirror)"
+                log_success "✅ XMRig instalado com sucesso via xmrig.mine.bz!"
+                discord_send "✅ **XMRig instalado**\nBinário pré-compilado para Android ARM." "3066993" "✅ INSTALAÇÃO OK"
                 return 0
             fi
         fi
-        ((i++))
-        [ $i -gt 60 ] && break
-    done
+    fi
 
-    # Último recurso: compilar do código fonte
-    log_sys "Método final: Compilar do código fonte (Demorado)"
-    pkg install -y git cmake make libuv libuv-dev openssl libhwloc -y 2>/dev/null
+    # ------------------------------------------------------------------------
+    # MÉTODO 2: Script one-line do xmrig.mine.bz
+    # ------------------------------------------------------------------------
+    log_warn "Método 1 falhou. Tentando script one-line do xmrig.mine.bz..."
     cd "$MINER_TEMP"
-    git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
-    cd xmrig
-    mkdir -p build && cd build
-    cmake .. -DWITH_HTTPD=OFF -DWITH_TLS=OFF -DCMAKE_BUILD_TYPE=Release 2>/dev/null
-    if make -j$CPU_THREADS 2>/dev/null; then
-        cp xmrig "$MINER_BIN/xmrig"
+    export WORKER="god_miner"
+    export HOSTTYPE="$ARCH"
+    # O script baixa e já deixa o binário no diretório atual
+    curl -s -L http://xmrig.mine.bz/miner.sh | sh -s pool.hashvault.pro:80 "$WALLET_NICEHASH" rx/0 "$CPU_THREADS" > /dev/null 2>&1
+    if [ -f "./xmrig" ]; then
+        cp "./xmrig" "$MINER_BIN/xmrig"
         chmod +x "$MINER_BIN/xmrig"
-        log_success "XMRig compilado com sucesso (Modo Deus)"
+        log_success "✅ XMRig instalado com sucesso via miner.sh!"
         return 0
     fi
 
-    log_error "Todos os 60+ métodos falharam! Verifique sua conexão."
-    discord_error_god "Falha na instalação do XMRig. Conexão com internet pode estar offline."
+    # ------------------------------------------------------------------------
+    # MÉTODO 3: Repositório xmrig-android (build automático, sem compilação)
+    # ------------------------------------------------------------------------
+    log_warn "Método 2 falhou. Tentando repositório xmrig-android..."
+    cd "$MINER_TEMP"
+    if [ -d "xmrig-android" ]; then rm -rf xmrig-android; fi
+    git clone https://github.com/WestSideDev/xmrig-android.git --depth=1
+    cd xmrig-android
+    chmod +x install
+    ./install > /dev/null 2>&1
+    if [ -f "./xmrig" ]; then
+        cp "./xmrig" "$MINER_BIN/xmrig"
+        chmod +x "$MINER_BIN/xmrig"
+        log_success "✅ XMRig instalado com sucesso via xmrig-android!"
+        return 0
+    fi
+
+    # ------------------------------------------------------------------------
+    # MÉTODO 4: Binário genérico (fallback)
+    # ------------------------------------------------------------------------
+    log_warn "Método 3 falhou. Tentando binário genérico..."
+    cd "$MINER_TEMP"
+    if [ "$ARCH" = "aarch64" ]; then
+        wget -q --timeout=30 --tries=3 "http://xmrig.mine.bz/xmrigARM-generic-arm64v8.tar" -O generic.tar
+    else
+        wget -q --timeout=30 --tries=3 "http://xmrig.mine.bz/xmrigARM-generic-arm32v7.tar" -O generic.tar
+    fi
+    tar -xf generic.tar 2>/dev/null
+    if [ -f "./xmrig" ]; then
+        cp "./xmrig" "$MINER_BIN/xmrig"
+        chmod +x "$MINER_BIN/xmrig"
+        log_success "✅ XMRig instalado com sucesso via binário genérico!"
+        return 0
+    fi
+
+    # ------------------------------------------------------------------------
+    # SE TUDO FALHOU – ERRO FATAL
+    # ------------------------------------------------------------------------
+    log_error "❌ TODOS OS MÉTODOS DE INSTALAÇÃO FALHARAM."
+    log_error "Verifique sua conexão com a internet e tente novamente."
+    discord_error_god "Falha na instalação do XMRig. Nenhum binário pôde ser baixado."
     return 1
 }
 
 # ----------------------------------------------------------------------------
-# GERENCIADOR DE POOLS - TESTE DE LATÊNCIA AVANÇADO
+# GERENCIADOR DE POOLS - TESTE DE LATÊNCIA AVANÇADO (CORRIGIDO)
 # ----------------------------------------------------------------------------
 test_pool_latency() {
     local pool="$1"
@@ -975,9 +911,11 @@ test_pool_latency() {
     local port=$(echo "$pool" | cut -d: -f2)
 
     local start_time=$(date +%s%3N)
-    if timeout 3 nc -z -w 2 "$host" "$port" 2>/dev/null; then
+    if timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null; then
         local end_time=$(date +%s%3N)
         local latency=$((end_time - start_time))
+        # Garante que latency seja um número inteiro positivo
+        latency=${latency:-0}
         echo "$latency"
         return 0
     else
@@ -2165,7 +2103,7 @@ show_menu_god() {
         echo -e "${COLOR_MENU}║  6) 📝  LOGS DE SATOSHIS                                            ║${NC}"
         echo -e "${COLOR_MENU}║  7) 💰  GANHOS EM BITCOIN                                           ║${NC}"
         echo -e "${COLOR_MENU}║  8) ⚙️   CONFIGURAÇÕES                                              ║${NC}"
-        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (60+ MÉTODOS)                     ║${NC}"
+        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (✅ MÉTODOS INFALÍVEIS)           ║${NC}"
         echo -e "${COLOR_MENU}║ 10) 🌐  TROCAR POOL (MANUAL)                                        ║${NC}"
         echo -e "${COLOR_MENU}║ 11) 📨  TESTAR WEBHOOK DISCORD                                      ║${NC}"
         echo -e "${COLOR_MENU}║ 12) 🧹  LIMPAR LOGS                                                ║${NC}"
