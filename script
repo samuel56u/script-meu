@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v61.0.0
+# NICEHASH MINER ULTIMATE - TERMUX GOD MODE v62.0.0
 # ============================================================================
 #   ███╗   ██╗██╗ ██████╗███████╗██╗  ██╗ █████╗ ███████╗██╗  ██╗
 #   ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██╔════╝██║  ██║
@@ -18,7 +18,8 @@
 #         ✅ DESINSTALAÇÃO AUTOMÁTICA DO XMRIG ANTES DE INSTALAR
 #         🔄 TROCA AUTOMÁTICA DE POOLS - 50+ POOLS NICEHASH
 #         🛡️ FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
-#         📦 INSTALAÇÃO INFALÍVEL DO XMRig (BINÁRIOS PRÉ-COMPILADOS)
+#         📦 INSTALAÇÃO DO XMRig EXCLUSIVAMENTE VIA PKG (TERMUX OFICIAL)
+#         ✅ SE FALHAR, O SCRIPT ENSINA A CORRIGIR OS REPOSITÓRIOS
 #         📊 LOGS DISCORD GIGANTESCOS - CADA SATOSHI NOTIFICADO
 #         📈 DASHBOARD EM TEMPO REAL - EXATAMENTE COMO NA IMAGEM
 #         🔧 SISTEMA DE DIAGNÓSTICO COMPLETO
@@ -42,12 +43,12 @@ export WEBHOOK_SLACK=""
 # ----------------------------------------------------------------------------
 # VARIÁVEIS GLOBAIS DO SISTEMA (MEGA ESTRUTURA)
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="61.0.0"
+SYSTEM_VERSION="62.0.0"
 SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
 START_TIME=$(date +%s)
 SCRIPT_NAME="NiceHash Miner Ultimate - God Mode"
 SCRIPT_AUTHOR="Termux God"
-SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e instalação infalível do XMRig"
+SCRIPT_DESCRIPTION="Sistema completo de mineração NiceHash com troca automática de pools e instalação garantida do XMRig via pkg"
 
 # Diretórios raiz
 MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_god"
@@ -761,7 +762,7 @@ ACTIVE_POOL_COUNT=${#POOLS_NICEHASH[@]}
 # ███████║██║  ██║██║ ╚═╝ ██║██║  ██║██║╚██████╗
 # ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝
 # ----------------------------------------------------------------------------
-# INSTALAÇÃO INFALÍVEL – APENAS MÉTODOS QUE FUNCIONAM NO ANDROID
+# INSTALAÇÃO GARANTIDA – APENAS PACOTE OFICIAL DO TERMUX
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
@@ -797,108 +798,53 @@ uninstall_xmrig() {
 }
 
 # ----------------------------------------------------------------------------
-# INSTALAÇÃO DO XMRig - MÉTODOS PRÉ-COMPILADOS PARA ANDROID
+# INSTALAÇÃO DO XMRig – EXCLUSIVAMENTE VIA PKG (TERMUX OFICIAL)
 # ----------------------------------------------------------------------------
 install_xmrig_god() {
-    log_sys "🔥 Iniciando instalação do XMRig com métodos infalíveis (Modo Deus)..."
+    clear
+    echo -e "${COLOR_GOD}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${COLOR_GOD}║           🔥 INSTALAÇÃO DO XMRIG – MODO DEUS 🔥                    ║${NC}"
+    echo -e "${COLOR_GOD}║              MÉTODO ÚNICO E GARANTIDO: PKG TERMUX                 ║${NC}"
+    echo -e "${COLOR_GOD}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
 
-    # --- Remove qualquer versão existente ---
+    # Remove instalações anteriores
     uninstall_xmrig
 
-    # --- Instala dependências essenciais ---
-    pkg update -y 2>/dev/null
-    pkg install -y wget unzip git curl 2>/dev/null
+    # Atualiza lista de pacotes
+    log_info "Atualizando lista de pacotes do Termux..."
+    pkg update -y -o Dpkg::Options::="--force-confnew" 2>&1 | tee -a "$MINER_LOGS/install.log"
 
-    cd "$MINER_TEMP"
-    rm -rf xmrig_*
-
-    # ------------------------------------------------------------------------
-    # MÉTODO 1: Binário direto do xmrig.mine.bz (PRÉ-COMPILADO PARA ANDROID)
-    # ------------------------------------------------------------------------
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "aarch64" ]; then
-        BIN_URL="http://xmrig.mine.bz/xmrigARM-1.9.5-android-arm64v8.zip"
-        BIN_NAME="xmrigARM"
-        log_sys "Método 1: Baixando binário ARM64 pré-compilado..."
-    elif [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armv8l" ]; then
-        BIN_URL="http://xmrig.mine.bz/xmrigARM-1.9.3-android-arm32v7.zip"
-        BIN_NAME="xmrigARM"
-        log_sys "Método 1: Baixando binário ARM32 pré-compilado..."
-    else
-        log_warn "Arquitetura não suportada pelo método 1: $ARCH"
-    fi
-
-    if [ -n "$BIN_URL" ]; then
-        if wget -q --timeout=30 --tries=3 "$BIN_URL" -O xmrig.zip; then
-            unzip -q xmrig.zip
-            FOUND_BIN=$(find . -name "$BIN_NAME" -type f | head -1)
-            if [ -n "$FOUND_BIN" ] && [ -f "$FOUND_BIN" ]; then
-                cp "$FOUND_BIN" "$MINER_BIN/xmrig"
-                chmod +x "$MINER_BIN/xmrig"
-                log_success "✅ XMRig instalado com sucesso via xmrig.mine.bz!"
-                discord_send "✅ **XMRig instalado**\nBinário pré-compilado para Android ARM." "3066993" "✅ INSTALAÇÃO OK"
-                return 0
-            fi
+    # Tenta instalar o pacote
+    log_info "Instalando xmrig via pkg..."
+    if pkg install -y xmrig 2>&1 | tee -a "$MINER_LOGS/install.log"; then
+        if command -v xmrig &>/dev/null; then
+            cp "$(command -v xmrig)" "$MINER_BIN/xmrig"
+            chmod +x "$MINER_BIN/xmrig"
+            log_success "✅ XMRig instalado com sucesso via pacote oficial do Termux!"
+            discord_send "✅ **XMRig instalado** (pacote Termux)" "3066993" "✅ INSTALAÇÃO OK"
+            return 0
         fi
     fi
 
-    # ------------------------------------------------------------------------
-    # MÉTODO 2: Script one-line do xmrig.mine.bz
-    # ------------------------------------------------------------------------
-    log_warn "Método 1 falhou. Tentando script one-line do xmrig.mine.bz..."
-    cd "$MINER_TEMP"
-    export WORKER="god_miner"
-    export HOSTTYPE="$ARCH"
-    # O script baixa e já deixa o binário no diretório atual
-    curl -s -L http://xmrig.mine.bz/miner.sh | sh -s pool.hashvault.pro:80 "$WALLET_NICEHASH" rx/0 "$CPU_THREADS" > /dev/null 2>&1
-    if [ -f "./xmrig" ]; then
-        cp "./xmrig" "$MINER_BIN/xmrig"
-        chmod +x "$MINER_BIN/xmrig"
-        log_success "✅ XMRig instalado com sucesso via miner.sh!"
-        return 0
-    fi
-
-    # ------------------------------------------------------------------------
-    # MÉTODO 3: Repositório xmrig-android (build automático, sem compilação)
-    # ------------------------------------------------------------------------
-    log_warn "Método 2 falhou. Tentando repositório xmrig-android..."
-    cd "$MINER_TEMP"
-    if [ -d "xmrig-android" ]; then rm -rf xmrig-android; fi
-    git clone https://github.com/WestSideDev/xmrig-android.git --depth=1
-    cd xmrig-android
-    chmod +x install
-    ./install > /dev/null 2>&1
-    if [ -f "./xmrig" ]; then
-        cp "./xmrig" "$MINER_BIN/xmrig"
-        chmod +x "$MINER_BIN/xmrig"
-        log_success "✅ XMRig instalado com sucesso via xmrig-android!"
-        return 0
-    fi
-
-    # ------------------------------------------------------------------------
-    # MÉTODO 4: Binário genérico (fallback)
-    # ------------------------------------------------------------------------
-    log_warn "Método 3 falhou. Tentando binário genérico..."
-    cd "$MINER_TEMP"
-    if [ "$ARCH" = "aarch64" ]; then
-        wget -q --timeout=30 --tries=3 "http://xmrig.mine.bz/xmrigARM-generic-arm64v8.tar" -O generic.tar
-    else
-        wget -q --timeout=30 --tries=3 "http://xmrig.mine.bz/xmrigARM-generic-arm32v7.tar" -O generic.tar
-    fi
-    tar -xf generic.tar 2>/dev/null
-    if [ -f "./xmrig" ]; then
-        cp "./xmrig" "$MINER_BIN/xmrig"
-        chmod +x "$MINER_BIN/xmrig"
-        log_success "✅ XMRig instalado com sucesso via binário genérico!"
-        return 0
-    fi
-
-    # ------------------------------------------------------------------------
-    # SE TUDO FALHOU – ERRO FATAL
-    # ------------------------------------------------------------------------
-    log_error "❌ TODOS OS MÉTODOS DE INSTALAÇÃO FALHARAM."
-    log_error "Verifique sua conexão com a internet e tente novamente."
-    discord_error_god "Falha na instalação do XMRig. Nenhum binário pôde ser baixado."
+    # Se chegou aqui, falhou miseravelmente
+    log_error "❌ FALHA NA INSTALAÇÃO DO XMRig."
+    echo ""
+    echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║   O Termux não conseguiu instalar o pacote xmrig.                   ║${NC}"
+    echo -e "${YELLOW}║   Isso ocorre quando os repositórios estão desatualizados.          ║${NC}"
+    echo -e "${YELLOW}║                                                                    ║${NC}"
+    echo -e "${YELLOW}║   Para corrigir, execute os seguintes comandos:                    ║${NC}"
+    echo -e "${YELLOW}║                                                                    ║${NC}"
+    echo -e "${YELLOW}║      termux-change-repo                                           ║${NC}"
+    echo -e "${YELLOW}║      pkg update && pkg upgrade                                    ║${NC}"
+    echo -e "${YELLOW}║      pkg install xmrig                                            ║${NC}"
+    echo -e "${YELLOW}║                                                                    ║${NC}"
+    echo -e "${YELLOW}║   Após corrigir, execute a opção 9 novamente.                     ║${NC}"
+    echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    discord_send "❌ **Falha na instalação do XMRig** – repositórios desatualizados" "15158332" "❌ ERRO INSTALAÇÃO"
+    safe_read "Pressione Enter para voltar ao menu..." dummy
     return 1
 }
 
@@ -909,6 +855,11 @@ test_pool_latency() {
     local pool="$1"
     local host=$(echo "$pool" | cut -d: -f1)
     local port=$(echo "$pool" | cut -d: -f2)
+
+    # Garante que nc esteja instalado
+    if ! command -v nc &>/dev/null; then
+        pkg install -y netcat-openbsd 2>/dev/null
+    fi
 
     local start_time=$(date +%s%3N)
     if timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null; then
@@ -2103,7 +2054,7 @@ show_menu_god() {
         echo -e "${COLOR_MENU}║  6) 📝  LOGS DE SATOSHIS                                            ║${NC}"
         echo -e "${COLOR_MENU}║  7) 💰  GANHOS EM BITCOIN                                           ║${NC}"
         echo -e "${COLOR_MENU}║  8) ⚙️   CONFIGURAÇÕES                                              ║${NC}"
-        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (✅ MÉTODOS INFALÍVEIS)           ║${NC}"
+        echo -e "${COLOR_MENU}║  9) 🔧  INSTALAR/ATUALIZAR XMRIG (✅ GARANTIDO)                     ║${NC}"
         echo -e "${COLOR_MENU}║ 10) 🌐  TROCAR POOL (MANUAL)                                        ║${NC}"
         echo -e "${COLOR_MENU}║ 11) 📨  TESTAR WEBHOOK DISCORD                                      ║${NC}"
         echo -e "${COLOR_MENU}║ 12) 🧹  LIMPAR LOGS                                                ║${NC}"
@@ -2183,7 +2134,7 @@ echo -e "${COLOR_GOD}🔥 NICEHASH MINER ULTIMATE - MODO DEUS v$SYSTEM_VERSION �
 echo -e "${COLOR_POOL_AUTO}   ⚡ TROCA AUTOMÁTICA DE POOLS - 50+ POOLS NICEHASH - FALLBACK AUTOMÁTICO${NC}"
 echo -e "${COLOR_SUCCESS}   📨 DISCORD CONFIGURADO - NOTIFICAÇÕES ATIVADAS${NC}"
 echo -e "${COLOR_WALLET}   👛 CARTEIRA: ${WALLET_NICEHASH}${NC}"
-echo -e "${COLOR_GOD}   🔥 MODO DEUS: PREPARADO PARA ATIVAÇÃO${NC}"
+echo -e "${COLOR_GOD}   🔥 INSTALAÇÃO GARANTIDA – APENAS PKG TERMUX${NC}"
 echo ""
 sleep 2
 
@@ -2200,8 +2151,8 @@ log_sys "🔥 Iniciando NiceHash Miner God v$SYSTEM_VERSION"
 log_sys "Carteira: ${WALLET_NICEHASH:0:15}..."
 discord_system_start
 
-if [ ! -f "$MINER_BIN/xmrig" ]; then
-    log_warn "XMRig não encontrado. Use a opção 9 do menu para instalar."
+if [ ! -f "$MINER_BIN/xmrig" ] && ! command -v xmrig &>/dev/null; then
+    log_warn "XMRig não encontrado. Use a opção 9 do menu para instalar (pacote oficial)."
 fi
 
 show_menu_god
