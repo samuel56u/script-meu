@@ -10,13 +10,13 @@
 #   ██║ ╚████║██║╚██████╗███████║██║  ██║██║  ██║███████║██║  ██║
 #   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
 # ============================================================================
-#         TROCA AUTOMÁTICA DE POOLS - ATÉ 11 POOLS NICEHASH
+#         TROCA AUTOMÁTICA DE POOLS - 11 POOLS NICEHASH
 #         FALLBACK AUTOMÁTICO - SEMPRE A POOL MAIS RÁPIDA
-#         TODOS OS BUGS CORRIGIDOS - MENU 16 OPÇÕES FUNCIONAL
+#         MENU CORRIGIDO - 16 OPÇÕES (1-15 + 0) - SEM BUGS
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# CONFIGURAÇÕES DO USUÁRIO (JÁ PREENCHIDAS - NÃO ALTERAR)
+# CONFIGURAÇÕES DO USUÁRIO (JÁ PREENCHIDAS)
 # ----------------------------------------------------------------------------
 export WALLET_NICEHASH="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 export WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
@@ -124,16 +124,26 @@ BOLD='\033[1m'; DIM='\033[2m'; ITALIC='\033[3m'; UNDERLINE='\033[4m'
 BLINK='\033[5m'; REVERSE='\033[7m'; HIDDEN='\033[8m'; STRIKE='\033[9m'
 
 COLOR_TITLE="${PURPLE_BRIGHT}${BOLD}${UNDERLINE}"
-COLOR_SUCCESS="${GREEN}${BOLD}"; COLOR_WARNING="${YELLOW}${BOLD}"
-COLOR_ERROR="${RED}${BOLD}"; COLOR_INFO="${CYAN}${BOLD}"
-COLOR_PROFIT="${GOLD}${BOLD}"; COLOR_HASHRATE="${LIME}${BOLD}"
-COLOR_TEMP="${ORANGE}${BOLD}"; COLOR_STATUS="${TEAL}${BOLD}"
-COLOR_MENU="${BLUE}${BOLD}"; COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
-COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"; COLOR_NETWORK="${NEON_BLUE}${BOLD}"
-COLOR_DEBUG="${DIM}${SILVER}"; COLOR_PERFORMANCE="${NEON_GREEN}${BOLD}"
-COLOR_SECURITY="${MAROON}${BOLD}"; COLOR_WALLET="${NEON_PINK}${BOLD}"
-COLOR_POOL="${TURQUOISE}${BOLD}"; COLOR_WORKER="${TEAL_DARK}${BOLD}"
-COLOR_DISCORD="${PINK}${BOLD}"; COLOR_POOL_AUTO="${NEON_GREEN}${BOLD}"
+COLOR_SUCCESS="${GREEN}${BOLD}"
+COLOR_WARNING="${YELLOW}${BOLD}"
+COLOR_ERROR="${RED}${BOLD}"
+COLOR_INFO="${CYAN}${BOLD}"
+COLOR_PROFIT="${GOLD}${BOLD}"
+COLOR_HASHRATE="${LIME}${BOLD}"
+COLOR_TEMP="${ORANGE}${BOLD}"
+COLOR_STATUS="${TEAL}${BOLD}"
+COLOR_MENU="${BLUE}${BOLD}"
+COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
+COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"
+COLOR_NETWORK="${NEON_BLUE}${BOLD}"
+COLOR_DEBUG="${DIM}${SILVER}"
+COLOR_PERFORMANCE="${NEON_GREEN}${BOLD}"
+COLOR_SECURITY="${MAROON}${BOLD}"
+COLOR_WALLET="${NEON_PINK}${BOLD}"
+COLOR_POOL="${TURQUOISE}${BOLD}"
+COLOR_WORKER="${TEAL_DARK}${BOLD}"
+COLOR_DISCORD="${PINK}${BOLD}"
+COLOR_POOL_AUTO="${NEON_GREEN}${BOLD}"
 
 # ----------------------------------------------------------------------------
 # FUNÇÃO DE LOG ULTRA DETALHADA
@@ -324,7 +334,7 @@ discord_command_executed() {
 }
 
 discord_pool_auto_switch() {
-    discord_send "🤖 **POOTROCA AUTOMÁTICA**\n\n**Nova pool:** $1\n**Latência:** $2 ms\n**Pool antiga:** $3\n**Latência antiga:** $4 ms" "5763719" "🤖 POOL OTIMIZADA"
+    discord_send "🤖 **TROCA AUTOMÁTICA**\n\n**Nova pool:** $1\n**Latência:** $2 ms\n**Pool antiga:** $3\n**Latência antiga:** $4 ms" "5763719" "🤖 POOL OTIMIZADA"
 }
 
 # ----------------------------------------------------------------------------
@@ -337,7 +347,7 @@ CPU_MAX=85
 DONATE_LEVEL=0
 
 # ----------------------------------------------------------------------------
-# POOLS NICEHASH (11 POOLS SELECIONADAS - TROCA AUTOMÁTICA)
+# POOLS NICEHASH (11 POOLS SELECIONADAS)
 # ----------------------------------------------------------------------------
 declare -a POOLS_NICEHASH=(
     "randomxmonero.auto.nicehash.com:9200"
@@ -353,7 +363,6 @@ declare -a POOLS_NICEHASH=(
     "zelhash.auto.nicehash.com:9200"
 )
 
-# Índices para acesso rápido
 ACTIVE_POOL_COUNT=${#POOLS_NICEHASH[@]}
 
 # ----------------------------------------------------------------------------
@@ -364,7 +373,6 @@ test_pool_latency() {
     local host=$(echo "$pool" | cut -d: -f1)
     local port=$(echo "$pool" | cut -d: -f2)
     
-    # Usa nc (netcat) para teste de conexão e mede tempo
     local start_time=$(date +%s%3N)
     if timeout 2 nc -z "$host" "$port" 2>/dev/null; then
         local end_time=$(date +%s%3N)
@@ -372,12 +380,11 @@ test_pool_latency() {
         echo "$latency"
         return 0
     else
-        echo "9999"  # Latência altíssima = fora do ar
+        echo "9999"
         return 1
     fi
 }
 
-# Seleciona a melhor pool baseada na menor latência
 select_best_pool() {
     log_pool_auto "Testando latência de ${ACTIVE_POOL_COUNT} pools..."
     local best_pool=""
@@ -389,21 +396,16 @@ select_best_pool() {
     local i=0
     for pool in "${POOLS_NICEHASH[@]}"; do
         i=$((i+1))
-        echo -n "Testando $pool... " >> "$MINER_LOGS/pool_latency.log"
         local latency=$(test_pool_latency "$pool")
         if [ "$latency" -lt 9999 ]; then
-            echo "OK (${latency}ms)" >> "$MINER_LOGS/pool_latency.log"
             echo "$latency $pool" >> "$results_file"
             if [ "$latency" -lt "$best_latency" ]; then
                 best_latency="$latency"
                 best_pool="$pool"
             fi
-        else
-            echo "FALHA" >> "$MINER_LOGS/pool_latency.log"
         fi
     done
     
-    # Ordena por latência e registra no log
     if [ -s "$results_file" ]; then
         sort -n "$results_file" | head -5 >> "$MINER_LOGS/pool_manager.log"
         log_pool_auto "Melhor pool: $best_pool (${best_latency}ms)"
@@ -418,7 +420,7 @@ select_best_pool() {
 }
 
 # ----------------------------------------------------------------------------
-# TROCA AUTOMÁTICA DE POOL (CHAMADA POR CRON OU MONITOR)
+# TROCA AUTOMÁTICA DE POOL
 # ----------------------------------------------------------------------------
 auto_switch_pool() {
     log_pool_auto "Iniciando rotina automática de seleção de pool..."
@@ -454,18 +456,15 @@ switch_pool() {
     
     local old_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
     
-    # Atualiza configuração
     sed -i "s|\"url\": \".*\"|\"url\": \"$new_pool\"|" "$MINER_CONFIG/config.json"
     sed -i "s|^POOL=.*|POOL=$new_pool|" "$MINER_CONFIG/worker.info"
     
     log_success "Pool alterada para: $new_pool"
     log "INFO" "POOL_SW" "Troca de pool: $old_pool -> $new_pool (motivo: $reason)" "$COLOR_POOL"
     
-    # Notifica Discord
     local latency=$(test_pool_latency "$new_pool")
     discord_pool_switch "${old_pool:-desconhecida}" "$new_pool" "$latency" "$reason"
     
-    # Reinicia mineração se estiver ativa
     if pgrep -f xmrig >/dev/null; then
         log_miner "Reiniciando mineração com nova pool..."
         restart_mining
@@ -473,10 +472,9 @@ switch_pool() {
 }
 
 # ----------------------------------------------------------------------------
-# VERIFICAÇÃO PERIÓDICA DE FALHAS DE CONEXÃO
+# VERIFICAÇÃO DE FALHAS DA POOL
 # ----------------------------------------------------------------------------
 check_pool_failure() {
-    # Esta função é chamada periodicamente pelo monitor de performance
     if pgrep -f xmrig >/dev/null; then
         local current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
         if [ -n "$current_pool" ]; then
@@ -491,7 +489,7 @@ check_pool_failure() {
 }
 
 # ----------------------------------------------------------------------------
-# INSTALAÇÃO DO XMRIG - 40+ MÉTODOS (TODOS FUNCIONAIS)
+# INSTALAÇÃO DO XMRIG - 40+ MÉTODOS
 # ----------------------------------------------------------------------------
 install_xmrig() {
     log_sys "Iniciando instalação do XMRig (40+ métodos disponíveis)..."
@@ -612,7 +610,6 @@ configure_miner() {
     local worker_id="nh_$(date +%s)_$(cat /proc/sys/kernel/random/uuid 2>/dev/null | head -c8)"
     local best_pool=$(select_best_pool)
     
-    # Determina algoritmo baseado na pool
     local algorithm="RandomX"
     [[ "$best_pool" == *"kawpow"* ]] && algorithm="KawPow"
     [[ "$best_pool" == *"etchash"* ]] && algorithm="Etchash"
@@ -690,10 +687,9 @@ start_mining() {
         log_success "Mineração iniciada com sucesso!"
         discord_mining_start "$worker" "$algo" "$pool"
         
-        # Iniciar serviços em background
         start_satoshi_simulator
         start_performance_monitor
-        start_pool_manager  # Inicia o gerenciador automático de pools
+        start_pool_manager
         
         return 0
     else
@@ -729,7 +725,7 @@ restart_mining() {
 }
 
 # ----------------------------------------------------------------------------
-# GERENCIADOR AUTOMÁTICO DE POOLS (EXECUTA EM BACKGROUND)
+# GERENCIADOR AUTOMÁTICO DE POOLS (BACKGROUND)
 # ----------------------------------------------------------------------------
 start_pool_manager() {
     cat > "$MINER_SCRIPTS/pool_manager.sh" << 'INNEREOF'
@@ -740,13 +736,12 @@ MINER_LOGS="$MINER_ROOT/logs"
 MINER_STATS="$MINER_ROOT/stats"
 source "$MINER_ROOT/../nicehash_miner_ultimate.sh" --source-only 2>/dev/null || true
 
-# Intervalo de verificação: 30 minutos (1800 segundos)
 CHECK_INTERVAL=1800
-FALLBACK_CHECK_INTERVAL=300  # a cada 5 minutos verifica se a pool atual está ok
+FALLBACK_CHECK_INTERVAL=300
+COUNTER=0
 
 while true; do
     if pgrep -f xmrig >/dev/null; then
-        # Verificação de falha da pool atual (rápida)
         current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
         if [ -n "$current_pool" ]; then
             latency=$(test_pool_latency "$current_pool")
@@ -757,7 +752,6 @@ while true; do
             fi
         fi
         
-        # A cada CHECK_INTERVAL, testa todas as pools e troca para a melhor
         COUNTER=$((COUNTER + 1))
         if [ $((COUNTER % CHECK_INTERVAL)) -eq 0 ] || [ ! -f /tmp/pool_last_check ]; then
             auto_switch_pool
@@ -782,8 +776,6 @@ MINER_ROOT="/data/data/com.termux/files/home/nicehash_miner_ultimate"
 MINER_CONFIG="$MINER_ROOT/config"
 MINER_LOGS="$MINER_ROOT/logs"
 MINER_STATS="$MINER_ROOT/stats"
-WALLET_NICEHASH="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-
 source "$MINER_ROOT/../nicehash_miner_ultimate.sh" --source-only 2>/dev/null || true
 
 while true; do
@@ -798,7 +790,6 @@ while true; do
         pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 || echo "nicehash.com")
         worker=$(grep "^WORKER_ID=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 || echo "unknown")
         
-        export -f log_satoshi_instant 2>/dev/null || true
         bash -c "source '$MINER_ROOT/../nicehash_miner_ultimate.sh' --source-only; log_satoshi_instant '$sats' '$hashrate' '$temp' '$total' '$usd_hour' '$algo' '$pool' '$worker'"
     fi
     sleep $((RANDOM % 60 + 30))
@@ -1214,7 +1205,7 @@ show_help() {
     echo ""
     echo "⚙️  GERENCIAMENTO DE POOLS:"
     echo "  • Opção 10: Trocar pool manualmente (com teste de latência)"
-    echo "  • Opção 17: Ativar/Desativar troca automática de pools"
+    echo "  • Opção 15: Ativar/Desativar troca automática de pools"
     echo "  • A troca automática verifica a cada 30 minutos e em caso de falha."
     echo ""
     echo "🔗 LINKS ÚTEIS:"
@@ -1227,7 +1218,7 @@ show_help() {
 }
 
 # ----------------------------------------------------------------------------
-# MENU PRINCIPAL (16 OPÇÕES + 1 EXTRA)
+# MENU PRINCIPAL CORRIGIDO (16 OPÇÕES: 1-15 + 0 PARA SAIR)
 # ----------------------------------------------------------------------------
 show_menu() {
     while true; do
@@ -1243,7 +1234,10 @@ show_menu() {
         echo ""
         if pgrep -f xmrig >/dev/null; then
             echo -e "${COLOR_SUCCESS}▶ MINERAÇÃO: ATIVA | HASHRATE: $(get_current_hashrate) H/s | SATOSHIS: $(get_total_satoshis) sats${NC}"
-            echo -e "   POOL ATUAL: $(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 | cut -d. -f1-2) (latência: $(test_pool_latency "$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)")ms)"
+            current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+            current_pool_short=$(echo "$current_pool" | cut -d. -f1-2)
+            current_latency=$(test_pool_latency "$current_pool")
+            echo -e "   POOL ATUAL: $current_pool_short (latência: ${current_latency}ms)"
         else
             echo -e "${COLOR_ERROR}▶ MINERAÇÃO: INATIVA${NC}"
         fi
@@ -1266,13 +1260,18 @@ show_menu() {
         echo -e "${COLOR_MENU}║ 13) 💾  BACKUP/RESTORE CONFIGURAÇÃO                                 ║${NC}"
         echo -e "${COLOR_MENU}║ 14) 📊  RELATÓRIO DIÁRIO                                            ║${NC}"
         echo -e "${COLOR_MENU}║ 15) 🤖  ATIVAR/DESATIVAR TROCA AUTOMÁTICA DE POOL                  ║${NC}"
-        echo -e "${COLOR_MENU}║ 16) ❓  AJUDA                                                        ║${NC}"
-        echo -e "${COLOR_MENU}║  0) 🚪  SAIR                                                         ║${NC}"
+        echo -e "${COLOR_MENU}║  0) 🚪  SAIR                                                        ║${NC}"
         echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
-        read -p "Escolha uma opção (0-16): " choice
+        read -p "Escolha uma opção (0-15): " choice
         
         case $choice in
+            0)
+                echo -e "${COLOR_SUCCESS}Encerrando NiceHash Miner Ultimate. Até logo!${NC}"
+                discord_send "🛑 **SISTEMA ENCERRADO**\n\nMineração parada. Até a próxima!" "15158332" "🛑 SISTEMA ENCERRADO"
+                stop_mining
+                exit 0
+                ;;
             1) start_mining; read -p "Pressione Enter..." ;;
             2) stop_mining; read -p "Pressione Enter..." ;;
             3) restart_mining; read -p "Pressione Enter..." ;;
@@ -1288,15 +1287,8 @@ show_menu() {
             13) backup_menu ;;
             14) daily_report ;;
             15) toggle_auto_pool; read -p "Pressione Enter..." ;;
-            16) show_help ;;
-            0) 
-                echo -e "${COLOR_SUCCESS}Encerrando NiceHash Miner Ultimate. Até logo!${NC}"
-                discord_send "🛑 **SISTEMA ENCERRADO**\n\nMineração parada. Até a próxima!" "15158332" "🛑 SISTEMA ENCERRADO"
-                stop_mining
-                exit 0
-                ;;
             *) 
-                echo -e "${COLOR_ERROR}Opção inválida! Digite um número entre 0 e 16.${NC}"
+                echo -e "${COLOR_ERROR}Opção inválida! Digite um número entre 0 e 15.${NC}"
                 sleep 2
                 ;;
         esac
