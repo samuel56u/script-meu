@@ -318,7 +318,7 @@ EOF
 }
 
 # ----------------------------------------------------------------------------
-# FUNÇÕES DE ESTATÍSTICAS
+# FUNÇÕES DE ESTATÍSTICAS (CORRIGIDAS)
 # ----------------------------------------------------------------------------
 get_hashrate() {
     local logfile="$MINER_LOGS/xmrig_raw.log"
@@ -341,15 +341,34 @@ get_shares() {
     fi
 }
 
+# CORREÇÃO: get_temp com verificação de existência do arquivo
 get_temp() {
-    if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-        awk '{printf "%.0f", $1/1000}' /sys/class/thermal/thermal_zone0/temp
+    local temp_file="/sys/class/thermal/thermal_zone0/temp"
+    if [ -f "$temp_file" ] && [ -r "$temp_file" ]; then
+        awk '{printf "%.0f", $1/1000}' "$temp_file" 2>/dev/null || echo 0
     else
         echo 0
     fi
 }
 
 get_total_satoshis() { cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0; }
+
+# CORREÇÃO: pegar apenas o primeiro PID e garantir que é numérico
+get_miner_pid() {
+    pgrep -f xmrig | head -1 | tr -cd '0-9'
+}
+
+get_uptime() {
+    local pid=$(get_miner_pid)
+    if [ -n "$pid" ] && [ "$pid" -gt 0 ] 2>/dev/null; then
+        local uptime=$(ps -o etimes= -p "$pid" 2>/dev/null | xargs)
+        if [ -n "$uptime" ] && [ "$uptime" -ge 0 ] 2>/dev/null; then
+            echo "$((uptime/3600))h $(((uptime%3600)/60))m $((uptime%60))s"
+            return
+        fi
+    fi
+    echo "0h 0m 0s"
+}
 
 # ----------------------------------------------------------------------------
 # ATUALIZAÇÃO DE ESTATÍSTICAS E SATOSHIS
@@ -476,14 +495,13 @@ monitor_loop() {
             sats=$(get_total_satoshis)
             shares=$(get_shares)
             pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 | cut -d. -f1-2)
-            uptime=$(ps -o etimes= -p $(pgrep -f xmrig) 2>/dev/null | xargs)
-            uptime_str="$((uptime/3600))h $(((uptime%3600)/60))m $((uptime%60))s"
+            uptime=$(get_uptime)
             hashrate_val=$(get_hashrate_value)
             usd_hour=$(echo "scale=6; $hashrate_val * 0.00000001 * 45000 * 3600" | bc 2>/dev/null || echo "0")
             
             echo -e "${GREEN}▶ Mineração: ATIVA${NC}"
-            echo "   PID: $(pgrep -f xmrig)"
-            echo "   Uptime: $uptime_str"
+            echo "   PID: $(get_miner_pid)"
+            echo "   Uptime: $uptime"
             echo ""
             echo -e "${CYAN}⚡ Estatísticas:${NC}"
             echo "   Hashrate: $hashrate"
