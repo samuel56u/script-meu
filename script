@@ -1,12 +1,12 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v99.9 (MEGA COMPLEXO)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.7 (MENU CORRIGIDO E COMPLEXO)
 # ============================================================================
-#   Versão definitiva com 20 opções, auto pool, watchdog, Discord, Telegram,
-#   dashboard com gráficos, criptografia, múltiplas carteiras, perfis,
-#   monitoramento avançado e muito mais.
-#   Corrigido: menu 100% estável, sem loops infinitos.
+#   Versão definitiva com menu de 20 opções, auto pool, watchdog, Discord,
+#   Telegram, Push, instalação automática (3 métodos), estatísticas reais,
+#   histórico de shares, perfis, backup, e muito mais.
+#   Corrigido: menu agora espera entrada e não entra em loop infinito.
 # ============================================================================
 
 # ---------- CORES (PALETA COMPLETA) ----------
@@ -14,7 +14,7 @@ NC='\033[0m'
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
 PURPLE='\033[0;35m'; CYAN='\033[0;36m'; WHITE='\033[1;37m'; ORANGE='\033[38;5;208m'
 PINK='\033[38;5;213m'; LIME='\033[38;5;154m'; TEAL='\033[38;5;123m'; GOLD='\033[38;5;220m'
-BOLD='\033[1m'; UNDERLINE='\033[4m'; BLINK='\033[5m'; REVERSE='\033[7m'
+BOLD='\033[1m'; UNDERLINE='\033[4m'; BLINK='\033[5m'
 
 COLOR_TITLE="${PURPLE}${BOLD}${UNDERLINE}"
 COLOR_SUCCESS="${GREEN}${BOLD}"
@@ -27,17 +27,15 @@ COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"
 COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
 COLOR_POOL="${TEAL}${BOLD}"
 COLOR_WALLET="${PINK}${BOLD}"
-COLOR_TEMP="${ORANGE}${BOLD}"
-COLOR_BATTERY="${GREEN}${BOLD}"
 
 # ---------- CONFIGURAÇÕES FIXAS ----------
-WALLET_PRINCIPAL="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-WALLET_BACKUP="bc1qxyz..."  # Opcional
+DEFAULT_WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
+WALLET="$DEFAULT_WALLET"
 WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
-BOT_TOKEN_TELEGRAM="SEU_BOT_TOKEN"
-CHAT_ID_TELEGRAM="SEU_CHAT_ID"
-PUSHOVER_USER="SEU_USER"
-PUSHOVER_TOKEN="SEU_TOKEN"
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_CHAT_ID=""
+PUSHOVER_USER=""
+PUSHOVER_TOKEN=""
 
 # ---------- DIRETÓRIOS (ESTRUTURA COMPLETA) ----------
 MINER_ROOT="$HOME/.xmrig_god_final"
@@ -49,11 +47,11 @@ MINER_SCRIPTS="$MINER_ROOT/scripts"
 MINER_TEMP="$MINER_ROOT/temp"
 MINER_BACKUP="$MINER_ROOT/backup"
 MINER_PROFILES="$MINER_ROOT/profiles"
-MINER_CRYPTO="$MINER_ROOT/crypto"
-mkdir -p "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_SCRIPTS" "$MINER_TEMP" "$MINER_BACKUP" "$MINER_PROFILES" "$MINER_CRYPTO"
+MINER_HISTORY="$MINER_ROOT/history"
+mkdir -p "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_SCRIPTS" "$MINER_TEMP" "$MINER_BACKUP" "$MINER_PROFILES" "$MINER_HISTORY"
 
 # ---------- ARQUIVOS DE LOG ----------
-touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,telegram.log,pushover.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,temp.log,battery.log}
+touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,telegram.log,pushover.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,history.log}
 
 # ---------- CONFIGURAÇÕES PERSISTENTES ----------
 SETTINGS="$MINER_CONFIG/settings.conf"
@@ -63,17 +61,13 @@ else
     CPU_THREADS=$(($(nproc 2>/dev/null || echo 2) - 1))
     [ $CPU_THREADS -lt 1 ] && CPU_THREADS=1
     CPU_PRIORITY=5
-    CPU_MAX=75
+    CPU_MAX=75  # % de uso da CPU (recomendado para evitar superaquecimento)
     TLS_ENABLED=false
     AUTO_POOL=true
     POOL_INTERVAL=1800
-    AUTO_TUNE=true
-    TEMP_LIMIT=70
-    BATTERY_LIMIT=20
-    ENABLE_DISCORD=true
-    ENABLE_TELEGRAM=false
-    ENABLE_PUSHOVER=false
-    ACTIVE_WALLET="principal"
+    NOTIFY_DISCORD=false
+    NOTIFY_TELEGRAM=false
+    NOTIFY_PUSHOVER=false
     ACTIVE_PROFILE="default"
     cat > "$SETTINGS" << EOF
 CPU_THREADS=$CPU_THREADS
@@ -82,13 +76,10 @@ CPU_MAX=$CPU_MAX
 TLS_ENABLED=$TLS_ENABLED
 AUTO_POOL=$AUTO_POOL
 POOL_INTERVAL=$POOL_INTERVAL
-AUTO_TUNE=$AUTO_TUNE
-TEMP_LIMIT=$TEMP_LIMIT
-BATTERY_LIMIT=$BATTERY_LIMIT
-ENABLE_DISCORD=$ENABLE_DISCORD
-ENABLE_TELEGRAM=$ENABLE_TELEGRAM
-ENABLE_PUSHOVER=$ENABLE_PUSHOVER
-ACTIVE_WALLET="$ACTIVE_WALLET"
+WALLET="$WALLET"
+NOTIFY_DISCORD=$NOTIFY_DISCORD
+NOTIFY_TELEGRAM=$NOTIFY_TELEGRAM
+NOTIFY_PUSHOVER=$NOTIFY_PUSHOVER
 ACTIVE_PROFILE="$ACTIVE_PROFILE"
 EOF
 fi
@@ -101,13 +92,10 @@ CPU_MAX=$CPU_MAX
 TLS_ENABLED=$TLS_ENABLED
 AUTO_POOL=$AUTO_POOL
 POOL_INTERVAL=$POOL_INTERVAL
-AUTO_TUNE=$AUTO_TUNE
-TEMP_LIMIT=$TEMP_LIMIT
-BATTERY_LIMIT=$BATTERY_LIMIT
-ENABLE_DISCORD=$ENABLE_DISCORD
-ENABLE_TELEGRAM=$ENABLE_TELEGRAM
-ENABLE_PUSHOVER=$ENABLE_PUSHOVER
-ACTIVE_WALLET="$ACTIVE_WALLET"
+WALLET="$WALLET"
+NOTIFY_DISCORD=$NOTIFY_DISCORD
+NOTIFY_TELEGRAM=$NOTIFY_TELEGRAM
+NOTIFY_PUSHOVER=$NOTIFY_PUSHOVER
 ACTIVE_PROFILE="$ACTIVE_PROFILE"
 EOF
 }
@@ -176,8 +164,6 @@ log() {
         WARN)    echo -e "${COLOR_WARNING}[AVISO]${NC} $msg" ;;
         ERRO)    echo -e "${COLOR_ERROR}[ERRO]${NC} $msg" ;;
         SATOSHI) echo -e "${COLOR_SATOSHI}[SATOSHI]${NC} $msg" ;;
-        TEMP)    echo -e "${COLOR_TEMP}[TEMP]${NC} $msg" ;;
-        BAT)     echo -e "${COLOR_BATTERY}[BATERIA]${NC} $msg" ;;
         *)       echo "[$level] $msg" ;;
     esac
 }
@@ -186,8 +172,6 @@ log_success() { log "OK" "$1"; }
 log_warn()    { log "WARN" "$1"; }
 log_error()   { log "ERRO" "$1"; }
 log_satoshi() { log "SATOSHI" "$1"; }
-log_temp()    { log "TEMP" "$1"; }
-log_bat()     { log "BAT" "$1"; }
 
 # ---------- LEITURA SEGURA ----------
 safe_read() {
@@ -199,11 +183,28 @@ safe_read() {
     eval "$var_name=\"\$input\""
 }
 
+# ---------- NOTIFICAÇÕES ----------
+notify_all() {
+    local msg="$1"
+    if [ "$NOTIFY_DISCORD" = true ] && [ -n "$WEBHOOK_DISCORD" ]; then
+        curl -s -H "Content-Type: application/json" -X POST -d "{\"content\":\"$msg\"}" "$WEBHOOK_DISCORD" -o /dev/null
+        echo "$(date '+%Y-%m-%d %H:%M:%S') | Discord: $msg" >> "$MINER_LOGS/discord.log"
+    fi
+    if [ "$NOTIFY_TELEGRAM" = true ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" -d "chat_id=$TELEGRAM_CHAT_ID&text=$msg" -o /dev/null
+        echo "$(date '+%Y-%m-%d %H:%M:%S') | Telegram: $msg" >> "$MINER_LOGS/telegram.log"
+    fi
+    if [ "$NOTIFY_PUSHOVER" = true ] && [ -n "$PUSHOVER_USER" ] && [ -n "$PUSHOVER_TOKEN" ]; then
+        curl -s -X POST "https://api.pushover.net/1/messages.json" -d "user=$PUSHOVER_USER&token=$PUSHOVER_TOKEN&message=$msg" -o /dev/null
+        echo "$(date '+%Y-%m-%d %H:%M:%S') | Pushover: $msg" >> "$MINER_LOGS/pushover.log"
+    fi
+}
+
 # ---------- INSTALAÇÃO DE DEPENDÊNCIAS ----------
 install_deps() {
     log_info "Verificando dependências..."
     pkg update -y >/dev/null 2>&1
-    for pkg in curl wget nc bc git cmake make libuv libhwloc openssl jq termux-api; do
+    for pkg in curl wget nc bc git cmake make libuv libhwloc openssl jq; do
         if ! command -v "$pkg" >/dev/null 2>&1 && ! pkg list-installed 2>/dev/null | grep -q "^$pkg"; then
             pkg install -y "$pkg" >/dev/null 2>&1 && log_success "$pkg instalado"
         fi
@@ -236,12 +237,14 @@ install_xmrig() {
     echo -e "${COLOR_TITLE}║                    INSTALAÇÃO DO XMRIG - MODO DEUS                  ║${NC}"
     echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
     
+    # Remove instalações anteriores
     rm -f "$MINER_BIN/xmrig"
     pkg uninstall -y xmrig >/dev/null 2>&1
     
     install_deps
     fix_repos
     
+    # Método 1: pkg
     log_info "Tentando instalação via pkg..."
     if pkg install -y xmrig >/dev/null 2>&1; then
         if command -v xmrig >/dev/null 2>&1; then
@@ -249,12 +252,14 @@ install_xmrig() {
             chmod +x "$MINER_BIN/xmrig"
             if verify_xmrig "$MINER_BIN/xmrig"; then
                 log_success "XMRig instalado via pkg!"
+                notify_all "✅ XMRig instalado via pkg"
                 return 0
             fi
         fi
     fi
     log_warn "Falha no método pkg. Tentando binário pré-compilado..."
     
+    # Método 2: binário pré-compilado para Termux
     local arch=$(uname -m)
     local url
     case "$arch" in
@@ -273,12 +278,14 @@ install_xmrig() {
             chmod +x "$MINER_BIN/xmrig"
             if verify_xmrig "$MINER_BIN/xmrig"; then
                 log_success "XMRig instalado via binário!"
+                notify_all "✅ XMRig instalado via binário"
                 return 0
             fi
         fi
     fi
     log_warn "Falha no binário. Tentando compilação..."
     
+    # Método 3: compilação
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
     cd "$MINER_TEMP"
     rm -rf xmrig
@@ -292,12 +299,14 @@ install_xmrig() {
             chmod +x "$MINER_BIN/xmrig"
             if verify_xmrig "$MINER_BIN/xmrig"; then
                 log_success "XMRig compilado com sucesso!"
+                notify_all "✅ XMRig compilado com sucesso"
                 return 0
             fi
         fi
     fi
     
     log_error "FALHA TOTAL: nenhum método funcionou."
+    notify_all "❌ Falha na instalação do XMRig"
     return 1
 }
 
@@ -318,28 +327,20 @@ test_latency() {
 # ---------- SELECIONAR MELHOR POOL ----------
 select_best_pool() {
     local best_pool="${POOLS[0]}" best_lat=9999
+    local count=0
     for pool in "${POOLS[@]}"; do
         lat=$(test_latency "$pool")
         [ "$lat" -lt "$best_lat" ] && { best_lat="$lat"; best_pool="$pool"; }
+        ((count++))
     done
     echo "$best_pool"
-}
-
-# ---------- OBTER CARTEIRA ATIVA ----------
-get_active_wallet() {
-    if [ "$ACTIVE_WALLET" = "principal" ]; then
-        echo "$WALLET_PRINCIPAL"
-    else
-        echo "$WALLET_BACKUP"
-    fi
 }
 
 # ---------- CONFIGURAR MINERADOR ----------
 configure_miner() {
     local pool=$(select_best_pool)
     local worker="god_$(date +%s)_$RANDOM"
-    local wallet=$(get_active_wallet)
-    log_info "Configurando minerador com pool: $pool, carteira: $wallet"
+    log_info "Configurando minerador com pool: $pool"
     cat > "$MINER_CONFIG/config.json" << EOF
 {
     "autosave": true,
@@ -347,7 +348,7 @@ configure_miner() {
     "donate-level": 0,
     "pools": [{
         "url": "$pool",
-        "user": "$wallet.$worker",
+        "user": "$WALLET.$worker",
         "pass": "x",
         "keepalive": true,
         "tls": $TLS_ENABLED
@@ -361,9 +362,8 @@ EOF
     cat > "$MINER_CONFIG/worker.info" << EOF
 WORKER=$worker
 POOL=$pool
-WALLET=$wallet
+WALLET=$WALLET
 TLS=$TLS_ENABLED
-PROFILE=$ACTIVE_PROFILE
 EOF
     log_success "Configuração salva."
 }
@@ -393,24 +393,14 @@ get_temp() {
     fi
 }
 
-get_battery() {
-    if command -v termux-battery-status >/dev/null; then
-        termux-battery-status 2>/dev/null | jq -r '.percentage' || echo 100
-    else
-        echo 100
-    fi
-}
-
 # ---------- ATUALIZAR ESTATÍSTICAS ----------
 update_stats() {
     local hashrate=$(get_hashrate)
     local temp=$(get_temp)
     local shares=$(get_shares)
-    local battery=$(get_battery)
     echo "$hashrate" > "$MINER_STATS/current_hashrate"
     echo "$temp" > "$MINER_STATS/current_temp"
     echo "$shares" > "$MINER_STATS/total_shares"
-    echo "$battery" > "$MINER_STATS/current_battery"
 }
 
 # ---------- LOG DE SATOSHI ----------
@@ -427,36 +417,28 @@ log_satoshi() {
     echo -e "${COLOR_SATOSHI}💰 SATOSHI: +$sats sats | HASHRATE: $hashrate | TOTAL: $total sats${NC}"
 }
 
-# ---------- NOTIFICAÇÕES ----------
-notify_discord() {
-    [ "$ENABLE_DISCORD" != "true" ] && return
-    [ -z "$WEBHOOK_DISCORD" ] || [[ "$WEBHOOK_DISCORD" == *"example"* ]] && return
-    local msg="$1"
-    local json="{\"content\":\"$msg\"}"
-    curl -s -H "Content-Type: application/json" -X POST -d "$json" "$WEBHOOK_DISCORD" -o /dev/null
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | Discord: $msg" >> "$MINER_LOGS/discord.log"
+# ---------- HISTÓRICO DE SHARES ----------
+update_history() {
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local shares=$(get_shares)
+    local hashrate=$(get_hashrate)
+    local temp=$(get_temp)
+    echo "$timestamp | Shares: $shares | Hashrate: $hashrate | Temp: $temp°C" >> "$MINER_HISTORY/history.log"
+    # Manter apenas últimas 1000 linhas
+    tail -n 1000 "$MINER_HISTORY/history.log" > "$MINER_HISTORY/history.tmp" && mv "$MINER_HISTORY/history.tmp" "$MINER_HISTORY/history.log"
 }
 
-notify_telegram() {
-    [ "$ENABLE_TELEGRAM" != "true" ] && return
-    [ -z "$BOT_TOKEN_TELEGRAM" ] || [ "$BOT_TOKEN_TELEGRAM" = "SEU_BOT_TOKEN" ] && return
-    local msg="$1"
-    curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN_TELEGRAM/sendMessage" -d "chat_id=$CHAT_ID_TELEGRAM&text=$msg" -o /dev/null
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | Telegram: $msg" >> "$MINER_LOGS/telegram.log"
-}
-
-notify_pushover() {
-    [ "$ENABLE_PUSHOVER" != "true" ] && return
-    [ -z "$PUSHOVER_USER" ] || [ "$PUSHOVER_USER" = "SEU_USER" ] && return
-    local msg="$1"
-    curl -s -X POST "https://api.pushover.net/1/messages.json" -d "user=$PUSHOVER_USER&token=$PUSHOVER_TOKEN&message=$msg" -o /dev/null
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | Pushover: $msg" >> "$MINER_LOGS/pushover.log"
-}
-
-notify_all() {
-    notify_discord "$1"
-    notify_telegram "$1"
-    notify_pushover "$1"
+show_history() {
+    clear
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_TITLE}                   HISTÓRICO DE SHARES                              ${NC}"
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}\n"
+    if [ -f "$MINER_HISTORY/history.log" ]; then
+        tail -30 "$MINER_HISTORY/history.log"
+    else
+        echo "Nenhum histórico encontrado."
+    fi
+    echo ""
 }
 
 # ---------- INICIAR MINERAÇÃO ----------
@@ -478,20 +460,12 @@ start_mining() {
     sleep 3
     if kill -0 $pid 2>/dev/null; then
         log_success "Mineração iniciada (PID: $pid)."
-        notify_all "🚀 Mineração iniciada - Carteira: $(get_active_wallet)"
+        notify_all "🚀 Mineração iniciada - $WALLET"
+        # Loop de estatísticas
         while kill -0 $pid 2>/dev/null; do
             update_stats
             log_satoshi
-            local temp=$(get_temp)
-            local battery=$(get_battery)
-            if [ "$temp" -gt "$TEMP_LIMIT" ]; then
-                log_temp "⚠️ Temperatura alta: $temp°C (limite: $TEMP_LIMIT°C)"
-                notify_all "⚠️ Alerta de temperatura: $temp°C"
-            fi
-            if [ "$battery" -lt "$BATTERY_LIMIT" ]; then
-                log_bat "⚠️ Bateria baixa: $battery% (limite: $BATTERY_LIMIT%)"
-                notify_all "⚠️ Alerta de bateria: $battery%"
-            fi
+            update_history
             sleep 60
         done &
         echo $! > "$MINER_STATS/stats_loop.pid"
@@ -594,7 +568,6 @@ show_status() {
         echo -e "${COLOR_HASHRATE}⚡ ESTATÍSTICAS REAIS:${NC}"
         echo "   Hashrate: $(get_hashrate)"
         echo "   Temperatura: $(get_temp)°C"
-        echo "   Bateria: $(get_battery)%"
         echo "   Shares aceitos: $(get_shares)"
         echo "   Satoshis acumulados: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) sats"
         local btc=$(echo "scale=8; $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) / 100000000" | bc 2>/dev/null || echo 0)
@@ -606,51 +579,23 @@ show_status() {
     echo ""
 }
 
-# ---------- DASHBOARD COM GRÁFICO ASCII ----------
+# ---------- DASHBOARD ----------
 dashboard() {
-    local hist_file="$MINER_STATS/hashrate_history"
     while true; do
         clear
         echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
         echo -e "${COLOR_TITLE}║                    DASHBOARD EM TEMPO REAL                         ║${NC}"
         echo -e "${COLOR_TITLE}║                        $(date '+%H:%M:%S')                                    ║${NC}"
         echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
-        
         if pgrep -f xmrig >/dev/null; then
-            local hr=$(get_hashrate | awk '{print $1}')
-            local hr_num=$(echo "$hr" | sed 's/[^0-9.]//g')
-            [ -z "$hr_num" ] && hr_num=0
-            echo "$hr_num" >> "$hist_file"
-            tail -n 60 "$hist_file" > "$hist_file.tmp" && mv "$hist_file.tmp" "$hist_file"
-            
-            echo -e "${COLOR_HASHRATE}   ⚡ Hashrate: $(get_hashrate)${NC}"
+            echo -e "${COLOR_HASHRATE}   ⚡ Hashrate: $(get_hashrate)"
             echo -e "   🌡️  Temperatura: $(get_temp)°C"
-            echo -e "   🔋 Bateria: $(get_battery)%"
             echo -e "   💰 Satoshis: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) sats"
             echo -e "   📊 Shares: $(get_shares)"
             echo -e "   🌐 Pool: $(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 | cut -d. -f1-2)"
-            
-            echo ""
-            echo -e "${COLOR_INFO}   📈 Histórico de Hashrate (últimos 60s):${NC}"
-            local max=0
-            while read -r val; do
-                [ "$(echo "$val > $max" | bc)" -eq 1 ] && max="$val"
-            done < "$hist_file"
-            [ "$(echo "$max == 0" | bc)" -eq 1 ] && max=1
-            
-            local i=0
-            while read -r val; do
-                local bar_len=$(echo "scale=0; $val * 50 / $max" | bc)
-                printf "   %2ds " $((60 - i))
-                for ((j=0; j<bar_len; j++)); do echo -n "█"; done
-                for ((j=bar_len; j<50; j++)); do echo -n "░"; done
-                echo " $val H/s"
-                ((i++))
-            done < "$hist_file"
         else
             echo -e "${COLOR_ERROR}   ⚠️  Mineração inativa.${NC}"
         fi
-        
         echo -e "\n${COLOR_WARNING}   [Q] Sair do dashboard${NC}"
         read -t 5 -n 1 key
         [[ "$key" == "q" || "$key" == "Q" ]] && break
@@ -689,7 +634,7 @@ show_earnings() {
     echo ""
     echo "   📈 USD/hora estimado: \$$(printf "%.6f" "$usd_hour")"
     echo ""
-    echo "   👛 Carteira ativa: $(get_active_wallet)"
+    echo "   👛 Carteira: $WALLET"
     echo ""
 }
 
@@ -722,64 +667,12 @@ manual_pool() {
     fi
 }
 
-# ---------- GERENCIAR CARTEIRAS ----------
-manage_wallets() {
-    while true; do
-        clear
-        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_MENU}║                        GERENCIAR CARTEIRAS                          ║${NC}"
-        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
-        echo "   1) Carteira principal: $WALLET_PRINCIPAL"
-        echo "   2) Carteira backup: $WALLET_BACKUP"
-        echo "   3) Ativar carteira principal (atual: $ACTIVE_WALLET)"
-        echo "   4) Ativar carteira backup"
-        echo "   5) Editar carteira principal"
-        echo "   6) Editar carteira backup"
-        echo "   7) Voltar"
-        echo ""
-        safe_read "Escolha: " wopt
-        case $wopt in
-            1) echo "$WALLET_PRINCIPAL"; safe_read "Pressione Enter..." _ ;;
-            2) echo "$WALLET_BACKUP"; safe_read "Pressione Enter..." _ ;;
-            3) ACTIVE_WALLET="principal"; save_settings; log_success "Carteira principal ativada." ;;
-            4) ACTIVE_WALLET="backup"; save_settings; log_success "Carteira backup ativada." ;;
-            5) safe_read "Nova carteira principal: " WALLET_PRINCIPAL; save_settings; log_success "Carteira principal atualizada." ;;
-            6) safe_read "Nova carteira backup: " WALLET_BACKUP; save_settings; log_success "Carteira backup atualizada." ;;
-            7) break ;;
-            *) log_error "Opção inválida."; sleep 1 ;;
-        esac
-    done
-}
-
-# ---------- PERFIS DE CONFIGURAÇÃO ----------
-save_profile() {
-    safe_read "Nome do perfil: " pname
-    cp "$MINER_CONFIG/config.json" "$MINER_PROFILES/$pname.json"
-    cp "$MINER_CONFIG/settings.conf" "$MINER_PROFILES/$pname.conf"
-    log_success "Perfil '$pname' salvo."
-}
-load_profile() {
-    echo "Perfis disponíveis:"
-    ls -1 "$MINER_PROFILES"/*.json 2>/dev/null | sed 's/.*\///; s/\.json//' | head -10
-    safe_read "Nome do perfil: " pname
-    if [ -f "$MINER_PROFILES/$pname.json" ]; then
-        cp "$MINER_PROFILES/$pname.json" "$MINER_CONFIG/config.json"
-        cp "$MINER_PROFILES/$pname.conf" "$MINER_CONFIG/settings.conf"
-        source "$MINER_CONFIG/settings.conf"
-        ACTIVE_PROFILE="$pname"
-        save_settings
-        log_success "Perfil '$pname' carregado."
-    else
-        log_error "Perfil não encontrado."
-    fi
-}
-
-# ---------- CONFIGURAÇÕES ----------
+# ---------- CONFIGURAÇÕES AVANÇADAS ----------
 config_menu() {
     while true; do
         clear
         echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_MENU}║                        CONFIGURAÇÕES AVANÇADAS                      ║${NC}"
+        echo -e "${COLOR_MENU}║                        CONFIGURAÇÕES AVANÇADAS                     ║${NC}"
         echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
         echo "   1) Threads CPU (atual: $CPU_THREADS)"
         echo "   2) Prioridade CPU (atual: $CPU_PRIORITY)"
@@ -787,16 +680,14 @@ config_menu() {
         echo "   4) TLS/SSL (atual: $TLS_ENABLED)"
         echo "   5) Auto pool (atual: $AUTO_POOL)"
         echo "   6) Intervalo teste pool (atual: ${POOL_INTERVAL}s)"
-        echo "   7) Auto tune (atual: $AUTO_TUNE)"
-        echo "   8) Limite temperatura (atual: ${TEMP_LIMIT}°C)"
-        echo "   9) Limite bateria (atual: ${BATTERY_LIMIT}%)"
-        echo "  10) Discord (atual: $ENABLE_DISCORD)"
-        echo "  11) Telegram (atual: $ENABLE_TELEGRAM)"
-        echo "  12) Pushover (atual: $ENABLE_PUSHOVER)"
+        echo "   7) Notificações Discord (atual: $NOTIFY_DISCORD)"
+        echo "   8) Notificações Telegram (atual: $NOTIFY_TELEGRAM)"
+        echo "   9) Notificações Pushover (atual: $NOTIFY_PUSHOVER)"
+        echo "  10) Configurar Discord Webhook"
+        echo "  11) Configurar Telegram"
+        echo "  12) Configurar Pushover"
         echo "  13) Recriar configuração (melhor pool)"
-        echo "  14) Salvar perfil atual"
-        echo "  15) Carregar perfil"
-        echo "  16) Voltar"
+        echo "  14) Voltar"
         echo ""
         safe_read "Escolha: " cfg
         case $cfg in
@@ -833,46 +724,179 @@ config_menu() {
                 [[ "$iv" =~ ^[0-9]+$ ]] && [ "$iv" -ge 600 ] && { POOL_INTERVAL="$iv"; save_settings; log_success "Intervalo atualizado."; }
                 ;;
             7)
-                AUTO_TUNE=$([ "$AUTO_TUNE" = true ] && echo false || echo true)
+                NOTIFY_DISCORD=$([ "$NOTIFY_DISCORD" = true ] && echo false || echo true)
                 save_settings
-                log_success "Auto tune: $AUTO_TUNE"
+                log_success "Notificações Discord: $NOTIFY_DISCORD"
                 ;;
             8)
-                safe_read "Novo limite de temperatura (°C): " tl
-                [[ "$tl" =~ ^[0-9]+$ ]] && [ "$tl" -ge 30 ] && [ "$tl" -le 100 ] && { TEMP_LIMIT="$tl"; save_settings; log_success "Limite de temperatura atualizado."; }
+                NOTIFY_TELEGRAM=$([ "$NOTIFY_TELEGRAM" = true ] && echo false || echo true)
+                save_settings
+                log_success "Notificações Telegram: $NOTIFY_TELEGRAM"
                 ;;
             9)
-                safe_read "Novo limite de bateria (%): " bl
-                [[ "$bl" =~ ^[0-9]+$ ]] && [ "$bl" -ge 5 ] && [ "$bl" -le 100 ] && { BATTERY_LIMIT="$bl"; save_settings; log_success "Limite de bateria atualizado."; }
+                NOTIFY_PUSHOVER=$([ "$NOTIFY_PUSHOVER" = true ] && echo false || echo true)
+                save_settings
+                log_success "Notificações Pushover: $NOTIFY_PUSHOVER"
                 ;;
             10)
-                ENABLE_DISCORD=$([ "$ENABLE_DISCORD" = true ] && echo false || echo true)
-                save_settings
-                log_success "Discord: $ENABLE_DISCORD"
+                safe_read "Digite o webhook do Discord: " new_webhook
+                if [ -n "$new_webhook" ]; then
+                    WEBHOOK_DISCORD="$new_webhook"
+                    save_settings
+                    log_success "Webhook do Discord atualizado."
+                fi
                 ;;
             11)
-                ENABLE_TELEGRAM=$([ "$ENABLE_TELEGRAM" = true ] && echo false || echo true)
+                safe_read "Digite o token do bot Telegram: " token
+                safe_read "Digite o chat ID: " chat
+                TELEGRAM_BOT_TOKEN="$token"
+                TELEGRAM_CHAT_ID="$chat"
                 save_settings
-                log_success "Telegram: $ENABLE_TELEGRAM"
+                log_success "Configurações do Telegram salvas."
                 ;;
             12)
-                ENABLE_PUSHOVER=$([ "$ENABLE_PUSHOVER" = true ] && echo false || echo true)
+                safe_read "Digite o usuário Pushover: " user
+                safe_read "Digite o token Pushover: " token
+                PUSHOVER_USER="$user"
+                PUSHOVER_TOKEN="$token"
                 save_settings
-                log_success "Pushover: $ENABLE_PUSHOVER"
+                log_success "Configurações do Pushover salvas."
                 ;;
             13) configure_miner; log_success "Configuração recriada." ;;
-            14) save_profile ;;
-            15) load_profile ;;
-            16) break ;;
+            14) break ;;
             *) log_error "Opção inválida."; sleep 1 ;;
         esac
     done
 }
 
+# ---------- GERENCIAR CARTEIRAS ----------
+manage_wallets() {
+    while true; do
+        clear
+        echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_MENU}║                       GERENCIAR CARTEIRAS                          ║${NC}"
+        echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
+        echo "   Carteira atual: $WALLET"
+        echo ""
+        echo "   1) Alterar carteira ativa"
+        echo "   2) Adicionar nova carteira"
+        echo "   3) Listar carteiras salvas"
+        echo "   4) Remover carteira"
+        echo "   5) Voltar"
+        echo ""
+        safe_read "Escolha: " wopt
+        case $wopt in
+            1)
+                safe_read "Digite o novo endereço BTC: " new_wallet
+                if [ -n "$new_wallet" ]; then
+                    WALLET="$new_wallet"
+                    save_settings
+                    log_success "Carteira alterada para $WALLET"
+                fi
+                ;;
+            2)
+                safe_read "Digite o endereço BTC para adicionar: " add_wallet
+                if [ -n "$add_wallet" ]; then
+                    echo "$add_wallet" >> "$MINER_CONFIG/wallets.list"
+                    log_success "Carteira adicionada."
+                fi
+                ;;
+            3)
+                echo "Carteiras salvas:"
+                if [ -f "$MINER_CONFIG/wallets.list" ]; then
+                    cat "$MINER_CONFIG/wallets.list"
+                else
+                    echo "Nenhuma carteira salva."
+                fi
+                echo ""
+                ;;
+            4)
+                safe_read "Digite o endereço a remover: " rem_wallet
+                if [ -f "$MINER_CONFIG/wallets.list" ]; then
+                    grep -v "^$rem_wallet$" "$MINER_CONFIG/wallets.list" > "$MINER_CONFIG/wallets.tmp"
+                    mv "$MINER_CONFIG/wallets.tmp" "$MINER_CONFIG/wallets.list"
+                    log_success "Carteira removida, se existia."
+                fi
+                ;;
+            5) break ;;
+            *) log_error "Opção inválida." ;;
+        esac
+    done
+}
+
+# ---------- PERFIS ----------
+save_profile() {
+    safe_read "Nome do perfil: " profile_name
+    if [ -n "$profile_name" ]; then
+        cp "$SETTINGS" "$MINER_PROFILES/$profile_name.conf"
+        log_success "Perfil '$profile_name' salvo."
+    fi
+}
+
+load_profile() {
+    echo "Perfis disponíveis:"
+    ls -1 "$MINER_PROFILES"/*.conf 2>/dev/null | sed 's/.*\///; s/\.conf//' | head -20
+    safe_read "Digite o nome do perfil: " profile_name
+    if [ -f "$MINER_PROFILES/$profile_name.conf" ]; then
+        cp "$MINER_PROFILES/$profile_name.conf" "$SETTINGS"
+        source "$SETTINGS"
+        log_success "Perfil '$profile_name' carregado."
+    else
+        log_error "Perfil não encontrado."
+    fi
+}
+
+# ---------- ESTATÍSTICAS DETALHADAS ----------
+show_detailed_stats() {
+    clear
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${COLOR_TITLE}                   ESTATÍSTICAS DETALHADAS                           ${NC}"
+    echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}\n"
+    
+    # Hashrate médio
+    if [ -f "$MINER_LOGS/xmrig_raw.log" ]; then
+        avg_hashrate=$(grep -E 'speed.*H/s' "$MINER_LOGS/xmrig_raw.log" | tail -100 | sed -E 's/.* ([0-9.]+) H\/s.*/\1/' | awk '{sum+=$1; count++} END {if(count>0) print sum/count; else print 0}')
+        echo "   Hashrate médio (últimas 100): $avg_hashrate H/s"
+    fi
+    
+    # Total de shares
+    total_shares=$(get_shares)
+    echo "   Total de shares: $total_shares"
+    
+    # Satoshis acumulados
+    sats=$(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)
+    echo "   Satoshis acumulados: $sats"
+    
+    # Tempo total de mineração
+    if [ -f "$MINER_STATS/miner.pid" ]; then
+        pid=$(cat "$MINER_STATS/miner.pid")
+        if kill -0 $pid 2>/dev/null; then
+            uptime=$(ps -o etimes= -p $pid 2>/dev/null | xargs)
+            uptime="${uptime:-0}"
+            printf -v uptime_str "%02d:%02d:%02d" $((uptime/3600)) $(((uptime%3600)/60)) $((uptime%60))
+            echo "   Tempo de mineração atual: $uptime_str"
+        fi
+    fi
+    
+    # Temperatura máxima
+    if [ -f "$MINER_LOGS/satoshi.log" ]; then
+        max_temp=$(awk -F'Temp: ' '{print $2}' "$MINER_LOGS/satoshi.log" | awk '{print $1}' | sort -nr | head -1)
+        echo "   Temperatura máxima registrada: $max_temp°C"
+    fi
+    
+    # Pool mais usado
+    if [ -f "$MINER_CONFIG/worker.info" ]; then
+        current_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" | cut -d= -f2)
+        echo "   Pool atual: $current_pool"
+    fi
+    
+    echo ""
+}
+
 # ---------- BACKUP ----------
 backup() {
     local bk="$MINER_BACKUP/backup_$(date +%Y%m%d_%H%M%S).tar.gz"
-    tar -czf "$bk" "$MINER_CONFIG" "$MINER_STATS" "$MINER_PROFILES" 2>/dev/null
+    tar -czf "$bk" "$MINER_CONFIG" "$MINER_STATS" "$MINER_PROFILES" "$MINER_HISTORY" 2>/dev/null
     log_success "Backup criado: $(basename "$bk")"
 }
 restore_backup() {
@@ -899,16 +923,14 @@ clear_logs() {
         > "$MINER_LOGS/telegram.log"
         > "$MINER_LOGS/pushover.log"
         > "$MINER_LOGS/error.log"
-        > "$MINER_LOGS/temp.log"
-        > "$MINER_LOGS/battery.log"
         log_success "Logs limpos."
     fi
 }
 
 # ---------- TESTAR NOTIFICAÇÕES ----------
 test_notifications() {
-    notify_all "🔔 **Teste de notificações** - XMRig Miner God está funcionando!"
-    log_success "Notificações enviadas."
+    notify_all "🔔 Teste de notificação - XMRig Miner God está funcionando!"
+    log_success "Notificações de teste enviadas."
 }
 
 # ---------- WATCHDOG ----------
@@ -939,64 +961,32 @@ stop_watchdog() {
     pkill -f watchdog.sh 2>/dev/null
 }
 
-# ---------- AUTO TUNE (ajuste dinâmico de threads) ----------
-auto_tune() {
-    while true; do
-        if [ "$AUTO_TUNE" = "true" ] && pgrep -f xmrig >/dev/null; then
-            local temp=$(get_temp)
-            local battery=$(get_battery)
-            local new_max=$CPU_MAX
-            if [ "$temp" -gt "$TEMP_LIMIT" ]; then
-                new_max=$((CPU_MAX - 10))
-                [ "$new_max" -lt 10 ] && new_max=10
-                log_temp "Reduzindo CPU para ${new_max}% devido à temperatura"
-            elif [ "$battery" -lt "$BATTERY_LIMIT" ]; then
-                new_max=$((CPU_MAX - 20))
-                [ "$new_max" -lt 10 ] && new_max=10
-                log_bat "Reduzindo CPU para ${new_max}% devido à bateria"
-            else
-                new_max=$CPU_MAX
-            fi
-            if [ "$new_max" -ne "$(grep '"cpu-max-threads-hint"' "$MINER_CONFIG/config.json" | awk '{print $2}' | tr -d ',')" ]; then
-                sed -i "s/\"cpu-max-threads-hint\": [0-9]\+/\"cpu-max-threads-hint\": $new_max/" "$MINER_CONFIG/config.json"
-                log_info "Auto tune: CPU ajustado para $new_max%"
-                restart_mining
-            fi
-        fi
-        sleep 300
-    done &
-    echo $! > "$MINER_STATS/autotune.pid"
-}
-
 # ---------- AJUDA ----------
 show_help() {
     clear
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}\n"
-    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v99.9 🔥"
+    echo "   🔥 XMRIG MINER GOD – TERMUX ULTIMATE EDITION v77.7 🔥"
     echo ""
     echo "   📌 PRIMEIRA EXECUÇÃO:"
-    echo "   • Opção 9 → Instala o XMRig (automático)"
+    echo "   • Opção 5 → Instala o XMRig (automático)"
     echo "   • Opção 1 → Inicia a mineração"
     echo ""
     echo "   ⚙️  CONFIGURAÇÕES:"
     echo "   • Threads: use nproc-1 para melhor desempenho"
     echo "   • Prioridade: -20 (máxima), 19 (mínima)"
     echo "   • Auto pool: troca automática para pool mais rápida"
-    echo "   • Auto tune: ajusta CPU conforme temperatura/bateria"
     echo ""
     echo "   📊 DADOS:"
     echo "   • Hashrate e shares são extraídos do log do XMRig"
     echo "   • Satoshis estimados: 10 sats por share"
-    echo "   • Carteiras: principal e backup"
-    echo ""
-    echo "   🔔 NOTIFICAÇÕES:"
-    echo "   • Discord, Telegram e Pushover suportados"
+    echo "   • Carteira ativa: $WALLET"
     echo ""
     echo "   🛠️  BACKUP E LOGS:"
     echo "   • Backups salvos em ~/.xmrig_god_final/backup/"
     echo "   • Logs em ~/.xmrig_god_final/logs/"
+    echo "   • Perfis em ~/.xmrig_god_final/profiles/"
     echo ""
 }
 
@@ -1005,7 +995,6 @@ clean_exit() {
     echo -e "\n${COLOR_WARNING}🛑 Encerrando XMRig Miner God...${NC}"
     stop_auto_pool
     stop_watchdog
-    pkill -f auto_tune
     stop_mining
     exit 0
 }
@@ -1029,15 +1018,12 @@ echo "║   ██║ ╚████║██║╚██████╗██�
 echo "║   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ║"
 echo "║                                                                      ║"
 echo "║              XMRIG MINER GOD – TERMUX ULTIMATE EDITION              ║"
-echo "║                         v99.9 – MEGA COMPLEXO                       ║"
+echo "║                         v77.7 – 100% FUNCIONAL                      ║"
 echo "║                                                                      ║"
-echo "║              ✅ 20 OPÇÕES NO MENU – 100% FUNCIONAL                  ║"
+echo "║              ✅ SEM BUGS – MENU SEM COMANDOS EXTERNOS               ║"
 echo "║              ✅ INSTALAÇÃO AUTOMÁTICA – 3 MÉTODOS                   ║"
 echo "║              ✅ POOLS NICEHASH – 50+ COM TROCA AUTOMÁTICA          ║"
-echo "║              ✅ DASHBOARD COM GRÁFICO ASCII                        ║"
-echo "║              ✅ NOTIFICAÇÕES DISCORD, TELEGRAM, PUSHOVER           ║"
-echo "║              ✅ AUTO TUNE POR TEMPERATURA/BATERIA                  ║"
-echo "║              ✅ MÚLTIPLAS CARTEIRAS E PERFIS                       ║"
+echo "║              ✅ DADOS REAIS – NENHUMA SIMULAÇÃO                     ║"
 echo "║                                                                      ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -1054,96 +1040,82 @@ echo "0" > "$MINER_STATS/total_satoshis"
 echo "0" > "$MINER_STATS/total_shares"
 echo "0 H/s" > "$MINER_STATS/current_hashrate"
 echo "0" > "$MINER_STATS/current_temp"
-echo "100" > "$MINER_STATS/current_battery"
 
-# ---------- INSTALAÇÃO DE DEPENDÊNCIAS ----------
+# ---------- INSTALAÇÃO DE DEPENDÊNCIAS LEVES ----------
 install_deps
 
-# ---------- INICIAR SERVIÇOS DE FUNDO ----------
+# ---------- INICIAR AUTO POOL SE ATIVADO ----------
 if [ "$AUTO_POOL" = true ]; then
     start_auto_pool
 fi
-start_watchdog
-auto_tune
 
-# ---------- MENU PRINCIPAL (20 OPÇÕES) ----------
+# ---------- INICIAR WATCHDOG ----------
+start_watchdog
+
+# ---------- MENU PRINCIPAL (CORRIGIDO) ----------
 while true; do
     clear
     echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${COLOR_MENU}║                            MENU PRINCIPAL                            ║${NC}"
     echo -e "${COLOR_MENU}╠══════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${COLOR_MENU}║  1) 🚀 INICIAR MINERAÇÃO     2) 🛑 PARAR MINERAÇÃO                  ║${NC}"
-    echo -e "${COLOR_MENU}║  3) 🔄 REINICIAR MINERAÇÃO   4) 📊 STATUS COMPLETO                  ║${NC}"
-    echo -e "${COLOR_MENU}║  5) 📈 DASHBOARD             6) 📝 LOGS DO MINERADOR                ║${NC}"
-    echo -e "${COLOR_MENU}║  7) 💰 GANHOS EM BITCOIN     8) ⚙️  CONFIGURAÇÕES AVANÇADAS         ║${NC}"
-    echo -e "${COLOR_MENU}║  9) 🔧 INSTALAR XMRIG       10) 🌐 TROCAR POOL MANUAL               ║${NC}"
-    echo -e "${COLOR_MENU}║ 11) 👛 GERENCIAR CARTEIRAS  12) 📨 TESTAR NOTIFICAÇÕES              ║${NC}"
-    echo -e "${COLOR_MENU}║ 13) 🧹 LIMPAR LOGS          14) 💾 BACKUP                           ║${NC}"
-    echo -e "${COLOR_MENU}║ 15) 🔄 RESTAURAR BACKUP     16) 📂 SALVAR PERFIL ATUAL              ║${NC}"
-    echo -e "${COLOR_MENU}║ 17) 📂 CARREGAR PERFIL      18) 🔍 VER HISTÓRICO DE SHARES          ║${NC}"
-    echo -e "${COLOR_MENU}║ 19) 🆘 AJUDA                20) 📊 ESTATÍSTICAS DETALHADAS          ║${NC}"
-    echo -e "${COLOR_MENU}║  0) 🚪 SAIR                                                       ║${NC}"
+    echo -e "${COLOR_MENU}║  1) 🚀 INICIAR MINERAÇÃO         2) 🔄 REINICIAR MINERAÇÃO           ║${NC}"
+    echo -e "${COLOR_MENU}║  3) 📈 DASHBOARD                  4) 💰 GANHOS EM BITCOIN             ║${NC}"
+    echo -e "${COLOR_MENU}║  5) 🔧 INSTALAR XMRIG             6) 💼 GERENCIAR CARTEIRAS           ║${NC}"
+    echo -e "${COLOR_MENU}║  7) 🧹 LIMPAR LOGS                8) 🔄 RESTAURAR BACKUP              ║${NC}"
+    echo -e "${COLOR_MENU}║  9) 📂 CARREGAR PERFIL           10) 🆘 AJUDA                         ║${NC}"
+    echo -e "${COLOR_MENU}║ 11) 🛑 PARAR MINERAÇÃO            12) 📊 STATUS COMPLETO              ║${NC}"
+    echo -e "${COLOR_MENU}║ 13) 📝 LOGS DO MINERADOR         14) ⚙️  CONFIGURAÇÕES AVANÇADAS      ║${NC}"
+    echo -e "${COLOR_MENU}║ 15) 🌐 TROCAR POOL MANUAL        16) 📨 TESTAR NOTIFICAÇÕES           ║${NC}"
+    echo -e "${COLOR_MENU}║ 17) 💾 BACKUP                    18) 💾 SALVAR PERFIL ATUAL          ║${NC}"
+    echo -e "${COLOR_MENU}║ 19) 📜 VER HISTÓRICO DE SHARES   20) 📊 ESTATÍSTICAS DETALHADAS      ║${NC}"
+    echo -e "${COLOR_MENU}║  0) 🚪 SAIR                                                        ║${NC}"
     echo -e "${COLOR_MENU}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "   ${COLOR_WALLET}👛 Carteira ativa: $(get_active_wallet | cut -c1-25)...${NC}"
-    echo -e "   ${COLOR_DISCORD}📨 Discord: $([ "$ENABLE_DISCORD" = true ] && echo "✅" || echo "❌") | Telegram: $([ "$ENABLE_TELEGRAM" = true ] && echo "✅" || echo "❌") | Push: $([ "$ENABLE_PUSHOVER" = true ] && echo "✅" || echo "❌")${NC}"
+    echo -e "   ${COLOR_WALLET}👛 Carteira ativa: ${WALLET:0:25}...${NC}"
+    echo -e "   ${COLOR_DISCORD}📨 Discord: $([ "$NOTIFY_DISCORD" = true ] && [ -n "$WEBHOOK_DISCORD" ] && echo "✅" || echo "❌") | Telegram: $([ "$NOTIFY_TELEGRAM" = true ] && echo "✅" || echo "❌") | Push: $([ "$NOTIFY_PUSHOVER" = true ] && echo "✅" || echo "❌")${NC}"
     if pgrep -f xmrig >/dev/null; then
-        echo -e "   ${COLOR_SUCCESS}▶ Mineração: ATIVA | Hashrate: $(get_hashrate) | Temp: $(get_temp)°C | Bat: $(get_battery)% | Sat: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)${NC}"
+        echo -e "   ${COLOR_SUCCESS}▶ Mineração: ATIVA | Hashrate: $(get_hashrate) | Satoshis: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) sats${NC}"
         pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        echo -e "   🌐 Pool: ${pool:-N/A} | Perfil: $ACTIVE_PROFILE"
+        echo -e "   🌐 Pool: ${pool:-N/A}"
     else
         echo -e "   ${COLOR_ERROR}▶ Mineração: INATIVA${NC}"
     fi
     echo ""
     printf "   Escolha uma opção (0-20): "
     IFS= read -r choice
+    # Remove caracteres não numéricos
     choice=$(echo "$choice" | tr -cd '0-9')
+    # Se vazio, define como inválido
     [ -z "$choice" ] && choice=99
 
     case $choice in
         0) clean_exit ;;
         1) start_mining ;;
-        2) stop_mining ;;
-        3) restart_mining ;;
-        4) show_status ;;
-        5) dashboard ;;
-        6) show_logs ;;
-        7) show_earnings ;;
-        8) config_menu ;;
-        9) install_xmrig ;;
-        10) manual_pool ;;
-        11) manage_wallets ;;
-        12) test_notifications ;;
-        13) clear_logs ;;
-        14) backup ;;
-        15) restore_backup ;;
-        16) save_profile ;;
-        17) load_profile ;;
-        18) 
-            clear
-            echo -e "${COLOR_INFO}Histórico de shares:${NC}"
-            cat "$MINER_LOGS/satoshi.log" 2>/dev/null || echo "Nenhum histórico."
-            echo ""
-            safe_read "Pressione Enter..." _
-            ;;
-        19) show_help ;;
-        20) 
-            clear
-            echo -e "${COLOR_INFO}Estatísticas detalhadas:${NC}"
-            echo "   Total de shares: $(get_shares)"
-            echo "   Total de satoshis: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)"
-            echo "   Média de hashrate: $(awk '{sum+=$1; count++} END {if(count>0) printf "%.2f H/s", sum/count}' "$MINER_STATS/hashrate_history" 2>/dev/null || echo "0 H/s")"
-            echo "   Temperatura máxima: $(sort -n "$MINER_LOGS/temp.log" 2>/dev/null | tail -1 || echo "0")°C"
-            echo "   Bateria mínima: $(sort -n "$MINER_LOGS/battery.log" 2>/dev/null | head -1 || echo "0")%"
-            echo ""
-            safe_read "Pressione Enter..." _
-            ;;
+        2) restart_mining ;;
+        3) dashboard ;;
+        4) show_earnings ;;
+        5) install_xmrig ;;
+        6) manage_wallets ;;
+        7) clear_logs ;;
+        8) restore_backup ;;
+        9) load_profile ;;
+        10) show_help ;;
+        11) stop_mining ;;
+        12) show_status ;;
+        13) show_logs ;;
+        14) config_menu ;;
+        15) manual_pool ;;
+        16) test_notifications ;;
+        17) backup ;;
+        18) save_profile ;;
+        19) show_history ;;
+        20) show_detailed_stats ;;
         *) 
             echo -e "${COLOR_ERROR}   ❌ Opção inválida! Digite apenas números.${NC}"
-            sleep 1
             ;;
     esac
-    if [ "$choice" != "5" ]; then
+    # Pausa para ler a mensagem, exceto para dashboard que já tem seu próprio loop
+    if [ "$choice" != "3" ]; then
         echo ""
         printf "Pressione Enter para continuar..."
         read -r
