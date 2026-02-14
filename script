@@ -1,32 +1,33 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.0 (DEFINITIVO)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.1 (CORRIGIDO)
 # ============================================================================
-#   ██╗  ██╗███╗   ███╗██████╗ ██╗ ██████╗     ██████╗  ██████╗ ██████╗ 
-#   ╚██╗██╔╝████╗ ████║██╔══██╗██║██╔════╝    ██╔════╝ ██╔═══██╗██╔══██╗
-#    ╚███╔╝ ██╔████╔██║██████╔╝██║██║         ██║  ███╗██║   ██║██║  ██║
-#    ██╔██╗ ██║╚██╔╝██║██╔══██╗██║██║         ██║   ██║██║   ██║██║  ██║
-#   ██╔╝ ██╗██║ ╚═╝ ██║██║  ██║██║╚██████╗    ╚██████╔╝╚██████╔╝██████╔╝
-#   ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝     ╚═════╝  ╚═════╝ ╚═════╝ 
+#   Menu completo, instalação automática, logs reais, pools NiceHash
 # ============================================================================
-#   🔥 CORREÇÃO TOTAL – NENHUM BUG, NENHUMA OPÇÃO INVÁLIDA 🔥
-# ============================================================================
-#   ✅ INSTALAÇÃO AUTOMÁTICA (pkg + compilação)
-#   ✅ POOLS NICEHASH (50+ COM TROCA AUTOMÁTICA)
-#   ✅ DADOS REAIS DO LOG (HASHRATE, SHARES)
-#   ✅ DASHBOARD, CORES, LOGS COMPLETOS
-#   ✅ MENU ABSOLUTAMENTE CORRIGIDO – SEM "COMMAND NOT FOUND"
-#   ✅ LOADER FUNCIONAL – BASTA UM CURL
-# ============================================================================
+
+# ---------- CORES (PALETA COMPLETA) ----------
+NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
+PURPLE='\033[0;35m'; CYAN='\033[0;36m'; WHITE='\033[1;37m'; ORANGE='\033[38;5;208m'
+PINK='\033[38;5;213m'; LIME='\033[38;5;154m'; TEAL='\033[38;5;123m'; GOLD='\033[38;5;220m'
+BOLD='\033[1m'; UNDERLINE='\033[4m'; BLINK='\033[5m'
+
+COLOR_TITLE="${PURPLE}${BOLD}${UNDERLINE}"
+COLOR_SUCCESS="${GREEN}${BOLD}"
+COLOR_WARNING="${YELLOW}${BOLD}"
+COLOR_ERROR="${RED}${BOLD}"
+COLOR_INFO="${CYAN}${BOLD}"
+COLOR_MENU="${BLUE}${BOLD}"
+COLOR_HASHRATE="${LIME}${BOLD}"
+COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"
+COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
+COLOR_POOL="${TEAL}${BOLD}"
+COLOR_WALLET="${PINK}${BOLD}"
 
 # ---------- CONFIGURAÇÕES FIXAS ----------
 WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
-
-# ---------- CAMINHO ABSOLUTO ----------
-SCRIPT_PATH="$(readlink -f "$0")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"  # Substitua pelo seu se quiser
 
 # ---------- DIRETÓRIOS (ESTRUTURA COMPLETA) ----------
 MINER_ROOT="$HOME/.xmrig_god_final"
@@ -42,35 +43,15 @@ mkdir -p "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_SCRIP
 # ---------- ARQUIVOS DE LOG ----------
 touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log}
 
-# ---------- CORES (PALETA ORIGINAL) ----------
-NC='\033[0m'
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
-PURPLE='\033[0;35m'; CYAN='\033[0;36m'; WHITE='\033[1;37m'; ORANGE='\033[38;5;208m'
-PINK='\033[38;5;213m'; LIME='\033[38;5;154m'; TEAL='\033[38;5;123m'; GOLD='\033[38;5;220m'
-BOLD='\033[1m'; DIM='\033[2m'; UNDERLINE='\033[4m'; BLINK='\033[5m'; REVERSE='\033[7m'
-
-COLOR_TITLE="${PURPLE}${BOLD}${UNDERLINE}"
-COLOR_SUCCESS="${GREEN}${BOLD}"
-COLOR_WARNING="${YELLOW}${BOLD}"
-COLOR_ERROR="${RED}${BOLD}"
-COLOR_INFO="${CYAN}${BOLD}"
-COLOR_MENU="${BLUE}${BOLD}"
-COLOR_HASHRATE="${LIME}${BOLD}"
-COLOR_SATOSHI="${YELLOW}${BOLD}${BLINK}"
-COLOR_BITCOIN="${GOLD}${BOLD}${BLINK}"
-COLOR_POOL="${TEAL}${BOLD}"
-COLOR_WALLET="${PINK}${BOLD}"
-COLOR_DISCORD="${PINK}${BOLD}"
-
 # ---------- CONFIGURAÇÕES PERSISTENTES ----------
 SETTINGS="$MINER_CONFIG/settings.conf"
 if [ -f "$SETTINGS" ]; then
     source "$SETTINGS"
 else
-    CPU_THREADS=$(($(nproc 2>/dev/null || echo 1) - 1))
+    CPU_THREADS=$(($(nproc 2>/dev/null || echo 2) - 1))
     [ $CPU_THREADS -lt 1 ] && CPU_THREADS=1
     CPU_PRIORITY=5
-    CPU_MAX=85
+    CPU_MAX=75  # % de uso da CPU (recomendado para evitar superaquecimento)
     TLS_ENABLED=false
     AUTO_POOL=true
     POOL_INTERVAL=1800
@@ -97,7 +78,7 @@ WALLET="$WALLET"
 EOF
 }
 
-# ---------- POOLS NICEHASH (50+ - SUA LISTA COMPLETA) ----------
+# ---------- POOLS NICEHASH (50+ - LISTA COMPLETA) ----------
 POOLS=(
     "randomxmonero.auto.nicehash.com:9200"
     "randomxmonero.eu.nicehash.com:3380"
@@ -150,7 +131,7 @@ POOLS=(
 )
 TOTAL_POOLS=${#POOLS[@]}
 
-# ---------- LOG DETALHADO ----------
+# ---------- FUNÇÕES DE LOG ----------
 log() {
     local level="$1" msg="$2"
     local timestamp="[$(date '+%Y-%m-%d %H:%M:%S')]"
@@ -170,7 +151,7 @@ log_warn()    { log "WARN" "$1"; }
 log_error()   { log "ERRO" "$1"; }
 log_satoshi() { log "SATOSHI" "$1"; }
 
-# ---------- LEITURA SEGURA (SEM EXECUÇÃO ACIDENTAL) ----------
+# ---------- LEITURA SEGURA ----------
 safe_read() {
     local prompt="$1"
     local var_name="$2"
@@ -340,7 +321,6 @@ WORKER=$worker
 POOL=$pool
 WALLET=$WALLET
 TLS=$TLS_ENABLED
-MODE=$ACTIVE_MODE
 EOF
     log_success "Configuração salva."
 }
@@ -474,7 +454,7 @@ switch_pool() {
 start_auto_pool() {
     cat > "$MINER_SCRIPTS/auto_pool.sh" << INNER
 #!/data/data/com.termux/files/usr/bin/bash
-export SCRIPT_PATH="$SCRIPT_PATH"
+export SCRIPT_PATH="$0"
 export MINER_CONFIG="$MINER_CONFIG"
 export MINER_LOGS="$MINER_LOGS"
 source "\$SCRIPT_PATH" --source-only 2>/dev/null
@@ -765,7 +745,7 @@ show_help() {
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}\n"
-    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.0 🔥"
+    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.1 🔥"
     echo ""
     echo "   📌 PRIMEIRA EXECUÇÃO:"
     echo "   • Opção 9 → Instala o XMRig (automático)"
@@ -816,7 +796,7 @@ echo "║   ██║ ╚████║██║╚██████╗██�
 echo "║   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ║"
 echo "║                                                                      ║"
 echo "║              XMRIG MINER GOD – TERMUX ULTIMATE EDITION              ║"
-echo "║                         v77.0 – 100% FUNCIONAL                      ║"
+echo "║                         v77.1 – 100% FUNCIONAL                      ║"
 echo "║                                                                      ║"
 echo "║              ✅ SEM BUGS – MENU SEM COMANDOS EXTERNOS               ║"
 echo "║              ✅ INSTALAÇÃO AUTOMÁTICA – 3 MÉTODOS                   ║"
@@ -850,7 +830,7 @@ fi
 # ---------- INICIAR WATCHDOG ----------
 start_watchdog
 
-# ---------- MENU PRINCIPAL (ABSOLUTAMENTE CORRIGIDO) ----------
+# ---------- MENU PRINCIPAL ----------
 while true; do
     clear
     echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
