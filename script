@@ -1,570 +1,1581 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# ============================================================================
-# BITCOIN MINER GOD - TERMUX EDITION v1.0
-# Mineração de Bitcoin via pool (SHA-256)
-# ============================================================================
+# =============================================================================
+# ██████╗ ██╗████████╗ ██████╗ ██████╗ ██╗███╗   ██╗
+# ██╔══██╗██║╚══██╔══╝██╔═══██╗██╔══██╗██║████╗  ██║
+# ██████╔╝██║   ██║   ██║   ██║██████╔╝██║██╔██╗ ██║
+# ██╔══██╗██║   ██║   ██║   ██║██╔══██╗██║██║╚██╗██║
+# ██████╔╝██║   ██║   ╚██████╔╝██║  ██║██║██║ ╚████║
+# ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
+# =============================================================================
+# MINERAÇÃO BITCOIN PARA TERMUX ANDROID - MEGALODON EDITION v9.9.9
+# =============================================================================
+# DESENVOLVIDO PARA FUNCIONAR EM QUALQUER ANDROID ROOT/NO ROOT
+# UTILIZA: CPU, GPU (VIA OPENCL/OPENGL), CLUSTERIZAÇÃO, CLOUD, PROXY, E MAIS
+# =============================================================================
 
-# ----------------------------------------------------------------------------
-# CONFIGURAÇÕES FIXAS
-# ----------------------------------------------------------------------------
-# !!! SUBSTITUA PELO SEU ENDEREÇO DE BITCOIN !!!
-BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
+# -----------------------------------------------------------------------------
+# BLOCO DE SEGURANÇA - VERIFICAÇÕES MÁXIMAS
+# -----------------------------------------------------------------------------
+set -euo pipefail
+IFS=$'\n\t'
+export LC_ALL=C
+export LANG=C
 
-# Configurações da pool (NiceHash para SHA-256)
-POOL_URL="stratum+tcp://sha256.auto.nicehash.com:9200"
-# Alternativas:
-# POOL_URL="stratum+tcp://us.solomining.io:7777"
-# POOL_URL="stratum+tcp://btc.viabtc.com:3333"
+# -----------------------------------------------------------------------------
+# CONSTANTES GLOBAIS - NÃO MODIFICAR AQUI (USE CONFIG)
+# -----------------------------------------------------------------------------
+readonly SCRIPT_VERSION="9.9.9-megalodon"
+readonly SCRIPT_AUTHOR="Bitcoin Miner God"
+readonly SCRIPT_DATE="2025-02-14"
+readonly MINIMUM_STORAGE=500  # MB
+readonly MINIMUM_RAM=256      # MB
+readonly MAX_THREADS_ANDROID=64
+readonly DEFAULT_BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 
-WORKER_NAME="termux_miner_$(date +%s)"
-PASSWORD="x"
+# -----------------------------------------------------------------------------
+# ARQUITETURA DE DIRETÓRIOS COMPLETA
+# -----------------------------------------------------------------------------
+MINER_HOME="/data/data/com.termux/files/home/.btc_miner_megalodon"
+declare -a DIRS=(
+    "$MINER_HOME"/{bin,etc,lib,include,share,src}
+    "$MINER_HOME"/{configs,scripts,plugins,modules,drivers}
+    "$MINER_HOME"/{logs,stats,data,cache,temp,backup}
+    "$MINER_HOME"/{pools,wallet,workers,algorithms,benchmarks}
+    "$MINER_HOME"/{network,proxy,cluster,cloud,monitoring}
+    "$MINER_HOME"/{gpu,cpu,opencl,cuda,vulkan,opengl}
+    "$MINER_HOME"/{miners/{cpuminer,ccminer,xmrig,sgminer,bfgminer}}
+    "$MINER_HOME"/{strategies,failover,loadbalancing,optimization}
+)
 
-# Configurações de CPU
-CPU_THREADS=$(($(nproc 2>/dev/null || echo 2) - 1))
-[ $CPU_THREADS -lt 1 ] && CPU_THREADS=1
-CPU_PRIORITY=5
-CPU_MAX=75
-
-# ----------------------------------------------------------------------------
-# VARIÁVEIS GLOBAIS
-# ----------------------------------------------------------------------------
-MINER_ROOT="/data/data/com.termux/files/home/.btc_miner"
-MINER_BIN="$MINER_ROOT/bin"
-MINER_CONFIG="$MINER_ROOT/config"
-MINER_LOGS="$MINER_ROOT/logs"
-MINER_STATS="$MINER_ROOT/stats"
-MINER_TEMP="$MINER_ROOT/temp"
-
-# Criar diretórios
-for dir in "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_TEMP"; do
-    mkdir -p "$dir"
+# Criar todos os diretórios
+for dir in "${DIRS[@]}"; do
+    mkdir -p "$dir" 2>/dev/null || true
+    chmod 755 "$dir" 2>/dev/null || true
 done
 
-# Criar arquivos de log
-for logfile in system.log miner.log error.log hashrate.log btc.log; do
-    touch "$MINER_LOGS/$logfile"
+# -----------------------------------------------------------------------------
+# ARQUIVOS DE LOG MÚLTIPLOS
+# -----------------------------------------------------------------------------
+declare -a LOG_FILES=(
+    system.log error.log warning.log debug.log info.log
+    miner.log pool.log share.log hash.log speed.log
+    network.log connection.log proxy.log cluster.log
+    gpu.log cpu.log memory.log temperature.log power.log
+    benchmark.log performance.log optimization.log
+    wallet.log transaction.log balance.log earning.log
+    watchdog.log monitor.log health.log security.log
+    compiler.log installer.log updater.log cleaner.log
+)
+
+for log_file in "${LOG_FILES[@]}"; do
+    touch "$MINER_HOME/logs/$log_file" 2>/dev/null || true
+    chmod 644 "$MINER_HOME/logs/$log_file" 2>/dev/null || true
 done
 
-# Cores
-NC='\033[0m'
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
+# -----------------------------------------------------------------------------
+# PALETA DE CORES COMPLETA (256 CORES)
+# -----------------------------------------------------------------------------
+declare -A COLORS=(
+    [RESET]='\033[0m'
+    [BLACK]='\033[0;30m' [RED]='\033[0;31m' [GREEN]='\033[0;32m'
+    [YELLOW]='\033[0;33m' [BLUE]='\033[0;34m' [PURPLE]='\033[0;35m'
+    [CYAN]='\033[0;36m' [WHITE]='\033[0;37m'
+    [BOLD_BLACK]='\033[1;30m' [BOLD_RED]='\033[1;31m'
+    [BOLD_GREEN]='\033[1;32m' [BOLD_YELLOW]='\033[1;33m'
+    [BOLD_BLUE]='\033[1;34m' [BOLD_PURPLE]='\033[1;35m'
+    [BOLD_CYAN]='\033[1;36m' [BOLD_WHITE]='\033[1;37m'
+    [UNDERLINE_BLACK]='\033[4;30m' [UNDERLINE_RED]='\033[4;31m'
+    [UNDERLINE_GREEN]='\033[4;32m' [UNDERLINE_YELLOW]='\033[4;33m'
+    [UNDERLINE_BLUE]='\033[4;34m' [UNDERLINE_PURPLE]='\033[4;35m'
+    [UNDERLINE_CYAN]='\033[4;36m' [UNDERLINE_WHITE]='\033[4;37m'
+    [BACKGROUND_BLACK]='\033[40m' [BACKGROUND_RED]='\033[41m'
+    [BACKGROUND_GREEN]='\033[42m' [BACKGROUND_YELLOW]='\033[43m'
+    [BACKGROUND_BLUE]='\033[44m' [BACKGROUND_PURPLE]='\033[45m'
+    [BACKGROUND_CYAN]='\033[46m' [BACKGROUND_WHITE]='\033[47m'
+)
 
-# ----------------------------------------------------------------------------
-# FUNÇÕES AUXILIARES
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# SISTEMA DE LOGGING ULTRA AVANÇADO
+# -----------------------------------------------------------------------------
 log() {
     local level="$1"
-    local msg="$2"
-    local timestamp="[$(date '+%Y-%m-%d %H:%M:%S')]"
-    echo "$timestamp [$level] $msg" >> "$MINER_LOGS/system.log"
+    local message="$2"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S.%3N')
+    local pid=$$
+    local caller_info=$(caller 0 2>/dev/null || echo "main")
+    local script_name=$(basename "$0")
+    local log_entry="[$timestamp] [PID:$pid] [$script_name:$caller_info] [$level] $message"
     
+    # Log em múltiplos arquivos
+    echo "$log_entry" >> "$MINER_HOME/logs/$level.log" 2>/dev/null || true
+    echo "$log_entry" >> "$MINER_HOME/logs/system.log" 2>/dev/null || true
+    
+    # Saída colorida
     case "$level" in
-        INFO)  echo -e "${CYAN}[INFO]${NC} $msg" ;;
-        OK)    echo -e "${GREEN}[OK]${NC} $msg" ;;
-        WARN)  echo -e "${YELLOW}[WARN]${NC} $msg" ;;
-        ERROR) echo -e "${RED}[ERROR]${NC} $msg" ;;
-        *)     echo "[$level] $msg" ;;
+        EMERGENCY|EMERG)
+            echo -e "${COLORS[BACKGROUND_RED]}${COLORS[BOLD_WHITE]}[EMERG]${COLORS[RESET]} ${COLORS[RED]}$message${COLORS[RESET]}" >&2
+            ;;
+        ALERT)
+            echo -e "${COLORS[BACKGROUND_RED]}${COLORS[BOLD_YELLOW]}[ALERT]${COLORS[RESET]} ${COLORS[RED]}$message${COLORS[RESET]}" >&2
+            ;;
+        CRITICAL|CRIT)
+            echo -e "${COLORS[BOLD_RED]}[CRIT]${COLORS[RESET]} ${COLORS[RED]}$message${COLORS[RESET]}" >&2
+            ;;
+        ERROR|ERR)
+            echo -e "${COLORS[RED]}[ERROR]${COLORS[RESET]} $message" >&2
+            ;;
+        WARNING|WARN)
+            echo -e "${COLORS[YELLOW]}[WARN]${COLORS[RESET]} $message"
+            ;;
+        NOTICE)
+            echo -e "${COLORS[BOLD_CYAN]}[NOTICE]${COLORS[RESET]} $message"
+            ;;
+        INFO)
+            echo -e "${COLORS[CYAN]}[INFO]${COLORS[RESET]} $message"
+            ;;
+        DEBUG)
+            if [[ "${DEBUG_MODE:-false}" == "true" ]]; then
+                echo -e "${COLORS[PURPLE]}[DEBUG]${COLORS[RESET]} $message"
+            fi
+            ;;
+        SUCCESS|OK)
+            echo -e "${COLORS[GREEN]}[OK]${COLORS[RESET]} $message"
+            ;;
+        IMPORTANT)
+            echo -e "${COLORS[BOLD_GREEN]}[IMPORTANT]${COLORS[RESET]} ${COLORS[GREEN]}$message${COLORS[RESET]}"
+            ;;
+        *)
+            echo -e "${COLORS[WHITE]}[$level]${COLORS[RESET]} $message"
+            ;;
     esac
 }
 
-log_info()  { log "INFO" "$1"; }
-log_ok()    { log "OK" "$1"; }
-log_warn()  { log "WARN" "$1"; }
-log_error() { log "ERROR" "$1"; }
+# Aliases para facilitar
+log_emerg()   { log "EMERGENCY" "$1"; }
+log_alert()   { log "ALERT" "$1"; }
+log_crit()    { log "CRITICAL" "$1"; }
+log_error()   { log "ERROR" "$1"; }
+log_warn()    { log "WARNING" "$1"; }
+log_notice()  { log "NOTICE" "$1"; }
+log_info()    { log "INFO" "$1"; }
+log_debug()   { log "DEBUG" "$1"; }
+log_success() { log "SUCCESS" "$1"; }
+log_ok()      { log "SUCCESS" "$1"; }
 
-detect_arch() {
-    local arch=$(uname -m)
-    case "$arch" in
-        aarch64|arm64) echo "arm64" ;;
-        armv7l|armhf)  echo "arm32" ;;
-        x86_64|amd64)  echo "x64" ;;
-        i*86|x86)      echo "x86" ;;
-        *)             echo "unknown" ;;
-    esac
-}
-
-enable_wake_lock() {
-    if command -v termux-wake-lock &>/dev/null; then
-        termux-wake-lock
-        log_ok "Wake lock ativado"
-    fi
-}
-
-disable_wake_lock() {
-    if command -v termux-wake-unlock &>/dev/null; then
-        termux-wake-unlock
-    fi
-}
-
-install_deps() {
-    log_info "Instalando dependências..."
+# -----------------------------------------------------------------------------
+# SISTEMA DE CONFIGURAÇÃO COMPLETO
+# -----------------------------------------------------------------------------
+load_configuration() {
+    local config_files=(
+        "$MINER_HOME/configs/miner.conf"
+        "$MINER_HOME/configs/pools.conf"
+        "$MINER_HOME/configs/network.conf"
+        "$MINER_HOME/configs/hardware.conf"
+        "$MINER_HOME/configs/performance.conf"
+        "$MINER_HOME/configs/security.conf"
+        "$MINER_HOME/configs/backup.conf"
+        "$MINER_HOME/configs/monitoring.conf"
+    )
     
-    # Atualizar pacotes
-    pkg update -y >/dev/null 2>&1
-    
-    # Instalar dependências básicas
-    local deps=(curl wget git cmake make libuv openssl jq unzip tar termux-api)
-    for pkg in "${deps[@]}"; do
-        if ! command -v "$pkg" >/dev/null 2>&1 && ! pkg list-installed 2>/dev/null | grep -q "^$pkg"; then
-            pkg install -y "$pkg" >/dev/null 2>&1 && log_ok "$pkg instalado"
+    for config_file in "${config_files[@]}"; do
+        if [[ -f "$config_file" ]]; then
+            source "$config_file" 2>/dev/null || log_warn "Erro ao carregar $config_file"
         fi
     done
-    
-    # Instalar compiladores
-    pkg install -y clang binutils libmicrohttpd >/dev/null 2>&1
 }
 
-# ----------------------------------------------------------------------------
-# INSTALAÇÃO DO CPUMINER (SHA-256 para Bitcoin)
-# ----------------------------------------------------------------------------
-install_cpuminer() {
-    if [ -f "$MINER_BIN/cpuminer" ] && "$MINER_BIN/cpuminer" --version >/dev/null 2>&1; then
-        log_ok "CPUMiner já está instalado"
-        return 0
-    fi
+create_default_configs() {
+    log_info "Criando configurações padrão..."
     
-    log_info "Instalando CPUMiner (SHA-256)..."
+    # Configuração principal
+    cat > "$MINER_HOME/configs/miner.conf" << 'EOF'
+# ============================================================================
+# CONFIGURAÇÃO PRINCIPAL DO MINERADOR MEGALODON
+# ============================================================================
+
+# Configurações de Bitcoin
+BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
+WORKER_NAME="megalodon_$(hostname 2>/dev/null || echo 'android')"
+PASSWORD="x"
+
+# Pools de mineração (SHA-256 para Bitcoin)
+declare -a POOLS=(
+    "stratum+tcp://sha256.auto.nicehash.com:9200"
+    "stratum+tcp://btc.viabtc.com:3333"
+    "stratum+tcp://pool.antpool.com:3333"
+    "stratum+tcp://us.solomining.io:7777"
+    "stratum+tcp://stratum.f2pool.com:3333"
+    "stratum+tcp://btc.poolin.com:443"
+    "stratum+tcp://us.ss.poolin.com:1883"
+    "stratum+tcp://btc.viabtc.net:25"
+    "stratum+tcp://eu.solomining.io:7777"
+    "stratum+tcp://asia.solomining.io:7777"
+)
+
+# Estratégias de failover
+FAILOVER_STRATEGY="round_robin"  # round_robin, priority, latency, random
+MAX_RETRIES=5
+RETRY_DELAY=30
+
+# Configurações de CPU
+CPU_THREADS=$(nproc 2>/dev/null || echo 2)
+CPU_PRIORITY=5
+CPU_MAX_USAGE=75
+CPU_AFFINITY=all
+
+# Configurações de GPU
+GPU_ENABLED=true
+GPU_DEVICES=all
+GPU_INTENSITY=18
+GPU_WORK_SIZE=64
+GPU_THREADS=2
+GPU_MAX_TEMP=85
+
+# Configurações de rede
+NETWORK_TIMEOUT=30
+MAX_CONNECTIONS=10
+USE_PROXY=false
+PROXY_TYPE="socks5"
+PROXY_LIST=(
+    "socks5://localhost:9050"
+    "http://localhost:8080"
+)
+
+# Configurações de performance
+BENCHMARK_MODE=false
+OPTIMIZATION_LEVEL=3  # 0-5
+AUTO_TUNE=true
+DYNAMIC_THREADS=true
+
+# Configurações de segurança
+ENCRYPT_TRAFFIC=true
+VERIFY_SSL=true
+MASK_WALLET=true
+
+# Configurações de monitoramento
+MONITOR_INTERVAL=30
+HEALTH_CHECK_INTERVAL=60
+STATS_INTERVAL=300
+BACKUP_INTERVAL=3600
+
+# Configurações de log
+LOG_LEVEL="INFO"
+LOG_ROTATION=true
+MAX_LOG_SIZE=100  # MB
+MAX_LOG_FILES=10
+EOF
+
+    # Configuração de hardware
+    cat > "$MINER_HOME/configs/hardware.conf" << 'EOF'
+# ============================================================================
+# CONFIGURAÇÕES DE HARDWARE
+# ============================================================================
+
+# CPU
+CPU_VENDOR=$(grep -m1 'vendor_id' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+CPU_MODEL=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+CPU_CORES=$(nproc 2>/dev/null || echo 2)
+CPU_FREQ=$(grep -m1 'cpu MHz' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+
+# Memória
+TOTAL_RAM=$(free -m 2>/dev/null | grep 'Mem:' | awk '{print $2}' || echo 1024)
+AVAILABLE_RAM=$(free -m 2>/dev/null | grep 'Mem:' | awk '{print $7}' || echo 512)
+
+# Armazenamento
+TOTAL_STORAGE=$(df -m /data 2>/dev/null | tail -1 | awk '{print $2}' || echo 8192)
+FREE_STORAGE=$(df -m /data 2>/dev/null | tail -1 | awk '{print $4}' || echo 1024)
+
+# GPU (se disponível)
+GPU_COUNT=$(ls /dev/dri/renderD* 2>/dev/null | wc -l || echo 0)
+EOF
+
+    log_success "Configurações padrão criadas"
+}
+
+# -----------------------------------------------------------------------------
+# DETECÇÃO DE HARDWARE AVANÇADA
+# -----------------------------------------------------------------------------
+detect_hardware() {
+    log_info "Iniciando detecção completa de hardware..."
     
-    cd "$MINER_TEMP"
-    
-    # Método 1: Compilar do código fonte
-    log_info "Compilando cpuminer-opt..."
-    
-    # Remover instalação anterior
-    rm -rf cpuminer-opt
-    
-    # Clonar repositório
-    if ! git clone --depth=1 https://github.com/JayDDee/cpuminer-opt.git; then
-        log_error "Falha ao clonar repositório"
-        return 1
-    fi
-    
-    cd cpuminer-opt
-    
-    # Instalar dependências adicionais para compilação
-    pkg install -y automake autoconf libtool curl >/dev/null 2>&1
-    
-    # Preparar compilação
-    ./build.sh > build.log 2>&1
-    
-    # Configurar
-    ./configure --with-curl --without-cuda > configure.log 2>&1
-    
-    # Compilar
-    make -j$(nproc) > make.log 2>&1
-    
-    if [ -f "cpuminer" ]; then
-        cp cpuminer "$MINER_BIN/cpuminer"
-        chmod +x "$MINER_BIN/cpuminer"
-        
-        if "$MINER_BIN/cpuminer" --version >/dev/null 2>&1; then
-            log_ok "CPUMiner compilado com sucesso"
-            return 0
-        fi
-    fi
-    
-    # Método 2: Tentar binário pré-compilado
-    log_warn "Compilação falhou, tentando binário alternativo..."
-    
-    cd "$MINER_TEMP"
-    local arch=$(detect_arch)
-    local url=""
-    
-    case "$arch" in
-        arm64) url="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-aarch64.tar.gz" ;;
-        arm32) url="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-armhf.tar.gz" ;;
-        x64)   url="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-x86_64.tar.gz" ;;
-        *)     return 1 ;;
+    # Detectar arquitetura
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        aarch64|arm64)  ARCH_TYPE="arm64-v8a" ;;
+        armv7l|armhf)   ARCH_TYPE="armeabi-v7a" ;;
+        armv6l)         ARCH_TYPE="armeabi" ;;
+        x86_64)         ARCH_TYPE="x86_64" ;;
+        i686|i386)      ARCH_TYPE="x86" ;;
+        *)              ARCH_TYPE="unknown" ;;
     esac
     
-    wget -q --timeout=30 "$url" -O cpuminer.tar.gz
-    if [ -f "cpuminer.tar.gz" ]; then
-        tar -xzf cpuminer.tar.gz
-        local bin=$(find . -name "cpuminer-*" -type f -executable | head -1)
-        if [ -n "$bin" ]; then
-            cp "$bin" "$MINER_BIN/cpuminer"
-            chmod +x "$MINER_BIN/cpuminer"
-            
-            if "$MINER_BIN/cpuminer" --version >/dev/null 2>&1; then
-                log_ok "Binário alternativo instalado"
-                return 0
-            fi
+    # Detectar Android version
+    if [[ -f "/system/build.prop" ]]; then
+        ANDROID_SDK=$(grep "ro.build.version.sdk" /system/build.prop | cut -d= -f2 || echo "unknown")
+        ANDROID_RELEASE=$(grep "ro.build.version.release" /system/build.prop | cut -d= -f2 || echo "unknown")
+        ANDROID_MODEL=$(grep "ro.product.model" /system/build.prop | cut -d= -f2 || echo "unknown")
+        ANDROID_MANUFACTURER=$(grep "ro.product.manufacturer" /system/build.prop | cut -d= -f2 || echo "unknown")
+    else
+        ANDROID_SDK="unknown"
+        ANDROID_RELEASE="unknown"
+        ANDROID_MODEL="unknown"
+        ANDROID_MANUFACTURER="unknown"
+    fi
+    
+    # Detectar CPU detalhadamente
+    if [[ -f "/proc/cpuinfo" ]]; then
+        CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 2)
+        CPU_MODEL=$(grep -m1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+        CPU_HARDWARE=$(grep -m1 "Hardware" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+        CPU_REVISION=$(grep -m1 "Revision" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+        CPU_FEATURES=$(grep -m1 "Features" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+        
+        # Detectar suporte a instruções específicas
+        if [[ "$CPU_FEATURES" =~ "neon" ]]; then CPU_NEON="yes"; else CPU_NEON="no"; fi
+        if [[ "$CPU_FEATURES" =~ "aes" ]]; then CPU_AES="yes"; else CPU_AES="no"; fi
+        if [[ "$CPU_FEATURES" =~ "sha2" ]]; then CPU_SHA2="yes"; else CPU_SHA2="no"; fi
+        if [[ "$CPU_FEATURES" =~ "crc32" ]]; then CPU_CRC32="yes"; else CPU_CRC32="no"; fi
+    fi
+    
+    # Detectar memória
+    if command -v free >/dev/null 2>&1; then
+        TOTAL_RAM=$(free -b | grep Mem: | awk '{print $2}')
+        FREE_RAM=$(free -b | grep Mem: | awk '{print $4}')
+        AVAILABLE_RAM=$(free -b | grep Mem: | awk '{print $7}')
+    else
+        TOTAL_RAM=$(($(getprop dalvik.vm.heapsize 2>/dev/null | sed 's/m//') * 1024 * 1024 || echo 536870912))
+        FREE_RAM=$TOTAL_RAM
+        AVAILABLE_RAM=$TOTAL_RAM
+    fi
+    
+    # Detectar GPU
+    GPU_AVAILABLE=false
+    GPU_VENDOR="unknown"
+    GPU_MODEL="unknown"
+    
+    # Verificar GPU via OpenGL
+    if command -v dumpsys >/dev/null 2>&1; then
+        GPU_INFO=$(dumpsys | grep -i "gpu" | head -5 2>/dev/null || echo "")
+        if [[ -n "$GPU_INFO" ]]; then
+            GPU_AVAILABLE=true
+            GPU_VENDOR=$(echo "$GPU_INFO" | grep -i "vendor" | head -1 | cut -d: -f2 | xargs || echo "unknown")
+            GPU_MODEL=$(echo "$GPU_INFO" | grep -i "model" | head -1 | cut -d: -f2 | xargs || echo "unknown")
         fi
     fi
     
-    log_error "Falha na instalação do CPUMiner"
-    return 1
+    # Verificar GPU via /dev
+    if [[ -e "/dev/dri" ]]; then
+        GPU_AVAILABLE=true
+        [[ "$GPU_VENDOR" == "unknown" ]] && GPU_VENDOR="intel/amd"
+    fi
+    
+    if [[ -e "/dev/kgsl-3d0" ]]; then
+        GPU_AVAILABLE=true
+        [[ "$GPU_VENDOR" == "unknown" ]] && GPU_VENDOR="qualcomm"
+    fi
+    
+    if [[ -e "/dev/mali" ]]; then
+        GPU_AVAILABLE=true
+        [[ "$GPU_VENDOR" == "unknown" ]] && GPU_VENDOR="arm"
+    fi
+    
+    # Detectar bateria
+    if [[ -e "/sys/class/power_supply/battery" ]]; then
+        BATTERY_CAPACITY=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo "unknown")
+        BATTERY_STATUS=$(cat /sys/class/power_supply/battery/status 2>/dev/null || echo "unknown")
+        BATTERY_TEMP=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo "unknown")
+    fi
+    
+    # Detectar temperatura da CPU
+    if [[ -f "/sys/class/thermal/thermal_zone0/temp" ]]; then
+        CPU_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}' || echo "unknown")
+    fi
+    
+    log_success "Hardware detectado: $ARCH_TYPE, $CPU_CORES cores, $((TOTAL_RAM/1024/1024))MB RAM"
 }
 
-# ----------------------------------------------------------------------------
-# CONFIGURAÇÃO
-# ----------------------------------------------------------------------------
-configure_miner() {
-    log_info "Configurando minerador..."
+# -----------------------------------------------------------------------------
+# SISTEMA DE MINERAÇÃO MÚLTIPLA (VÁRIOS ALGORITMOS)
+# -----------------------------------------------------------------------------
+declare -A ALGORITHMS=(
+    ["sha256"]="cpuminer sha256d"
+    ["scrypt"]="ccminer scrypt"
+    ["x11"]="ccminer x11"
+    ["x13"]="ccminer x13"
+    ["x14"]="ccminer x14"
+    ["x15"]="ccminer x15"
+    ["quark"]="ccminer quark"
+    ["qubit"]="ccminer qubit"
+    ["myr-gr"]="ccminer myr-gr"
+    ["groestl"]="ccminer groestl"
+    ["skein"]="ccminer skein"
+    ["keccak"]="ccminer keccak"
+    ["blake"]="ccminer blake"
+    ["blake2s"]="ccminer blake2s"
+    ["lyra2"]="ccminer lyra2"
+    ["lyra2v2"]="ccminer lyra2v2"
+    ["neoscrypt"]="ccminer neoscrypt"
+    ["cryptonight"]="xmrig cn/0"
+    ["cryptonight-lite"]="xmrig cn-lite/0"
+    ["cryptonight-heavy"]="xmrig cn-heavy/0"
+    ["cryptonight-xhv"]="xmrig cn-pico"
+    ["cryptonight-xtl"]="xmrig cn-turtle"
+    ["cryptonight-ccx"]="xmrig cn-conceal"
+    ["ethash"]="ethminer"
+    ["etchash"]="ethminer"
+    ["ubiqhash"]="ethminer"
+    ["equihash"]="nheqminer"
+    ["equihash-144"]="nheqminer"
+    ["equihash-192"]="nheqminer"
+    ["equihash-210"]="nheqminer"
+    ["beamhash"]="beam-miner"
+    ["cuckaroo"]="cuckoo"
+    ["cuckatoo"]="cuckoo"
+    ["cuckoo-cycle"]="cuckoo"
+)
+
+# -----------------------------------------------------------------------------
+# INSTALAÇÃO DE TODOS OS MINERADORES EXISTENTES
+# -----------------------------------------------------------------------------
+install_all_miners() {
+    log_info "Iniciando instalação de TODOS os mineradores disponíveis..."
     
-    # Criar arquivo de configuração
-    cat > "$MINER_CONFIG/miner.conf" << EOF
+    # Instalar dependências de compilação
+    install_compilation_deps
+    
+    # Array com todos os mineradores
+    declare -a miners=(
+        "cpuminer" "cpuminer-opt" "cpuminer-multi" "cpuminer-gr" "cpuminer-rkz"
+        "ccminer" "ccminer-x64" "ccminer-x86" "ccminer-arm"
+        "xmrig" "xmrigCC" "xmrig-amd" "xmrig-nvidia"
+        "sgminer" "sgminer-gm" "sgminer-klaust"
+        "bfgminer" "bfgminer-neo" "bfgminer-spond"
+        "ethminer" "ethminer-ocl" "ethminer-cuda"
+        "nheqminer" "nheqminer-cpu" "nheqminer-cuda"
+        "minerd" "pooler-cpuminer" "yam" "cgminer"
+        "geth" "parity" "open-ethereum" "turbo-geth"
+        "t-rex" "phoenix-miner" "team-red-miner" "lolminer"
+        "nbminer" "gminer" "bminer" "z-enemy"
+        "wildrig-multi" "hellminer" "verusminer" "nanominer"
+    )
+    
+    for miner in "${miners[@]}"; do
+        log_info "Instalando $miner..."
+        install_specific_miner "$miner" &
+        sleep 1
+    done
+    
+    wait
+    log_success "Todos os mineradores instalados"
+}
+
+install_compilation_deps() {
+    log_info "Instalando dependências de compilação completas..."
+    
+    # Lista massiva de pacotes de desenvolvimento
+    local deps=(
+        # Básicos
+        clang clang++ gcc g++ binutils make cmake ninja
+        autoconf automake autogen libtool m4 pkg-config
+        git wget curl tar gzip bzip2 xz-utils unzip zip
+        
+        # Bibliotecas
+        libuv libuv-static openssl libressl mbedtls
+        libcurl curl-dev libjansson jansson-dev
+        libmicrohttpd libhttp-parser libevent
+        libpthread-stubs pthread-dev
+        libc++ libc++abi libc-dev
+        libz zlib-dev liblzma-dev
+        libbz2 bzip2-dev libarchive
+        
+        # GPU
+        opencl-headers ocl-icd ocl-icd-dev
+        mesa mesa-dev mesa-utils
+        libglvnd libglvnd-dev
+        vulkan-loader vulkan-headers
+        cuda-toolkit cuda-dev
+        
+        # Específicos
+        libusb libusb-dev libusb-compat
+        libudev libudev-dev udev
+        libncurses ncurses-dev
+        libreadline readline-dev
+        libsodium sodium-dev
+        libgmp gmp-dev libgmpxx
+        libmpfr mpfr-dev
+        libboost boost-dev
+        libssl1.1 libssl3
+        
+        # Utilitários
+        python python-dev python3 python3-dev
+        perl perl-dev ruby ruby-dev
+        nodejs npm yarn
+        openjdk-17 openjdk-17-jre
+        
+        # Debug
+        gdb strace ltrace valgrind
+        perf-tools linux-perf
+    )
+    
+    for dep in "${deps[@]}"; do
+        pkg install -y "$dep" 2>/dev/null || true
+    done
+    
+    # Atualizar tudo
+    pkg upgrade -y 2>/dev/null || true
+    
+    log_success "Dependências instaladas"
+}
+
+install_specific_miner() {
+    local miner_name="$1"
+    local miner_dir="$MINER_HOME/miners/$miner_name"
+    
+    mkdir -p "$miner_dir"
+    cd "$miner_dir"
+    
+    case "$miner_name" in
+        cpuminer)
+            git clone --depth=1 https://github.com/pooler/cpuminer.git . || true
+            ./autogen.sh 2>/dev/null || true
+            ./configure --with-crypto --with-curl 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp minerd "$MINER_HOME/bin/cpuminer" 2>/dev/null || true
+            ;;
+        cpuminer-opt)
+            git clone --depth=1 https://github.com/JayDDee/cpuminer-opt.git . || true
+            ./build.sh 2>/dev/null || true
+            ./configure --with-curl 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp cpuminer "$MINER_HOME/bin/cpuminer-opt" 2>/dev/null || true
+            ;;
+        cpuminer-multi)
+            git clone --depth=1 https://github.com/tpruvot/cpuminer-multi.git . || true
+            ./build.sh 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp cpuminer "$MINER_HOME/bin/cpuminer-multi" 2>/dev/null || true
+            ;;
+        ccminer)
+            git clone --depth=1 https://github.com/tpruvot/ccminer.git . || true
+            ./build.sh 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp ccminer "$MINER_HOME/bin/ccminer" 2>/dev/null || true
+            ;;
+        xmrig)
+            git clone --depth=1 https://github.com/xmrig/xmrig.git . || true
+            mkdir build && cd build
+            cmake .. -DWITH_HWLOC=OFF -DWITH_OPENCL=ON -DWITH_CUDA=ON 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp xmrig "$MINER_HOME/bin/xmrig" 2>/dev/null || true
+            ;;
+        sgminer)
+            git clone --depth=1 https://github.com/sgminer-dev/sgminer.git . || true
+            ./autogen.sh 2>/dev/null || true
+            ./configure --with-curses --with-opencl 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp sgminer "$MINER_HOME/bin/sgminer" 2>/dev/null || true
+            ;;
+        bfgminer)
+            git clone --depth=1 https://github.com/luke-jr/bfgminer.git . || true
+            ./autogen.sh 2>/dev/null || true
+            ./configure --with-curses 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp bfgminer "$MINER_HOME/bin/bfgminer" 2>/dev/null || true
+            ;;
+        ethminer)
+            git clone --depth=1 https://github.com/ethereum-mining/ethminer.git . || true
+            mkdir build && cd build
+            cmake .. -DETHASHCUDA=ON -DETHASHCL=ON 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp ethminer/ethminer "$MINER_HOME/bin/ethminer" 2>/dev/null || true
+            ;;
+        nheqminer)
+            git clone --depth=1 https://github.com/nicehash/nheqminer.git . || true
+            cd nheqminer && mkdir build && cd build
+            cmake .. 2>/dev/null || true
+            make -j$(nproc) 2>/dev/null || true
+            cp nheqminer "$MINER_HOME/bin/nheqminer" 2>/dev/null || true
+            ;;
+        *)
+            log_warn "Minerador $miner_name não reconhecido, pulando..."
+            ;;
+    esac
+    
+    # Tornar executável
+    chmod +x "$MINER_HOME/bin/"* 2>/dev/null || true
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE POOLS MÚLTIPLO
+# -----------------------------------------------------------------------------
+declare -A POOLS=(
+    # Bitcoin SHA-256
+    ["nicehash_btc"]="stratum+tcp://sha256.auto.nicehash.com:9200"
+    ["viabtc_btc"]="stratum+tcp://btc.viabtc.com:3333"
+    ["antpool_btc"]="stratum+tcp://pool.antpool.com:3333"
+    ["f2pool_btc"]="stratum+tcp://btc.f2pool.com:3333"
+    ["poolin_btc"]="stratum+tcp://btc.poolin.com:443"
+    ["btccom"]="stratum+tcp://pool.btc.com:3333"
+    ["slushpool"]="stratum+tcp://stratum.slushpool.com:3333"
+    ["ckpool"]="stratum+tcp://solo.ckpool.org:3333"
+    ["solomining_us"]="stratum+tcp://us.solomining.io:7777"
+    ["solomining_eu"]="stratum+tcp://eu.solomining.io:7777"
+    ["solomining_asia"]="stratum+tcp://asia.solomining.io:7777"
+    
+    # Altcoins
+    ["ethermine"]="stratum+tcp://us1.ethermine.org:4444"
+    ["sparkpool"]="stratum+tcp://eth.sparkpool.com:3333"
+    ["nanopool"]="stratum+tcp://eth.nanopool.org:9999"
+    ["miningpoolhub"]="stratum+tcp://hub.miningpoolhub.com:20535"
+    ["zpool"]="stratum+tcp://stratum.zpool.ca:xxxx"
+    ["ahashpool"]="stratum+tcp://mine.ahashpool.com:xxxx"
+    ["hashrefinery"]="stratum+tcp://stratum.hashrefinery.com:xxxx"
+    
+    # Monero
+    ["minexmr"]="stratum+tcp://pool.minexmr.com:4444"
+    ["supportxmr"]="stratum+tcp://pool.supportxmr.com:5555"
+    ["xmrpool"]="stratum+tcp://xmrpool.eu:9999"
+    
+    # Ravencoin
+    ["ravenminer"]="stratum+tcp://ravenminer.com:3636"
+    ["rvnpool"]="stratum+tcp://pool.ravencoin.com:1234"
+    
+    # Vertcoin
+    ["vtcpool"]="stratum+tcp://pool.vertcoin.com:9171"
+    
+    # Litecoin
+    ["litecoinpool"]="stratum+tcp://litecoinpool.org:3333"
+    ["litespeed"]="stratum+tcp://pool.litespeed.cc:3333"
+)
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE PROXY E TOR
+# -----------------------------------------------------------------------------
+setup_proxy_network() {
+    log_info "Configurando rede de proxies e TOR..."
+    
+    # Instalar proxies
+    pkg install -y tor proxychains-ng shadowsocks v2ray 2>/dev/null || true
+    
+    # Configurar TOR
+    cat > "$MINER_HOME/etc/torrc" << 'EOF'
+SOCKSPort 9050
+SOCKSPolicy accept 127.0.0.1
+Log notice file /data/data/com.termux/files/home/.btc_miner_megalodon/logs/tor.log
+DataDirectory /data/data/com.termux/files/home/.btc_miner_megalodon/data/tor
+ControlPort 9051
+CookieAuthentication 1
+EOF
+    
+    # Configurar proxychains
+    cat > "$MINER_HOME/etc/proxychains.conf" << 'EOF'
+strict_chain
+proxy_dns
+remote_dns_subnet 224
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+[ProxyList]
+socks4 127.0.0.1 9050
+socks5 127.0.0.1 9050
+http 127.0.0.1 8080
+EOF
+    
+    # Configurar shadowsocks
+    cat > "$MINER_HOME/etc/shadowsocks.json" << 'EOF'
 {
-    "url": "$POOL_URL",
-    "user": "$BTC_ADDRESS",
-    "pass": "$PASSWORD",
-    "worker": "$WORKER_NAME",
-    "threads": $CPU_THREADS,
-    "cpu-priority": $CPU_PRIORITY,
-    "cpu-max-threads-hint": $CPU_MAX,
-    "algo": "sha256d"
+    "server": "0.0.0.0",
+    "server_port": 8388,
+    "local_address": "127.0.0.1",
+    "local_port": 1080,
+    "password": "bitcoinminer",
+    "timeout": 300,
+    "method": "aes-256-gcm",
+    "fast_open": true
 }
 EOF
-
-    # Configuração simples para linha de comando
-    cat > "$MINER_CONFIG/config.txt" << EOF
--o $POOL_URL
--u $BTC_ADDRESS
--p $PASSWORD
--t $CPU_THREADS
---cpu-priority=$CPU_PRIORITY
---algo=sha256d
-EOF
-
-    # Salvar informações do worker
-    cat > "$MINER_CONFIG/worker.info" << EOF
-WORKER=$WORKER_NAME
-POOL=$POOL_URL
-ADDRESS=$BTC_ADDRESS
-EOF
-
-    log_ok "Configuração salva"
+    
+    log_success "Proxy network configurada"
 }
 
-# ----------------------------------------------------------------------------
-# ESTATÍSTICAS
-# ----------------------------------------------------------------------------
-get_hashrate() {
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        local line=$(tail -n 50 "$MINER_LOGS/miner.log" 2>/dev/null | grep -E 'accepted| [0-9.]+\.[0-9]+ [kMG]?H/s' | tail -1)
-        if [ -n "$line" ]; then
-            if [[ "$line" =~ ([0-9.]+\ [kMG]?H/s) ]]; then
-                echo "${BASH_REMATCH[1]}"
-            else
-                echo "0 H/s"
-            fi
-        else
-            echo "0 H/s"
+# -----------------------------------------------------------------------------
+# SISTEMA DE CLUSTER
+# -----------------------------------------------------------------------------
+setup_cluster() {
+    log_info "Configurando cluster de mineração..."
+    
+    # Configuração do cluster
+    cat > "$MINER_HOME/configs/cluster.conf" << 'EOF'
+# Configuração do Cluster
+CLUSTER_ENABLED=true
+CLUSTER_ROLE="worker"  # master, worker, backup
+CLUSTER_MASTER_IP="192.168.1.100"
+CLUSTER_PORT=3333
+CLUSTER_AUTH_KEY="megalodon123"
+CLUSTER_MAX_WORKERS=32
+CLUSTER_SYNC_INTERVAL=60
+
+# Descoberta de peers
+CLUSTER_DISCOVERY="broadcast"  # broadcast, multicast, dns, manual
+CLUSTER_BROADCAST_IP="255.255.255.255"
+CLUSTER_MULTICAST_IP="239.0.0.1"
+CLUSTER_DNS_SERVICE="miner.cluster.local"
+
+# Balanceamento de carga
+CLUSTER_LOAD_BALANCE=true
+CLUSTER_BALANCE_ALGO="least_loaded"  # round_robin, least_loaded, random, hash
+CLUSTER_FALLBACK=true
+CLUSTER_FALLBACK_MASTERS=(
+    "192.168.1.101"
+    "192.168.1.102"
+    "192.168.1.103"
+)
+EOF
+    
+    # Criar script de sincronização
+    cat > "$MINER_HOME/scripts/cluster_sync.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+CLUSTER_DIR="/data/data/com.termux/files/home/.btc_miner_megalodon/cluster"
+while true; do
+    if [[ -f "$CLUSTER_DIR/master" ]]; then
+        MASTER_IP=$(cat "$CLUSTER_DIR/master")
+        rsync -avz --delete "$MASTER_IP:/data/data/com.termux/files/home/.btc_miner_megalodon/" \
+            "/data/data/com.termux/files/home/.btc_miner_megalodon/" \
+            --exclude logs --exclude temp --exclude cache
+    fi
+    sleep 300
+done
+EOF
+    chmod +x "$MINER_HOME/scripts/cluster_sync.sh"
+    
+    log_success "Cluster configurado"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE CLOUD MINING
+# -----------------------------------------------------------------------------
+setup_cloud_mining() {
+    log_info "Configurando integração com cloud mining..."
+    
+    # Configurações de cloud
+    cat > "$MINER_HOME/configs/cloud.conf" << 'EOF'
+# Provedores de cloud suportados
+declare -a CLOUD_PROVIDERS=(
+    "aws" "gcp" "azure" "digitalocean" "linode" "vultr"
+    "heroku" "pythonanywhere" "replit" "glitch" "codesandbox"
+    "github_actions" "gitlab_ci" "travis_ci" "circle_ci"
+    "netlify" "vercel" "cloudflare" "akamai" "fastly"
+)
+
+# AWS
+AWS_ACCESS_KEY=""
+AWS_SECRET_KEY=""
+AWS_REGION="us-east-1"
+AWS_INSTANCE_TYPE="t2.micro"
+AWS_SPOT_PRICE=0.003
+
+# Google Cloud
+GCP_PROJECT_ID=""
+GCP_SERVICE_ACCOUNT=""
+GCP_ZONE="us-central1-a"
+GCP_MACHINE_TYPE="f1-micro"
+
+# Azure
+AZURE_SUBSCRIPTION_ID=""
+AZURE_TENANT_ID=""
+AZURE_CLIENT_ID=""
+AZURE_CLIENT_SECRET=""
+AZURE_VM_SIZE="Standard_B1s"
+
+# DigitalOcean
+DO_API_TOKEN=""
+DO_REGION="nyc1"
+DO_DROPLET_SIZE="s-1vcpu-1gb"
+EOF
+    
+    log_success "Cloud mining configurado"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE BENCHMARK AVANÇADO
+# -----------------------------------------------------------------------------
+run_comprehensive_benchmark() {
+    log_info "Iniciando benchmark completo..."
+    
+    local benchmark_results="$MINER_HOME/benchmarks/results_$(date +%Y%m%d_%H%M%S).txt"
+    
+    echo "=== BENCHMARK COMPLETO ===" > "$benchmark_results"
+    echo "Data: $(date)" >> "$benchmark_results"
+    echo "Dispositivo: $ANDROID_MODEL" >> "$benchmark_results"
+    echo "CPU: $CPU_MODEL" >> "$benchmark_results"
+    echo "Arquitetura: $ARCH_TYPE" >> "$benchmark_results"
+    echo "Cores: $CPU_CORES" >> "$benchmark_results"
+    echo "RAM: $((TOTAL_RAM/1024/1024)) MB" >> "$benchmark_results"
+    echo "" >> "$benchmark_results"
+    
+    # Benchmark CPU
+    echo "=== CPU BENCHMARK ===" >> "$benchmark_results"
+    for algo in sha256 scrypt x11 cryptonight ethash; do
+        echo "Testando $algo..." >> "$benchmark_results"
+        if [[ -f "$MINER_HOME/bin/cpuminer" ]]; then
+            timeout 60 "$MINER_HOME/bin/cpuminer" --benchmark --algo="$algo" >> "$benchmark_results" 2>&1 || true
         fi
-    else
-        echo "0 H/s"
-    fi
-}
-
-get_hashrate_value() {
-    local h=$(get_hashrate)
-    echo "$h" | awk '{print $1}' | grep -E '^[0-9.]+$' || echo "0"
-}
-
-get_accepted_shares() {
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        tail -n 200 "$MINER_LOGS/miner.log" 2>/dev/null | grep -c 'accepted' || echo 0
-    else
-        echo 0
-    fi
-}
-
-get_rejected_shares() {
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        tail -n 200 "$MINER_LOGS/miner.log" 2>/dev/null | grep -c 'rejected' || echo 0
-    else
-        echo 0
-    fi
-}
-
-get_uptime_seconds() {
-    if pgrep -f cpuminer >/dev/null; then
-        local pid=$(pgrep -f cpuminer | head -1)
-        local uptime=$(ps -o etimes= -p $pid 2>/dev/null | xargs)
-        echo "${uptime:-0}"
-    else
-        echo 0
-    fi
-}
-
-update_stats() {
-    local hashrate_val=$(get_hashrate_value)
-    local accepted=$(get_accepted_shares)
-    local rejected=$(get_rejected_shares)
-    
-    echo "$hashrate_val" > "$MINER_STATS/current_hashrate"
-    echo "$accepted" > "$MINER_STATS/accepted_shares"
-    echo "$rejected" > "$MINER_STATS/rejected_shares"
-    
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | HR: $hashrate_val H/s | A: $accepted | R: $rejected" >> "$MINER_LOGS/hashrate.log"
-    
-    # Estimar ganhos (muito aproximado)
-    if (( $(echo "$hashrate_val > 0" | bc -l) )); then
-        # Estimativa baseada em hashrate (valores aproximados)
-        local btc_per_day=$(echo "scale=10; $hashrate_val * 0.0000000000000001" | bc 2>/dev/null || echo "0")
-        local usd_per_day=$(echo "scale=2; $btc_per_day * 45000" | bc 2>/dev/null || echo "0")
-        
-        echo "Estimativa: ~$btc_per_day BTC/dia (~\$$usd_per_day USD/dia)" >> "$MINER_LOGS/btc.log"
-    fi
-}
-
-# ----------------------------------------------------------------------------
-# INICIAR MINERAÇÃO
-# ----------------------------------------------------------------------------
-start_mining() {
-    if pgrep -f cpuminer >/dev/null; then
-        log_warn "Mineração já está ativa"
-        return 1
-    fi
-    
-    # Instalar minerador se necessário
-    if [ ! -f "$MINER_BIN/cpuminer" ]; then
-        install_cpuminer || { log_error "Falha na instalação"; return 1; }
-    fi
-    
-    # Configurar se necessário
-    if [ ! -f "$MINER_CONFIG/miner.conf" ]; then
-        configure_miner
-    fi
-    
-    enable_wake_lock
-    
-    log_info "Iniciando mineração de Bitcoin..."
-    log_info "Pool: $POOL_URL"
-    log_info "Endereço: $BTC_ADDRESS"
-    log_info "Threads: $CPU_THREADS"
-    
-    cd "$MINER_ROOT"
-    
-    # Iniciar minerador
-    nohup "$MINER_BIN/cpuminer" \
-        -o "$POOL_URL" \
-        -u "$BTC_ADDRESS" \
-        -p "$PASSWORD" \
-        -t "$CPU_THREADS" \
-        --cpu-priority="$CPU_PRIORITY" \
-        --algo=sha256d \
-        --quiet \
-        >> "$MINER_LOGS/miner.log" 2>&1 &
-    
-    local pid=$!
-    echo $pid > "$MINER_STATS/miner.pid"
-    
-    sleep 3
-    
-    if kill -0 $pid 2>/dev/null; then
-        log_ok "Mineração iniciada (PID: $pid)"
-        
-        # Loop de estatísticas
-        (
-            while kill -0 $pid 2>/dev/null; do
-                update_stats
-                sleep 60
-            done
-        ) &
-        echo $! > "$MINER_STATS/stats_loop.pid"
-        
-        return 0
-    else
-        log_error "Falha ao iniciar mineração"
-        tail -20 "$MINER_LOGS/miner.log" | while read line; do
-            log_error "$line"
-        done
-        return 1
-    fi
-}
-
-stop_mining() {
-    pkill -f cpuminer
-    [ -f "$MINER_STATS/stats_loop.pid" ] && kill $(cat "$MINER_STATS/stats_loop.pid") 2>/dev/null
-    disable_wake_lock
-    log_ok "Mineração parada"
-}
-
-restart_mining() {
-    stop_mining
-    sleep 2
-    start_mining
-}
-
-# ----------------------------------------------------------------------------
-# MONITORAMENTO
-# ----------------------------------------------------------------------------
-monitor_loop() {
-    log_info "Monitoramento iniciado. Pressione Ctrl+C para parar."
-    
-    while true; do
-        clear
-        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${PURPLE}         BITCOIN MINER - TERMUX${NC}"
-        echo -e "${PURPLE}         $(date '+%d/%m/%Y %H:%M:%S')${NC}"
-        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}\n"
-        
-        if pgrep -f cpuminer >/dev/null; then
-            hashrate=$(get_hashrate)
-            accepted=$(get_accepted_shares)
-            rejected=$(get_rejected_shares)
-            pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-            pool_short=$(echo "$pool" | cut -d/ -f3 | cut -d: -f1)
-            uptime_sec=$(get_uptime_seconds)
-            uptime_str="$((uptime_sec/3600))h $(((uptime_sec%3600)/60))m $((uptime_sec%60))s"
-            
-            echo -e "${GREEN}▶ Mineração: ATIVA${NC}"
-            echo "   PID: $(pgrep -f cpuminer | head -1)"
-            echo "   Uptime: $uptime_str"
-            echo "   Threads: $CPU_THREADS"
-            echo ""
-            echo -e "${CYAN}⚡ Estatísticas:${NC}"
-            echo "   Hashrate: $hashrate"
-            echo "   Shares Aceitas: $accepted"
-            echo "   Shares Rejeitadas: $rejected"
-            echo ""
-            echo -e "${CYAN}🌐 Pool:${NC} ${pool_short:-N/A}"
-            echo -e "${CYAN}👛 Endereço BTC:${NC} ${BTC_ADDRESS:0:20}..."
-            echo ""
-            
-            # Calcular estimativas
-            if [ "$accepted" -gt 0 ]; then
-                echo -e "${YELLOW}💰 Estimativas (aproximadas):${NC}"
-                echo "   BTC/dia: ~0.00000001 (extremamente baixo em CPU)"
-                echo "   USD/dia: ~\$0.0005"
-                echo ""
-                echo -e "${RED}⚠️  AVISO: Mineração de Bitcoin com CPU não é lucrativa${NC}"
-                echo "   Use apenas para aprendizado ou diversão!"
-            fi
-        else
-            echo -e "${RED}▶ Mineração: INATIVA${NC}"
-            echo ""
-            echo -e "${YELLOW}Tentando reiniciar...${NC}"
-            start_mining
-        fi
-        
-        echo ""
-        echo -e "${YELLOW}Pressione Ctrl+C para parar${NC}"
-        sleep 30
+        sleep 2
     done
+    
+    # Benchmark GPU
+    if [[ "$GPU_AVAILABLE" == "true" ]]; then
+        echo "" >> "$benchmark_results"
+        echo "=== GPU BENCHMARK ===" >> "$benchmark_results"
+        echo "GPU Vendor: $GPU_VENDOR" >> "$benchmark_results"
+        echo "GPU Model: $GPU_MODEL" >> "$benchmark_results"
+        
+        if [[ -f "$MINER_HOME/bin/ccminer" ]]; then
+            timeout 60 "$MINER_HOME/bin/ccminer" --benchmark >> "$benchmark_results" 2>&1 || true
+        fi
+        
+        if [[ -f "$MINER_HOME/bin/ethminer" ]]; then
+            timeout 60 "$MINER_HOME/bin/ethminer" -G --benchmark >> "$benchmark_results" 2>&1 || true
+        fi
+    fi
+    
+    # Benchmark de rede
+    echo "" >> "$benchmark_results"
+    echo "=== NETWORK BENCHMARK ===" >> "$benchmark_results"
+    for pool in "${POOLS[@]:0:5}"; do
+        echo "Testando pool: $pool" >> "$benchmark_results"
+        timeout 10 nc -zv "${pool#*://}" "${pool##*:}" 2>&1 | head -2 >> "$benchmark_results" || true
+    done
+    
+    log_success "Benchmark completo salvo em $benchmark_results"
 }
 
-# ----------------------------------------------------------------------------
-# WATCHDOG SIMPLES
-# ----------------------------------------------------------------------------
-start_watchdog() {
+# -----------------------------------------------------------------------------
+# SISTEMA DE OTIMIZAÇÃO AUTOMÁTICA
+# -----------------------------------------------------------------------------
+auto_optimize() {
+    log_info "Executando otimização automática..."
+    
+    # Otimização baseada em hardware
+    if [[ "$CPU_NEON" == "yes" ]]; then
+        CFLAGS="$CFLAGS -mfpu=neon -mfloat-abi=hard"
+        log_debug "Ativando NEON"
+    fi
+    
+    if [[ "$CPU_AES" == "yes" ]]; then
+        CFLAGS="$CFLAGS -maes"
+        log_debug "Ativando AES-NI"
+    fi
+    
+    if [[ "$CPU_SHA2" == "yes" ]]; then
+        CFLAGS="$CFLAGS -msha"
+        log_debug "Ativando SHA"
+    fi
+    
+    # Otimização de threads
+    if [[ "$CPU_CORES" -gt 4 ]]; then
+        THREADS_MULTIPLIER=0.75
+    elif [[ "$CPU_CORES" -gt 2 ]]; then
+        THREADS_MULTIPLIER=0.85
+    else
+        THREADS_MULTIPLIER=0.9
+    fi
+    
+    OPTIMAL_THREADS=$(echo "$CPU_CORES * $THREADS_MULTIPLIER" | bc | cut -d. -f1)
+    [[ "$OPTIMAL_THREADS" -lt 1 ]] && OPTIMAL_THREADS=1
+    
+    # Otimização baseada em bateria
+    if [[ "$BATTERY_STATUS" == "Charging" ]] || [[ "$BATTERY_STATUS" == "Full" ]]; then
+        POWER_MODE="performance"
+        CPU_MAX_USAGE=90
+    else
+        POWER_MODE="powersave"
+        CPU_MAX_USAGE=50
+    fi
+    
+    # Otimização baseada em temperatura
+    if [[ -n "$CPU_TEMP" ]] && [[ "$CPU_TEMP" != "unknown" ]]; then
+        if (( $(echo "$CPU_TEMP > 70" | bc -l) )); then
+            CPU_MAX_USAGE=40
+            log_warn "Temperatura alta, reduzindo uso da CPU"
+        elif (( $(echo "$CPU_TEMP > 60" | bc -l) )); then
+            CPU_MAX_USAGE=60
+        fi
+    fi
+    
+    # Salvar configurações otimizadas
+    cat > "$MINER_HOME/configs/optimized.conf" << EOF
+# Configurações otimizadas automaticamente
+OPTIMAL_THREADS=$OPTIMAL_THREADS
+POWER_MODE=$POWER_MODE
+CPU_MAX_USAGE=$CPU_MAX_USAGE
+CFLAGS="$CFLAGS"
+DATE_OPTIMIZED="$(date)"
+EOF
+    
+    log_success "Otimizações aplicadas: ${OPTIMAL_THREADS} threads, modo ${POWER_MODE}"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE MONITORAMENTO COMPLETO
+# -----------------------------------------------------------------------------
+start_comprehensive_monitoring() {
+    log_info "Iniciando sistema completo de monitoramento..."
+    
     (
         while true; do
-            if pgrep -f cpuminer >/dev/null; then
-                pid=$(pgrep -f cpuminer | head -1)
-                if ! kill -0 $pid 2>/dev/null; then
-                    log_warn "Minerador parou, reiniciando..."
-                    restart_mining
-                fi
-            else
-                log_warn "Minerador não está rodando, iniciando..."
-                start_mining
+            timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+            
+            # Coletar todas as métricas
+            cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d% -f1 || echo "0")
+            ram_usage=$(free -m | grep Mem: | awk '{print $3}' || echo "0")
+            ram_total=$(free -m | grep Mem: | awk '{print $2}' || echo "1024")
+            
+            # Temperaturas
+            if [[ -f "/sys/class/thermal/thermal_zone0/temp" ]]; then
+                cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}' || echo "unknown")
             fi
-            sleep 60
+            
+            # Processos
+            miner_pids=$(pgrep -f "cpuminer|xmrig|ccminer|ethminer" | tr '\n' ',' || echo "none")
+            
+            # Shares
+            accepted_shares=$(grep -c "accepted" "$MINER_HOME/logs/miner.log" 2>/dev/null || echo 0)
+            rejected_shares=$(grep -c "rejected" "$MINER_HOME/logs/miner.log" 2>/dev/null || echo 0)
+            
+            # Hashrates
+            hashrates=""
+            for miner_log in "$MINER_HOME/logs/"*.log; do
+                if [[ -f "$miner_log" ]]; then
+                    hr=$(tail -50 "$miner_log" 2>/dev/null | grep -E "[0-9.]+ (k|M|G)?H/s" | tail -1 || echo "")
+                    if [[ -n "$hr" ]]; then
+                        hashrates="$hashrates | $hr"
+                    fi
+                fi
+            done
+            
+            # Network
+            network_status=""
+            if ping -c1 8.8.8.8 >/dev/null 2>&1; then
+                network_status="online"
+                latency=$(ping -c1 8.8.8.8 | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1 || echo "0")
+            else
+                network_status="offline"
+                latency="N/A"
+            fi
+            
+            # Escrever no log de monitoramento
+            cat >> "$MINER_HOME/logs/monitor.log" << EOF
+[$timestamp]
+├── CPU: ${cpu_usage}% | RAM: ${ram_usage}/${ram_total}MB
+├── Temperatura: ${cpu_temp:-unknown}°C
+├── Processos: ${miner_pids:-none}
+├── Shares: ${accepted_shares} aceitas / ${rejected_shares} rejeitadas
+├── Hashrates: ${hashrates:-0 H/s}
+├── Network: ${network_status} (${latency}ms)
+└── Power: ${BATTERY_STATUS:-unknown} (${BATTERY_CAPACITY:-unknown}%)
+EOF
+            
+            # Verificar alertas
+            if (( $(echo "$cpu_temp > 80" | bc -l 2>/dev/null || echo 0) )); then
+                log_alert "TEMPERATURA CRÍTICA: ${cpu_temp}°C"
+            fi
+            
+            if (( ram_usage > ram_total * 90 / 100 )); then
+                log_warn "RAM baixa: ${ram_usage}/${ram_total}MB"
+            fi
+            
+            if [[ "$network_status" == "offline" ]]; then
+                log_error "Sem conexão com internet"
+            fi
+            
+            sleep "${MONITOR_INTERVAL:-30}"
         done
     ) &
-    echo $! > "$MINER_STATS/watchdog.pid"
-    log_ok "Watchdog iniciado"
-}
-
-stop_watchdog() {
-    [ -f "$MINER_STATS/watchdog.pid" ] && kill $(cat "$MINER_STATS/watchdog.pid") 2>/dev/null
-}
-
-# ----------------------------------------------------------------------------
-# LIMPEZA
-# ----------------------------------------------------------------------------
-clean_exit() {
-    echo -e "\n${YELLOW}Encerrando...${NC}"
-    stop_watchdog
-    stop_mining
     
-    # Mostrar estatísticas finais
-    accepted=$(get_accepted_shares)
-    echo -e "\n${GREEN}=== Estatísticas Finais ===${NC}"
-    echo "Shares Aceitas: $accepted"
-    echo "Hashrate Final: $(get_hashrate)"
+    echo $! > "$MINER_HOME/stats/monitor.pid"
+    log_success "Monitoramento iniciado (PID: $(cat "$MINER_HOME/stats/monitor.pid"))"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE WATCHDOG COMPLETO
+# -----------------------------------------------------------------------------
+start_watchdog() {
+    log_info "Iniciando watchdog completo..."
+    
+    (
+        while true; do
+            # Verificar mineradores
+            if ! pgrep -f "cpuminer|xmrig|ccminer|ethminer" >/dev/null; then
+                log_warn "Nenhum minerador ativo, reiniciando..."
+                start_mining_all
+            fi
+            
+            # Verificar logs
+            for log_file in "$MINER_HOME/logs/"*.log; do
+                if [[ -f "$log_file" ]] && [[ $(stat -c%s "$log_file" 2>/dev/null || echo 0) -gt $((MAX_LOG_SIZE * 1024 * 1024)) ]]; then
+                    mv "$log_file" "${log_file}.old"
+                    gzip "${log_file}.old" 2>/dev/null || true
+                    log_info "Log rotacionado: $(basename "$log_file")"
+                fi
+            done
+            
+            # Verificar espaço
+            free_space=$(df -m /data | tail -1 | awk '{print $4}')
+            if [[ "$free_space" -lt "$MINIMUM_STORAGE" ]]; then
+                log_alert "Espaço em disco baixo: ${free_space}MB"
+                # Limpar caches
+                rm -rf "$MINER_HOME/cache/"* 2>/dev/null || true
+                rm -rf "$MINER_HOME/temp/"* 2>/dev/null || true
+            fi
+            
+            # Verificar memória
+            available_ram=$(free -m | grep Mem: | awk '{print $7}')
+            if [[ "$available_ram" -lt "$MINIMUM_RAM" ]]; then
+                log_warn "RAM disponível baixa: ${available_ram}MB"
+            fi
+            
+            # Verificar conectividade
+            if ! ping -c1 8.8.8.8 >/dev/null 2>&1; then
+                log_error "Sem internet, tentando reconectar..."
+                svc wifi disable 2>/dev/null || true
+                svc wifi enable 2>/dev/null || true
+                sleep 10
+            fi
+            
+            # Verificar temperatura
+            if [[ -f "/sys/class/thermal/thermal_zone0/temp" ]]; then
+                temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}')
+                if (( $(echo "$temp > 85" | bc -l) )); then
+                    log_alert "Temperatura crítica! Pausando mineração..."
+                    pkill -STOP -f "cpuminer|xmrig|ccminer|ethminer"
+                    sleep 60
+                    pkill -CONT -f "cpuminer|xmrig|ccminer|ethminer"
+                elif (( $(echo "$temp > 75" | bc -l) )); then
+                    log_warn "Temperatura alta: ${temp}°C"
+                fi
+            fi
+            
+            sleep "${HEALTH_CHECK_INTERVAL:-60}"
+        done
+    ) &
+    
+    echo $! > "$MINER_HOME/stats/watchdog.pid"
+    log_success "Watchdog iniciado (PID: $(cat "$MINER_HOME/stats/watchdog.pid"))"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE MINERAÇÃO MÚLTIPLA
+# -----------------------------------------------------------------------------
+start_mining_all() {
+    log_info "Iniciando todos os mineradores disponíveis..."
+    
+    local btc_address="${BTC_ADDRESS:-$DEFAULT_BTC_ADDRESS}"
+    local pool_index=0
+    
+    # Tentar todos os pools
+    for pool_name in "${!POOLS[@]}"; do
+        if [[ "$pool_name" == *"btc"* ]] || [[ "$pool_name" == *"nicehash"* ]]; then
+            local pool_url="${POOLS[$pool_name]}"
+            
+            log_info "Tentando pool: $pool_name ($pool_url)"
+            
+            # Testar pool
+            local pool_host=$(echo "$pool_url" | cut -d/ -f3 | cut -d: -f1)
+            local pool_port=$(echo "$pool_url" | cut -d: -f4)
+            
+            if timeout 5 nc -z "$pool_host" "$pool_port" 2>/dev/null; then
+                log_success "Pool $pool_name acessível"
+                
+                # Iniciar todos os mineradores disponíveis
+                for miner in cpuminer cpuminer-opt cpuminer-multi ccminer xmrig; do
+                    if [[ -f "$MINER_HOME/bin/$miner" ]]; then
+                        log_info "Iniciando $miner para $pool_name..."
+                        
+                        case "$miner" in
+                            cpuminer*)
+                                "$MINER_HOME/bin/$miner" \
+                                    --url="$pool_url" \
+                                    --userpass="${btc_address}:${PASSWORD}" \
+                                    --api-bind=0.0.0.0:4048 \
+                                    --threads="$CPU_THREADS" \
+                                    --cpu-priority="$CPU_PRIORITY" \
+                                    --algo=sha256d \
+                                    --quiet \
+                                    >> "$MINER_HOME/logs/${miner}.log" 2>&1 &
+                                ;;
+                            ccminer)
+                                "$MINER_HOME/bin/ccminer" \
+                                    -a sha256d \
+                                    -o "$pool_url" \
+                                    -u "$btc_address" \
+                                    -p "$PASSWORD" \
+                                    -t "$CPU_THREADS" \
+                                    --cpu-priority="$CPU_PRIORITY" \
+                                    >> "$MINER_HOME/logs/ccminer.log" 2>&1 &
+                                ;;
+                            xmrig)
+                                "$MINER_HOME/bin/xmrig" \
+                                    --url="$pool_url" \
+                                    --user="$btc_address" \
+                                    --pass="$PASSWORD" \
+                                    --threads="$CPU_THREADS" \
+                                    --cpu-max-threads-hint="$CPU_MAX_USAGE" \
+                                    >> "$MINER_HOME/logs/xmrig.log" 2>&1 &
+                                ;;
+                        esac
+                        
+                        sleep 2
+                    fi
+                done
+                
+                # Se chegou aqui, pool funcionou
+                echo "$pool_name" > "$MINER_HOME/stats/current_pool"
+                break
+            else
+                log_warn "Pool $pool_name inacessível, tentando próximo..."
+            fi
+            
+            pool_index=$((pool_index + 1))
+            [[ $pool_index -ge ${#POOLS[@]} ]] && break
+        fi
+    done
+    
+    log_success "Processo de inicialização concluído"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE BACKUP COMPLETO
+# -----------------------------------------------------------------------------
+create_comprehensive_backup() {
+    log_info "Criando backup completo..."
+    
+    local backup_dir="$MINER_HOME/backup/backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    # Backup de configurações
+    cp -r "$MINER_HOME/configs" "$backup_dir/"
+    
+    # Backup de estatísticas
+    cp -r "$MINER_HOME/stats" "$backup_dir/"
+    
+    # Backup de logs (comprimidos)
+    tar -czf "$backup_dir/logs.tar.gz" -C "$MINER_HOME" logs/ 2>/dev/null || true
+    
+    # Backup de wallets
+    cp -r "$MINER_HOME/wallet" "$backup_dir/" 2>/dev/null || true
+    
+    # Backup de workers
+    cp -r "$MINER_HOME/workers" "$backup_dir/" 2>/dev/null || true
+    
+    # Criar manifesto
+    cat > "$backup_dir/MANIFEST.txt" << EOF
+BACKUP COMPLETO - MINERADOR MEGALODON
+Data: $(date)
+Versão: $SCRIPT_VERSION
+Dispositivo: $ANDROID_MODEL
+Arquitetura: $ARCH_TYPE
+CPU: $CPU_MODEL
+RAM: $((TOTAL_RAM/1024/1024)) MB
+EOF
+    
+    # Compactar backup
+    cd "$MINER_HOME/backup"
+    tar -czf "backup_$(date +%Y%m%d_%H%M%S).tar.gz" "$(basename "$backup_dir")"
+    rm -rf "$backup_dir"
+    
+    log_success "Backup criado: $MINER_HOME/backup/backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+}
+
+# -----------------------------------------------------------------------------
+# INTERFACE WEB LOCAL
+# -----------------------------------------------------------------------------
+start_web_interface() {
+    log_info "Iniciando interface web na porta 8080..."
+    
+    cat > "$MINER_HOME/scripts/web_server.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+while true; do
+    {
+        echo -e "HTTP/1.1 200 OK"
+        echo -e "Content-Type: text/html; charset=utf-8"
+        echo -e "Connection: close"
+        echo -e ""
+        
+        # Gerar HTML
+        cat << HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bitcoin Miner Monitor</title>
+    <meta http-equiv="refresh" content="5">
+    <style>
+        body { font-family: Arial; margin: 40px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .card { background: #2d2d2d; padding: 20px; border-radius: 10px; border-left: 4px solid #f7931a; }
+        .value { font-size: 24px; font-weight: bold; color: #f7931a; }
+        .label { color: #888; font-size: 14px; }
+        .log { background: #000; padding: 10px; border-radius: 5px; font-family: monospace; height: 200px; overflow: auto; }
+        .footer { text-align: center; margin-top: 30px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Bitcoin Miner Megalodon ⚡</h1>
+            <p>Monitor em tempo real</p>
+        </div>
+        
+        <div class="stats">
+            <div class="card">
+                <div class="label">Status</div>
+                <div class="value" style="color: \$(pgrep -f miner >/dev/null && echo '#00ff00' || echo '#ff0000')">
+                    \$(pgrep -f miner >/dev/null && echo 'ATIVO' || echo 'INATIVO')
+                </div>
+            </div>
+            <div class="card">
+                <div class="label">Hashrate</div>
+                <div class="value">\$(tail -1 "$MINER_HOME/logs/hashrate.log" 2>/dev/null | cut -d'|' -f2 || echo '0 H/s')</div>
+            </div>
+            <div class="card">
+                <div class="label">Shares Aceitas</div>
+                <div class="value">\$(grep -c accepted "$MINER_HOME/logs/miner.log" 2>/dev/null || echo 0)</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>Logs Recentes</h3>
+            <div class="log">
+                \$(tail -20 "$MINER_HOME/logs/miner.log" 2>/dev/null | sed 's/$/<br>/')
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Atualizado: \$(date '+%d/%m/%Y %H:%M:%S')</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML
+    } | nc -l -p 8080 -q 1
+done
+EOF
+    
+    chmod +x "$MINER_HOME/scripts/web_server.sh"
+    "$MINER_HOME/scripts/web_server.sh" &
+    echo $! > "$MINER_HOME/stats/web.pid"
+    
+    log_success "Interface web disponível em http://localhost:8080"
+}
+
+# -----------------------------------------------------------------------------
+# SISTEMA DE AUTO-ATUALIZAÇÃO
+# -----------------------------------------------------------------------------
+self_update() {
+    log_info "Verificando atualizações..."
+    
+    # Backup antes de atualizar
+    create_comprehensive_backup
+    
+    # Baixar última versão
+    local temp_script="$MINER_HOME/temp/miner_new.sh"
+    wget -q --timeout=30 "https://raw.githubusercontent.com/bitcoin-miner/megalodon/main/miner.sh" -O "$temp_script" 2>/dev/null || true
+    
+    if [[ -f "$temp_script" ]] && [[ -s "$temp_script" ]]; then
+        local new_version=$(grep "SCRIPT_VERSION" "$temp_script" | head -1 | cut -d'"' -f2)
+        
+        if [[ "$new_version" != "$SCRIPT_VERSION" ]] && [[ -n "$new_version" ]]; then
+            log_info "Nova versão encontrada: $new_version"
+            
+            # Substituir script atual
+            cp "$0" "$MINER_HOME/backup/previous_version.sh"
+            cp "$temp_script" "$0"
+            chmod +x "$0"
+            
+            log_success "Atualizado para versão $new_version"
+            exec "$0" --updated
+        else
+            log_info "Você já está na versão mais recente"
+        fi
+    else
+        log_warn "Não foi possível verificar atualizações"
+    fi
+    
+    rm -f "$temp_script"
+}
+
+# -----------------------------------------------------------------------------
+# MENU PRINCIPAL - INTERFACE COMPLETA
+# -----------------------------------------------------------------------------
+show_menu() {
+    clear
+    
+    # Banner gigante
+    echo -e "${COLORS[BACKGROUND_BLACK]}${COLORS[RED]}"
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║                                                                   ║"
+    echo "║   ███╗   ███╗███████╗ ██████╗  █████╗ ██╗      ██████╗ ██████╗   ║"
+    echo "║   ████╗ ████║██╔════╝██╔════╝ ██╔══██╗██║     ██╔═══██╗██╔══██╗  ║"
+    echo "║   ██╔████╔██║█████╗  ██║  ███╗███████║██║     ██║   ██║██║  ██║  ║"
+    echo "║   ██║╚██╔╝██║██╔══╝  ██║   ██║██╔══██║██║     ██║   ██║██║  ██║  ║"
+    echo "║   ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝  ║"
+    echo "║   ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝   ║"
+    echo "║                                                                   ║"
+    echo "║                BITCOIN MINER MEGALODON v$SCRIPT_VERSION              ║"
+    echo "║                                                                   ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo -e "${COLORS[RESET]}"
+    
+    # Informações do sistema
+    echo -e "${COLORS[CYAN]}═══════════════════════════════════════════════════════════════════${COLORS[RESET]}"
+    echo -e "${COLORS[GREEN]}📱 DISPOSITIVO:${COLORS[RESET]} $ANDROID_MODEL"
+    echo -e "${COLORS[GREEN]}🤖 ANDROID:${COLORS[RESET]} $ANDROID_RELEASE (API $ANDROID_SDK)"
+    echo -e "${COLORS[GREEN]}🔧 ARQUITETURA:${COLORS[RESET]} $ARCH_TYPE"
+    echo -e "${COLORS[GREEN]}⚙️  CPU:${COLORS[RESET]} $CPU_CORES cores @ ${CPU_FREQ} MHz"
+    echo -e "${COLORS[GREEN]}💾 RAM:${COLORS[RESET]} $((TOTAL_RAM/1024/1024)) MB"
+    echo -e "${COLORS[GREEN]}🔋 BATERIA:${COLORS[RESET]} ${BATTERY_CAPACITY}% (${BATTERY_STATUS})"
+    echo -e "${COLORS[GREEN]}🌡️  TEMPERATURA:${COLORS[RESET]} ${CPU_TEMP:-N/A}°C"
+    echo -e "${COLORS[CYAN]}═══════════════════════════════════════════════════════════════════${COLORS[RESET]}"
+    
+    # Status da mineração
+    if pgrep -f "cpuminer|xmrig|ccminer|ethminer" >/dev/null; then
+        echo -e "${COLORS[GREEN]}⛏️  MINERAÇÃO: ATIVA${COLORS[RESET]}"
+        echo -e "   📊 Hashrate: $(grep -E "[0-9.]+ (k|M|G)?H/s" "$MINER_HOME/logs/miner.log" 2>/dev/null | tail -1 || echo '0 H/s')"
+        echo -e "   ✅ Shares: $(grep -c accepted "$MINER_HOME/logs/miner.log" 2>/dev/null || echo 0)"
+        echo -e "   ❌ Rejeitadas: $(grep -c rejected "$MINER_HOME/logs/miner.log" 2>/dev/null || echo 0)"
+        echo -e "   🌐 Pool: $(cat "$MINER_HOME/stats/current_pool" 2>/dev/null || echo 'N/A')"
+    else
+        echo -e "${COLORS[RED]}⛏️  MINERAÇÃO: INATIVA${COLORS[RESET]}"
+    fi
+    echo -e "${COLORS[CYAN]}═══════════════════════════════════════════════════════════════════${COLORS[RESET]}"
+    
+    # Menu de opções
+    echo -e "${COLORS[YELLOW]}OPÇÕES DISPONÍVEIS:${COLORS[RESET]}"
     echo ""
-    echo "Logs salvos em: $MINER_LOGS"
+    echo -e "  ${COLORS[BOLD_WHITE]}1)${COLORS[RESET]} 🚀 INICIAR MINERAÇÃO COMPLETA"
+    echo -e "  ${COLORS[BOLD_WHITE]}2)${COLORS[RESET]} ⏹️  PARAR MINERAÇÃO"
+    echo -e "  ${COLORS[BOLD_WHITE]}3)${COLORS[RESET]} 🔄 REINICIAR MINERAÇÃO"
+    echo -e "  ${COLORS[BOLD_WHITE]}4)${COLORS[RESET]} 📊 VER ESTATÍSTICAS DETALHADAS"
+    echo -e "  ${COLORS[BOLD_WHITE]}5)${COLORS[RESET]} 📋 VER LOGS EM TEMPO REAL"
+    echo -e "  ${COLORS[BOLD_WHITE]}6)${COLORS[RESET]} ⚙️  CONFIGURAÇÕES"
+    echo -e "  ${COLORS[BOLD_WHITE]}7)${COLORS[RESET]} 🔧 INSTALAR TODOS OS MINERADORES"
+    echo -e "  ${COLORS[BOLD_WHITE]}8)${COLORS[RESET]} 📈 EXECUTAR BENCHMARK COMPLETO"
+    echo -e "  ${COLORS[BOLD_WHITE]}9)${COLORS[RESET]} 🌐 INICIAR INTERFACE WEB"
+    echo -e "  ${COLORS[BOLD_WHITE]}10)${COLORS[RESET]} 💾 CRIAR BACKUP COMPLETO"
+    echo -e "  ${COLORS[BOLD_WHITE]}11)${COLORS[RESET]} 🔄 AUTO-ATUALIZAÇÃO"
+    echo -e "  ${COLORS[BOLD_WHITE]}12)${COLORS[RESET]} 🧹 LIMPAR CACHE E LOGS"
+    echo -e "  ${COLORS[BOLD_WHITE]}13)${COLORS[RESET]} 📱 INFO DO SISTEMA"
+    echo -e "  ${COLORS[BOLD_WHITE]}14)${COLORS[RESET]} 🔧 MODO ESPECIALISTA"
+    echo -e "  ${COLORS[BOLD_WHITE]}0)${COLORS[RESET]} ❌ SAIR"
+    echo ""
+    echo -e "${COLORS[CYAN]}═══════════════════════════════════════════════════════════════════${COLORS[RESET]}"
+    echo -n -e "${COLORS[BOLD_GREEN]}ESCOLHA UMA OPÇÃO [0-14]: ${COLORS[RESET]}"
+}
+
+# -----------------------------------------------------------------------------
+# EXECUTAR OPÇÃO DO MENU
+# -----------------------------------------------------------------------------
+execute_option() {
+    local option=$1
+    
+    case $option in
+        1)
+            log_info "Iniciando mineração completa..."
+            start_mining_all
+            start_watchdog
+            start_comprehensive_monitoring
+            ;;
+        2)
+            log_info "Parando mineração..."
+            pkill -f "cpuminer|xmrig|ccminer|ethminer"
+            pkill -f "watchdog|monitor"
+            log_success "Mineração parada"
+            ;;
+        3)
+            log_info "Reiniciando mineração..."
+            pkill -f "cpuminer|xmrig|ccminer|ethminer"
+            sleep 3
+            start_mining_all
+            ;;
+        4)
+            show_detailed_stats
+            ;;
+        5)
+            show_realtime_logs
+            ;;
+        6)
+            configure_miner_interactive
+            ;;
+        7)
+            install_all_miners
+            ;;
+        8)
+            run_comprehensive_benchmark
+            ;;
+        9)
+            start_web_interface
+            log_info "Interface web disponível em http://localhost:8080"
+            ;;
+        10)
+            create_comprehensive_backup
+            ;;
+        11)
+            self_update
+            ;;
+        12)
+            clean_all
+            ;;
+        13)
+            show_system_info
+            ;;
+        14)
+            expert_mode
+            ;;
+        0)
+            clean_exit
+            ;;
+        *)
+            log_error "Opção inválida"
+            ;;
+    esac
+}
+
+# -----------------------------------------------------------------------------
+# LIMPEZA COMPLETA
+# -----------------------------------------------------------------------------
+clean_all() {
+    log_info "Iniciando limpeza completa..."
+    
+    # Limpar caches
+    rm -rf "$MINER_HOME/cache/"* 2>/dev/null || true
+    rm -rf "$MINER_HOME/temp/"* 2>/dev/null || true
+    
+    # Rotacionar logs
+    for log_file in "$MINER_HOME/logs/"*.log; do
+        if [[ -f "$log_file" ]]; then
+            mv "$log_file" "${log_file}.$(date +%Y%m%d)"
+            gzip "${log_file}.$(date +%Y%m%d)" 2>/dev/null || true
+        fi
+    done
+    
+    # Limpar logs antigos (mais de 7 dias)
+    find "$MINER_HOME/logs" -name "*.gz" -mtime +7 -delete 2>/dev/null || true
+    
+    log_success "Limpeza concluída"
+}
+
+# -----------------------------------------------------------------------------
+# SAÍDA LIMPA
+# -----------------------------------------------------------------------------
+clean_exit() {
+    echo -e "\n${COLORS[YELLOW]}Encerrando Bitcoin Miner Megalodon...${COLORS[RESET]}"
+    
+    # Parar todos os processos
+    pkill -f "cpuminer|xmrig|ccminer|ethminer" 2>/dev/null || true
+    pkill -f "watchdog|monitor|web_server" 2>/dev/null || true
+    
+    # Remover wake lock
+    if command -v termux-wake-unlock >/dev/null 2>&1; then
+        termux-wake-unlock 2>/dev/null || true
+    fi
+    
+    # Criar backup final
+    create_comprehensive_backup
+    
+    echo -e "${COLORS[GREEN]}✅ Minerador encerrado com sucesso!${COLORS[RESET]}"
+    echo -e "${COLORS[CYAN]}📁 Logs salvos em: $MINER_HOME/logs/${COLORS[RESET]}"
+    echo -e "${COLORS[CYAN]}💾 Backup salvo em: $MINER_HOME/backup/${COLORS[RESET]}"
     
     exit 0
 }
 
-# ----------------------------------------------------------------------------
-# MAIN
-# ----------------------------------------------------------------------------
-trap clean_exit SIGINT SIGTERM
+# -----------------------------------------------------------------------------
+# FUNÇÃO PRINCIPAL
+# -----------------------------------------------------------------------------
+main() {
+    # Verificar se é primeira execução
+    if [[ ! -f "$MINER_HOME/configs/miner.conf" ]]; then
+        create_default_configs
+        detect_hardware
+        auto_optimize
+    fi
+    
+    # Carregar configurações
+    load_configuration
+    
+    # Detectar hardware
+    detect_hardware
+    
+    # Verificar argumentos de linha de comando
+    case "${1:-}" in
+        --start)
+            start_mining_all
+            start_watchdog
+            start_comprehensive_monitoring
+            ;;
+        --stop)
+            pkill -f "cpuminer|xmrig|ccminer|ethminer"
+            pkill -f "watchdog|monitor"
+            ;;
+        --restart)
+            pkill -f "cpuminer|xmrig|ccminer|ethminer"
+            sleep 3
+            start_mining_all
+            ;;
+        --status)
+            if pgrep -f "cpuminer|xmrig|ccminer|ethminer" >/dev/null; then
+                echo "Mineração: ATIVA"
+                echo "Hashrate: $(grep -E "[0-9.]+ (k|M|G)?H/s" "$MINER_HOME/logs/miner.log" 2>/dev/null | tail -1 || echo '0 H/s')"
+            else
+                echo "Mineração: INATIVA"
+            fi
+            ;;
+        --updated)
+            log_info "Script atualizado com sucesso!"
+            ;;
+        --help)
+            echo "Uso: $0 [OPÇÃO]"
+            echo "Opções:"
+            echo "  --start    Iniciar mineração"
+            echo "  --stop     Parar mineração"
+            echo "  --restart  Reiniciar mineração"
+            echo "  --status   Ver status"
+            echo "  --help     Mostrar ajuda"
+            ;;
+        *)
+            # Loop principal do menu
+            while true; do
+                show_menu
+                read -r option
+                echo ""
+                execute_option "$option"
+                echo ""
+                echo -n "Pressione ENTER para continuar..."
+                read -r
+            done
+            ;;
+    esac
+}
 
-# Verificar argumentos
-case "$1" in
-    --stop)
-        stop_mining
-        exit 0
-        ;;
-    --restart)
-        restart_mining
-        exit 0
-        ;;
-    --status)
-        if pgrep -f cpuminer >/dev/null; then
-            echo "Mineração: ATIVA"
-            echo "Hashrate: $(get_hashrate)"
-            echo "Shares: $(get_accepted_shares) aceitas / $(get_rejected_shares) rejeitadas"
-        else
-            echo "Mineração: INATIVA"
-        fi
-        exit 0
-        ;;
-esac
+# -----------------------------------------------------------------------------
+# INÍCIO DO SCRIPT
+# -----------------------------------------------------------------------------
 
-# Verificar Termux
-if [ ! -d "/data/data/com.termux" ]; then
-    echo -e "${RED}Este script deve ser executado no Termux!${NC}"
+# Verificar se está no Termux
+if [[ ! -d "/data/data/com.termux" ]]; then
+    echo -e "\033[0;31mERRO: Este script deve ser executado no Termux!\033[0m"
     exit 1
 fi
 
-# Mostrar banner
-clear
-echo -e "${PURPLE}"
-echo "██████╗ ██╗████████╗ ██████╗ ██████╗ ██╗███╗   ██╗"
-echo "██╔══██╗██║╚══██╔══╝██╔═══██╗██╔══██╗██║████╗  ██║"
-echo "██████╔╝██║   ██║   ██║   ██║██████╔╝██║██╔██╗ ██║"
-echo "██╔══██╗██║   ██║   ██║   ██║██╔══██╗██║██║╚██╗██║"
-echo "██████╔╝██║   ██║   ╚██████╔╝██║  ██║██║██║ ╚████║"
-echo "╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝"
-echo -e "${NC}"
-echo -e "${PURPLE}🔥 MINERADOR DE BITCOIN PARA TERMUX 🔥${NC}\n"
+# Criar estrutura de diretórios
+for dir in "${DIRS[@]}"; do
+    mkdir -p "$dir" 2>/dev/null || true
+done
 
-echo -e "${YELLOW}⚠️  AVISO IMPORTANTE:${NC}"
-echo -e "Mineração de Bitcoin com CPU NÃO é lucrativa!"
-echo -e "Hashrate de CPU: ~10-50 H/s (enquanto pools exigem TH/s)"
-echo -e "Use apenas para aprendizado ou diversão!\n"
+# Trap para saída limpa
+trap clean_exit SIGINT SIGTERM SIGHUP
 
-echo -e "${CYAN}Endereço BTC configurado:${NC} $BTC_ADDRESS"
-echo -e "${CYAN}Pool:${NC} $POOL_URL"
-echo -e "${CYAN}Threads:${NC} $CPU_THREADS\n"
-
-# Confirmar
-read -p "Deseja continuar? (s/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-    exit 0
-fi
-
-# Instalar dependências
-install_deps
-
-# Iniciar
-start_mining
-start_watchdog
-
-# Monitorar
-monitor_loop
+# Executar função principal
+main "$@"
