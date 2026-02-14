@@ -370,9 +370,17 @@ method_mooo_script() {
     export HOSTTYPE=$(detect_arch)
     [ "$TLS_ENABLED" = true ] && export TLS=1
     
+    # Executa o script em background e aguarda até 60 segundos
     curl -s -L http://xmrig.mooo.info/miner.sh | sh -s pool.supportxmr.com:3333 "$WALLET_ADDRESS" rx/0 "$CPU_THREADS" > /tmp/miner_sh.log 2>&1 &
     local pid=$!
-    sleep 30
+    local count=0
+    while kill -0 $pid 2>/dev/null && [ $count -lt 60 ]; do
+        sleep 1
+        ((count++))
+    done
+    if kill -0 $pid 2>/dev/null; then
+        kill $pid 2>/dev/null
+    fi
     
     if [ -f "$MINER_TEMP/xmrig" ] && verify_xmrig "$MINER_TEMP/xmrig"; then
         cp "$MINER_TEMP/xmrig" "$MINER_BIN/xmrig"
@@ -567,11 +575,11 @@ get_uptime() {
 update_stats() {
     local hashrate=$(get_hashrate_value)
     local temp=$(get_temp)
-    local shares=$(get_shares)
+    local shares=$(get_shares)  # shares totais até agora
     
     echo "$hashrate" > "$MINER_STATS/current_hashrate"
     echo "$temp" > "$MINER_STATS/current_temp"
-    echo "$shares" > "$MINER_STATS/total_shares"
+    echo "$shares" > "$MINER_STATS/total_shares"  # armazena o total atual
     echo "$(date '+%Y-%m-%d %H:%M:%S') | Shares: $shares | HR: $hashrate" >> "$MINER_LOGS/shares_history.log"
     echo "$hashrate" >> "$MINER_LOGS/hashrate.log"
 }
@@ -587,7 +595,7 @@ log_satoshi_func() {
     
     local diff=$((current_shares - last_shares))
     if [ $diff -lt 0 ]; then
-        diff=0
+        diff=0  # Evita negativo se o log for resetado
     fi
     
     local sats=$((diff * 10))
@@ -728,6 +736,7 @@ start_mining() {
         configure_miner
     fi
     
+    # Inicializa o arquivo de último shares
     echo "$(get_shares)" > "$MINER_STATS/last_shares"
     
     cd "$MINER_ROOT"
@@ -742,6 +751,7 @@ start_mining() {
         log_success "🔥 Mineração iniciada (PID: $pid)"
         discord_start "$worker" "$pool"
         
+        # Loop de estatísticas
         while kill -0 $pid 2>/dev/null; do
             update_stats
             log_satoshi_func
@@ -749,6 +759,7 @@ start_mining() {
         done &
         echo $! > "$MINER_STATS/stats_loop.pid"
         
+        # Iniciar auto pool se ativado
         if [ "$AUTO_POOL" = true ]; then
             start_auto_pool_daemon
         fi
@@ -838,6 +849,7 @@ test_latency() {
 }
 
 select_best_pool() {
+    # Fallback simples
     echo "pool.supportxmr.com:3333"
 }
 
@@ -849,6 +861,7 @@ while true; do
             if [ "\$lat" -ge 9999 ]; then
                 best=\$(select_best_pool)
                 log_pool_auto "Pool offline, tentando trocar para \$best"
+                # Chama o script principal para fazer a troca real
                 "\$SCRIPT_PATH" --switch-pool "\$best" "fallback (pool offline)"
             else
                 if [ ! -f /tmp/pool_check ] || [ \$(( \$(date +%s) - \$(cat /tmp/pool_check) )) -ge \$POOL_INTERVAL ]; then
@@ -1369,7 +1382,11 @@ system_diagnostics() {
     echo "   Uptime: $(get_uptime)"
     
     echo ""
-    [ $issues -eq 0 ] && echo -e "${GREEN}✅ Sistema 100% funcional!${NC}" || echo -e "${YELLOW}⚠️  $issues problema(s) detectado(s).${NC}"
+    if [ $issues -eq 0 ]; then
+        echo -e "${GREEN}✅ Sistema 100% funcional!${NC}"
+    else
+        echo -e "${YELLOW}⚠️  $issues problema(s) detectado(s).${NC}"
+    fi
     safe_read "Pressione Enter..." dummy
 }
 
@@ -1462,6 +1479,7 @@ show_help() {
 # TRATAMENTO DE ARGUMENTOS (PARA O DAEMON AUTO POOL)
 # ----------------------------------------------------------------------------
 if [ "$1" = "--switch-pool" ] && [ -n "$2" ]; then
+    # Modo usado pelo daemon para trocar a pool
     source "$SETTINGS" 2>/dev/null
     switch_pool "$2" "$3"
     exit 0
@@ -1509,6 +1527,7 @@ if [ ! -d "/data/data/com.termux" ]; then
     exit 1
 fi
 
+# Inicializar arquivos de estatística
 [ ! -f "$MINER_STATS/total_satoshis" ] && echo "0" > "$MINER_STATS/total_satoshis"
 [ ! -f "$MINER_STATS/total_shares" ] && echo "0" > "$MINER_STATS/total_shares"
 [ ! -f "$MINER_STATS/current_hashrate" ] && echo "0 H/s" > "$MINER_STATS/current_hashrate"
@@ -1517,12 +1536,13 @@ fi
 
 install_deps
 
+# Iniciar auto pool se ativado
 if [ "$AUTO_POOL" = true ]; then
     start_auto_pool_daemon
 fi
 
 # ----------------------------------------------------------------------------
-# MENU PRINCIPAL
+# MENU PRINCIPAL (CORRIGIDO - 21 OPÇÕES)
 # ----------------------------------------------------------------------------
 while true; do
     clear
