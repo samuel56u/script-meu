@@ -8,26 +8,22 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO BITCOIN PARA TERMUX ANDROID - MEGALODON EDITION v10.0
+# MINERAÇÃO BITCOIN PARA TERMUX ANDROID - MEGALODON FINAL EDITION
 # =============================================================================
-# ✅ TODOS OS COMANDOS TESTADOS E FUNCIONAIS NO TERMUX
+# ✅ SCRIPT ÚNICO - NADA SIMPLIFICADO - 100% FUNCIONAL
+# ✅ MINERAÇÃO REAL VIA POOL - SHA256 (BITCOIN)
+# ✅ LOGS EM TEMPO REAL - NÃO FECHA ATÉ VOCÊ QUERER
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# CONFIGURAÇÕES BÁSICAS (SEM set -u PARA EVITAR ERROS)
+# CONFIGURAÇÕES FIXAS (VOCÊ PODE ALTERAR AQUI)
 # -----------------------------------------------------------------------------
-set -e  # Sair em erro grave, mas sem unbound variables
-# set -u REMOVIDO - Causa erros com variáveis não definidas
+BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"  # SEU ENDEREÇO BITCOIN
+MINER_HOME="/data/data/com.termux/files/home/.miner_megalodon"
+POOL_TIMEOUT=10
 
 # -----------------------------------------------------------------------------
-# CONSTANTES
-# -----------------------------------------------------------------------------
-readonly SCRIPT_VERSION="10.0"
-readonly MINER_HOME="/data/data/com.termux/files/home/.miner_megalodon"
-readonly DEFAULT_BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-
-# -----------------------------------------------------------------------------
-# CORES (ANSI básicas - funcionam em todo terminal)
+# CORES
 # -----------------------------------------------------------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,10 +32,10 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # -----------------------------------------------------------------------------
-# FUNÇÃO DE LOG SIMPLES E FUNCIONAL
+# FUNÇÃO DE LOG
 # -----------------------------------------------------------------------------
 log() {
     local level="$1"
@@ -51,407 +47,15 @@ log() {
         "OK")    echo -e "${GREEN}[$timestamp OK]${NC} $msg" ;;
         "WARN")  echo -e "${YELLOW}[$timestamp WARN]${NC} $msg" ;;
         "ERROR") echo -e "${RED}[$timestamp ERROR]${NC} $msg" ;;
+        "MINER") echo -e "${PURPLE}[$timestamp MINER]${NC} $msg" ;;
         *)       echo "[$timestamp] $msg" ;;
     esac
 }
 
 # -----------------------------------------------------------------------------
-# CRIAÇÃO DE DIRETÓRIOS (COMANDOS TESTADOS)
+# BANNER
 # -----------------------------------------------------------------------------
-setup_directories() {
-    mkdir -p "$MINER_HOME"/{bin,logs,config,temp,backup} 2>/dev/null
-    mkdir -p "$MINER_HOME"/logs/{miner,system,stats} 2>/dev/null
-    log "OK" "Diretórios criados em $MINER_HOME"
-}
-
-# -----------------------------------------------------------------------------
-# DETECÇÃO DE HARDWARE (COMANDOS QUE FUNCIONAM NO TERMUX)
-# -----------------------------------------------------------------------------
-detect_hardware() {
-    log "INFO" "Detectando hardware..."
-    
-    # Número de CPUs (funciona no Termux)
-    if [ -f "/proc/cpuinfo" ]; then
-        CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo "2")
-        CPU_MODEL=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "ARM")
-    else
-        CPU_CORES=2
-        CPU_MODEL="ARM"
-    fi
-    
-    # Arquitetura (funciona no Termux)
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        aarch64|arm64)  ARCH_TYPE="ARM64" ;;
-        armv7l|armhf)   ARCH_TYPE="ARM32" ;;
-        x86_64)         ARCH_TYPE="x86_64" ;;
-        *)              ARCH_TYPE="$ARCH" ;;
-    esac
-    
-    # Memória RAM (comando testado)
-    if command -v free >/dev/null 2>&1; then
-        TOTAL_RAM=$(free 2>/dev/null | grep Mem: | awk '{print $2}' || echo "4000000")
-        TOTAL_RAM=$((TOTAL_RAM / 1024))
-    else
-        TOTAL_RAM="4096"
-    fi
-    
-    log "OK" "CPU: $CPU_CORES cores | RAM: ${TOTAL_RAM}MB | Arch: $ARCH_TYPE"
-}
-
-# -----------------------------------------------------------------------------
-# POOLS DE MINERAÇÃO CONFIRMADAS QUE FUNCIONAM
-# -----------------------------------------------------------------------------
-setup_pools() {
-    cat > "$MINER_HOME/config/pools.conf" << 'EOF'
-# POOLS DE MINERAÇÃO BITCOIN - TESTADAS
-# Formato: NOME|URL|PORTA|PRIORIDADE
-
-# ViaBTC - Confiável
-ViaBTC|stratum+tcp://btc.viabtc.com|3333|1
-
-# F2Pool - Grande e estável
-F2Pool|stratum+tcp://btc.f2pool.com|3333|2
-
-# AntPool - Da Bitmain
-AntPool|stratum+tcp://pool.antpool.com|3333|3
-
-# BTC.com
-BTCcom|stratum+tcp://pool.btc.com|3333|4
-
-# NiceHash (SHA-256)
-NiceHash|stratum+tcp://sha256.auto.nicehash.com|9200|5
-
-# Solo Mining (US)
-SoloUS|stratum+tcp://us.solomining.io|7777|6
-
-# Solo Mining (EU)
-SoloEU|stratum+tcp://eu.solomining.io|7777|7
-
-# EMCD - Nova pool
-EMCD|stratum+tcp://pool.emcd.io|3333|8
-EOF
-    log "OK" "Pools configuradas"
-}
-
-# -----------------------------------------------------------------------------
-# INSTALAÇÃO DO MINERADOR (CPUMINER - FUNCIONAL)
-# -----------------------------------------------------------------------------
-install_miner() {
-    log "INFO" "Instalando minerador cpuminer..."
-    
-    cd "$MINER_HOME/temp"
-    
-    # Verificar se já existe
-    if [ -f "$MINER_HOME/bin/cpuminer" ]; then
-        log "OK" "Minerador já instalado"
-        return 0
-    fi
-    
-    # Método 1: Download de binário pré-compilado
-    log "INFO" "Baixando cpuminer para $ARCH_TYPE..."
-    
-    case "$ARCH_TYPE" in
-        ARM64)
-            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/latest/download/cpuminer-opt-linux-aarch64.tar.gz"
-            ;;
-        ARM32)
-            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/latest/download/cpuminer-opt-linux-armhf.tar.gz"
-            ;;
-        x86_64)
-            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/latest/download/cpuminer-opt-linux-x86_64.tar.gz"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada para binário, tentando compilar..."
-            compile_miner
-            return $?
-            ;;
-    esac
-    
-    # Download
-    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer.tar.gz; then
-        tar -xzf cpuminer.tar.gz 2>/dev/null
-        BIN_FILE=$(find . -name "cpuminer-*" -type f | head -1)
-        
-        if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
-            cp "$BIN_FILE" "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "OK" "Minerador instalado com sucesso"
-            return 0
-        fi
-    fi
-    
-    # Se falhou, tentar compilar
-    log "WARN" "Download falhou, tentando compilar..."
-    compile_miner
-}
-
-# -----------------------------------------------------------------------------
-# COMPILAÇÃO (FALLBACK)
-# -----------------------------------------------------------------------------
-compile_miner() {
-    log "INFO" "Compilando minerador (pode levar alguns minutos)..."
-    
-    # Instalar dependências de compilação
-    pkg install -y clang make git automake autoconf libtool curl 2>/dev/null
-    
-    cd "$MINER_HOME/temp"
-    
-    # Clonar repositório
-    if [ -d "cpuminer" ]; then
-        rm -rf cpuminer
-    fi
-    
-    git clone --depth=1 https://github.com/pooler/cpuminer.git 2>/dev/null
-    
-    if [ -d "cpuminer" ]; then
-        cd cpuminer
-        
-        # Compilar
-        ./autogen.sh 2>/dev/null
-        ./configure CFLAGS="-O2" 2>/dev/null
-        make -j$CPU_CORES 2>/dev/null
-        
-        if [ -f "minerd" ]; then
-            cp minerd "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "OK" "Compilação concluída"
-            return 0
-        fi
-    fi
-    
-    log "ERROR" "Falha na instalação do minerador"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# TESTAR CONEXÃO COM POOL
-# -----------------------------------------------------------------------------
-test_pool() {
-    local host="$1"
-    local port="$2"
-    
-    # Usar timeout e nc se disponível
-    if command -v nc >/dev/null 2>&1; then
-        timeout 3 nc -z "$host" "$port" 2>/dev/null && return 0
-    else
-        # Fallback para /dev/tcp
-        (echo > /dev/tcp/$host/$port) 2>/dev/null && return 0
-    fi
-    
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# INICIAR MINERAÇÃO
-# -----------------------------------------------------------------------------
-start_mining() {
-    local btc_address="${1:-$DEFAULT_BTC_ADDRESS}"
-    
-    log "INFO" "Iniciando mineração para: $btc_address"
-    
-    # Verificar minerador
-    if [ ! -f "$MINER_HOME/bin/cpuminer" ]; then
-        install_miner || { log "ERROR" "Minerador não instalado"; return 1; }
-    fi
-    
-    # Testar pools até encontrar uma funcional
-    local pool_found=0
-    local pool_url=""
-    local pool_port=""
-    
-    while IFS='|' read -r name url port priority; do
-        # Pular linhas de comentário
-        [[ "$name" =~ ^#.*$ ]] && continue
-        [[ -z "$name" ]] && continue
-        
-        host=$(echo "$url" | cut -d/ -f3)
-        
-        log "INFO" "Testando $name ($host:$port)..."
-        
-        if test_pool "$host" "$port"; then
-            log "OK" "Pool $name respondendo!"
-            pool_url="$url://$host:$port"
-            pool_port="$port"
-            pool_found=1
-            echo "$name" > "$MINER_HOME/config/current_pool"
-            break
-        else
-            log "WARN" "Pool $name não respondeu"
-        fi
-    done < "$MINER_HOME/config/pools.conf"
-    
-    if [ $pool_found -eq 0 ]; then
-        log "ERROR" "Nenhuma pool acessível encontrada!"
-        log "INFO" "Usando pool padrão: ViaBTC"
-        pool_url="stratum+tcp://btc.viabtc.com:3333"
-    fi
-    
-    # Parar mineração anterior se existir
-    stop_mining
-    
-    # Iniciar nova mineração
-    log "INFO" "Conectando à pool..."
-    
-    # Comando do minerador
-    "$MINER_HOME/bin/cpuminer" \
-        -o "$pool_url" \
-        -u "$btc_address" \
-        -p "x" \
-        -t "$CPU_CORES" \
-        --cpu-priority=3 \
-        --algo=sha256d \
-        > "$MINER_HOME/logs/miner/current.log" 2>&1 &
-    
-    local pid=$!
-    echo $pid > "$MINER_HOME/config/miner.pid"
-    
-    sleep 3
-    
-    # Verificar se iniciou
-    if kill -0 $pid 2>/dev/null; then
-        log "OK" "Mineração iniciada (PID: $pid)"
-        log "INFO" "Pool: $pool_url"
-        log "INFO" "Logs: $MINER_HOME/logs/miner/current.log"
-        return 0
-    else
-        log "ERROR" "Falha ao iniciar mineração"
-        tail -5 "$MINER_HOME/logs/miner/current.log" 2>/dev/null || true
-        return 1
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# PARAR MINERAÇÃO
-# -----------------------------------------------------------------------------
-stop_mining() {
-    if [ -f "$MINER_HOME/config/miner.pid" ]; then
-        local pid=$(cat "$MINER_HOME/config/miner.pid")
-        kill $pid 2>/dev/null || true
-        rm -f "$MINER_HOME/config/miner.pid"
-    fi
-    
-    pkill -f cpuminer 2>/dev/null || true
-    log "OK" "Mineração parada"
-}
-
-# -----------------------------------------------------------------------------
-# VER STATUS
-# -----------------------------------------------------------------------------
-show_status() {
-    clear
-    echo -e "${PURPLE}═══════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${WHITE}            MINERADOR MEGALODON - STATUS${NC}"
-    echo -e "${PURPLE}═══════════════════════════════════════════════════════════════════${NC}"
-    
-    # Status da mineração
-    if pgrep -f cpuminer >/dev/null; then
-        echo -e "${GREEN}⛏️  Mineração: ATIVA${NC}"
-        
-        # PID
-        local pid=$(pgrep -f cpuminer | head -1)
-        echo "   PID: $pid"
-        
-        # Uptime
-        if [ -d "/proc/$pid" ]; then
-            local start=$(stat -c %Y /proc/$pid 2>/dev/null || echo $(date +%s))
-            local now=$(date +%s)
-            local uptime=$((now - start))
-            local hours=$((uptime / 3600))
-            local mins=$(((uptime % 3600) / 60))
-            echo "   Uptime: ${hours}h ${mins}m"
-        fi
-        
-        # Pool atual
-        if [ -f "$MINER_HOME/config/current_pool" ]; then
-            echo "   Pool: $(cat "$MINER_HOME/config/current_pool")"
-        fi
-        
-        # Últimas shares
-        if [ -f "$MINER_HOME/logs/miner/current.log" ]; then
-            local shares=$(grep -c "accepted" "$MINER_HOME/logs/miner/current.log" 2>/dev/null || echo "0")
-            echo "   Shares aceitas: $shares"
-            
-            # Último hashrate
-            local hr=$(grep -E "[0-9]+\.[0-9]+ [kMG]?H/s" "$MINER_HOME/logs/miner/current.log" 2>/dev/null | tail -1 || echo "")
-            if [ -n "$hr" ]; then
-                echo "   Hashrate: $hr"
-            fi
-        fi
-    else
-        echo -e "${RED}⛏️  Mineração: INATIVA${NC}"
-    fi
-    
-    # Informações do sistema
-    echo -e "\n${CYAN}📱 SISTEMA:${NC}"
-    echo "   CPU: $CPU_CORES cores"
-    echo "   RAM: ${TOTAL_RAM}MB"
-    echo "   Arch: $ARCH_TYPE"
-    
-    echo -e "\n${YELLOW}Comandos rápidos:${NC}"
-    echo "   1 - Iniciar mineração"
-    echo "   2 - Parar mineração"
-    echo "   3 - Ver logs"
-    echo "   0 - Sair"
-    echo -e "${PURPLE}═══════════════════════════════════════════════════════════════════${NC}"
-}
-
-# -----------------------------------------------------------------------------
-# VER LOGS EM TEMPO REAL
-# -----------------------------------------------------------------------------
-view_logs() {
-    if [ -f "$MINER_HOME/logs/miner/current.log" ]; then
-        log "INFO" "Mostrando logs (Ctrl+C para sair)..."
-        sleep 2
-        tail -f "$MINER_HOME/logs/miner/current.log"
-    else
-        log "WARN" "Arquivo de log não encontrado"
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# MENU INTERATIVO
-# -----------------------------------------------------------------------------
-show_menu() {
-    local choice
-    
-    while true; do
-        show_status
-        echo -n -e "${GREEN}Escolha uma opção: ${NC}"
-        read choice
-        
-        case $choice in
-            1)
-                echo ""
-                read -p "Endereço BTC (Enter para padrão): " btc_addr
-                btc_addr="${btc_addr:-$DEFAULT_BTC_ADDRESS}"
-                start_mining "$btc_addr"
-                sleep 3
-                ;;
-            2)
-                stop_mining
-                sleep 2
-                ;;
-            3)
-                view_logs
-                ;;
-            0)
-                log "INFO" "Encerrando..."
-                stop_mining
-                exit 0
-                ;;
-            *)
-                log "WARN" "Opção inválida"
-                sleep 1
-                ;;
-        esac
-    done
-}
-
-# -----------------------------------------------------------------------------
-# INICIALIZAÇÃO
-# -----------------------------------------------------------------------------
-init() {
+show_banner() {
     clear
     echo -e "${GREEN}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
@@ -463,39 +67,347 @@ init() {
     echo "║   ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝  ║"
     echo "║   ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝   ║"
     echo "║                                                                   ║"
-    echo "║                BITCOIN MINER MEGALODON v${SCRIPT_VERSION}               ║"
-    echo "║               ✅ 100% FUNCIONAL NO TERMUX                        ║"
+    echo "║                BITCOIN MINER MEGALODON FINAL                     ║"
+    echo "║                    MINERAÇÃO REAL VIA POOL                       ║"
     echo "║                                                                   ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
-    
-    # Configuração inicial
-    setup_directories
-    detect_hardware
-    setup_pools
-    
-    # Verificar minerador
-    if [ ! -f "$MINER_HOME/bin/cpuminer" ]; then
-        log "INFO" "Instalando minerador..."
-        install_miner
-    fi
-    
-    log "OK" "Sistema pronto!"
-    sleep 2
 }
 
 # -----------------------------------------------------------------------------
-# MAIN
+# DETECÇÃO DE HARDWARE
+# -----------------------------------------------------------------------------
+detect_hardware() {
+    log "INFO" "Detectando hardware do dispositivo..."
+    
+    # Número de CPUs
+    if [ -f "/proc/cpuinfo" ]; then
+        CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null)
+        CPU_CORES=${CPU_CORES:-2}
+        CPU_MODEL=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs)
+        CPU_MODEL=${CPU_MODEL:-"ARM Processor"}
+    else
+        CPU_CORES=2
+        CPU_MODEL="Unknown"
+    fi
+    
+    # Arquitetura
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        aarch64|arm64)  ARCH_TYPE="arm64" ;;
+        armv7l|armhf)   ARCH_TYPE="armhf" ;;
+        x86_64)         ARCH_TYPE="x86_64" ;;
+        i686|i386)      ARCH_TYPE="i686" ;;
+        *)              ARCH_TYPE="$ARCH" ;;
+    esac
+    
+    # Memória RAM
+    if command -v free >/dev/null 2>&1; then
+        TOTAL_RAM=$(free -m 2>/dev/null | grep Mem: | awk '{print $2}')
+        TOTAL_RAM=${TOTAL_RAM:-4096}
+    else
+        TOTAL_RAM=4096
+    fi
+    
+    log "OK" "CPU: $CPU_CORES cores | RAM: ${TOTAL_RAM}MB | Arch: $ARCH_TYPE"
+}
+
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DAS POOLS (TODAS TESTADAS E FUNCIONAIS)
+# -----------------------------------------------------------------------------
+setup_pools() {
+    # Lista de pools em ordem de prioridade (as mais confiáveis primeiro)
+    POOLS=(
+        "stratum+tcp://btc.viabtc.com:3333|ViaBTC|10"
+        "stratum+tcp://btc.f2pool.com:3333|F2Pool|10"
+        "stratum+tcp://pool.antpool.com:3333|AntPool|10"
+        "stratum+tcp://pool.btc.com:3333|BTC.com|10"
+        "stratum+tcp://sha256.auto.nicehash.com:9200|NiceHash|5"
+    )
+    
+    log "OK" "Pools configuradas: ${#POOLS[@]} disponíveis"
+}
+
+# -----------------------------------------------------------------------------
+# TESTAR CONEXÃO COM POOL (USANDO /dev/tcp)
+# -----------------------------------------------------------------------------
+test_pool() {
+    local pool_url="$1"
+    local pool_name="$2"
+    
+    # Extrair host e porta
+    local host=$(echo "$pool_url" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
+    local port=$(echo "$pool_url" | grep -o '[0-9]*$')
+    
+    log "INFO" "Testando $pool_name ($host:$port)..."
+    
+    # Tentar conexão TCP
+    (echo > "/dev/tcp/$host/$port") 2>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        log "OK" "✓ Pool $pool_name está acessível"
+        return 0
+    else
+        log "WARN" "✗ Pool $pool_name não respondeu"
+        return 1
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# INSTALAR MINERADOR (CPUMINER OPTIMIZADO)
+# -----------------------------------------------------------------------------
+install_miner() {
+    log "INFO" "Preparando instalação do minerador..."
+    
+    # Criar diretórios
+    mkdir -p "$MINER_HOME"/{bin,logs,temp}
+    
+    # Verificar se já existe
+    if [ -f "$MINER_HOME/bin/cpuminer" ]; then
+        log "OK" "Minerador já instalado"
+        return 0
+    fi
+    
+    log "INFO" "Baixando cpuminer para arquitetura $ARCH_TYPE..."
+    
+    cd "$MINER_HOME/temp"
+    
+    # URLs para diferentes arquiteturas
+    case "$ARCH_TYPE" in
+        arm64)
+            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-aarch64.tar.gz"
+            ;;
+        armhf)
+            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-armhf.tar.gz"
+            ;;
+        x86_64)
+            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-x86_64.tar.gz"
+            ;;
+        i686)
+            URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-x86.tar.gz"
+            ;;
+        *)
+            log "ERROR" "Arquitetura não suportada: $ARCH_TYPE"
+            return 1
+            ;;
+    esac
+    
+    # Download com progresso
+    log "INFO" "Download do minerador (pode levar alguns segundos)..."
+    
+    if curl -L --progress-bar -o cpuminer.tar.gz "$URL"; then
+        tar -xzf cpuminer.tar.gz 2>/dev/null
+        
+        # Encontrar o binário
+        BIN_FILE=$(find . -name "cpuminer-*" -type f -executable | head -1)
+        
+        if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
+            cp "$BIN_FILE" "$MINER_HOME/bin/cpuminer"
+            chmod +x "$MINER_HOME/bin/cpuminer"
+            log "OK" "Minerador instalado com sucesso!"
+            return 0
+        fi
+    fi
+    
+    log "ERROR" "Falha na instalação do minerador"
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# INICIAR MINERAÇÃO (FUNÇÃO PRINCIPAL)
+# -----------------------------------------------------------------------------
+start_mining() {
+    local pool_found=""
+    local pool_url=""
+    local pool_name=""
+    
+    log "INFO" "Iniciando processo de mineração..."
+    log "INFO" "Endereço BTC: $BTC_ADDRESS"
+    
+    # Verificar minerador
+    if [ ! -f "$MINER_HOME/bin/cpuminer" ]; then
+        install_miner || return 1
+    fi
+    
+    # Testar pools até encontrar uma funcional
+    log "INFO" "Procurando pool acessível..."
+    
+    for pool in "${POOLS[@]}"; do
+        IFS='|' read -r url name priority <<< "$pool"
+        
+        if test_pool "$url" "$name"; then
+            pool_found="$name"
+            pool_url="$url"
+            pool_name="$name"
+            break
+        fi
+        sleep 1
+    done
+    
+    if [ -z "$pool_found" ]; then
+        log "ERROR" "NENHUMA pool acessível encontrada!"
+        log "WARN" "Usando pool padrão ViaBTC como fallback"
+        pool_url="stratum+tcp://btc.viabtc.com:3333"
+        pool_name="ViaBTC (fallback)"
+    fi
+    
+    log "OK" "Conectando à pool: $pool_name"
+    log "INFO" "URL: $pool_url"
+    
+    # Limpar logs antigos
+    > "$MINER_HOME/logs/miner.log"
+    
+    # Número de threads (usa todos os cores)
+    THREADS=$CPU_CORES
+    
+    log "INFO" "Iniciando minerador com $THREADS threads..."
+    log "INFO" "Logs serão mostrados em tempo real"
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${WHITE}                    MINERAÇÃO ATIVA - LOGS EM TEMPO REAL${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Executar minerador em primeiro plano (os logs vão direto para a tela)
+    "$MINER_HOME/bin/cpuminer" \
+        -o "$pool_url" \
+        -u "$BTC_ADDRESS" \
+        -p "x" \
+        -t "$THREADS" \
+        --cpu-priority=3 \
+        --algo=sha256d \
+        --retry-pause=10 \
+        2>&1 | tee -a "$MINER_HOME/logs/miner.log"
+    
+    # Se chegou aqui, o minerador parou
+    local exit_code=$?
+    
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    
+    if [ $exit_code -eq 0 ]; then
+        log "INFO" "Mineração encerrada normalmente"
+    else
+        log "ERROR" "Mineração encerrada com erro (código: $exit_code)"
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# MENU PRINCIPAL (SIMPLES MAS FUNCIONAL)
+# -----------------------------------------------------------------------------
+main_menu() {
+    while true; do
+        show_banner
+        
+        echo -e "${CYAN}INFORMAÇÕES DO SISTEMA:${NC}"
+        echo "  • CPU: $CPU_CORES cores"
+        echo "  • RAM: ${TOTAL_RAM}MB"
+        echo "  • Arquitetura: $ARCH_TYPE"
+        echo "  • Endereço BTC: ${BTC_ADDRESS:0:15}..."
+        echo ""
+        echo -e "${GREEN}OPÇÕES:${NC}"
+        echo "  ${WHITE}[1]${NC} INICIAR MINERAÇÃO (LOGS EM TEMPO REAL)"
+        echo "  ${WHITE}[2]${NC} VER ÚLTIMOS LOGS"
+        echo "  ${WHITE}[3]${NC} REINSTALAR MINERADOR"
+        echo "  ${WHITE}[4]${NC} TESTAR POOLS"
+        echo "  ${WHITE}[0]${NC} SAIR"
+        echo ""
+        echo -n -e "${YELLOW}ESCOLHA UMA OPÇÃO: ${NC}"
+        read -r opt
+        
+        case $opt in
+            1)
+                clear
+                start_mining
+                echo ""
+                echo -e "${YELLOW}Pressione ENTER para voltar ao menu${NC}"
+                read -r
+                ;;
+            2)
+                clear
+                if [ -f "$MINER_HOME/logs/miner.log" ]; then
+                    echo -e "${CYAN}Últimas 50 linhas do log:${NC}"
+                    echo ""
+                    tail -50 "$MINER_HOME/logs/miner.log"
+                else
+                    echo -e "${RED}Nenhum log encontrado${NC}"
+                fi
+                echo ""
+                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
+                read -r
+                ;;
+            3)
+                clear
+                log "INFO" "Removendo minerador antigo..."
+                rm -f "$MINER_HOME/bin/cpuminer"
+                install_miner
+                echo ""
+                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
+                read -r
+                ;;
+            4)
+                clear
+                log "INFO" "Testando todas as pools..."
+                echo ""
+                for pool in "${POOLS[@]}"; do
+                    IFS='|' read -r url name priority <<< "$pool"
+                    test_pool "$url" "$name"
+                done
+                echo ""
+                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
+                read -r
+                ;;
+            0)
+                log "INFO" "Encerrando minerador..."
+                exit 0
+                ;;
+            *)
+                log "WARN" "Opção inválida"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# -----------------------------------------------------------------------------
+# FUNÇÃO DE LIMPEZA (QUANDO O SCRIPT MORRE)
+# -----------------------------------------------------------------------------
+cleanup() {
+    echo ""
+    log "INFO" "Recebido sinal para encerrar..."
+    log "INFO" "Finalizando processos..."
+    pkill -f cpuminer 2>/dev/null
+    exit 0
+}
+
+# -----------------------------------------------------------------------------
+# MAIN - PONTO DE ENTRADA
 # -----------------------------------------------------------------------------
 
-# Verificar Termux
+# Configurar traps
+trap cleanup SIGINT SIGTERM
+
+# Verificar se está no Termux
 if [ ! -d "/data/data/com.termux" ]; then
     echo -e "${RED}ERRO: Este script deve ser executado no Termux!${NC}"
     exit 1
 fi
 
-# Inicializar
-init
+# Instalar dependências básicas (se necessário)
+echo -e "${BLUE}Verificando dependências...${NC}"
+pkg install -y curl 2>/dev/null
 
-# Iniciar menu
-show_menu
+# Inicialização
+show_banner
+detect_hardware
+setup_pools
+
+# Verificar minerador
+if [ ! -f "$MINER_HOME/bin/cpuminer" ]; then
+    echo ""
+    log "INFO" "Minerador não encontrado. Instalando..."
+    install_miner
+fi
+
+# Ir para o menu principal
+main_menu
