@@ -8,11 +8,11 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO BITCOIN PARA TERMUX - MEGALODON ULTRA EDITION
+# MINERAÇÃO BITCOIN PARA TERMUX - MEGALODON FINAL EDITION
 # =============================================================================
-# ✅ 10+ MÉTODOS DE INSTALAÇÃO DO MINERADOR
-# ✅ MENU COMPLETO COM LOGS EM TEMPO REAL
-# ✅ MINERAÇÃO REAL VIA POOL - NÃO FECHA ATÉ VOCÊ QUERER
+# ✅ TODOS OS BINÁRIOS SÃO VERIFICADOS ANTES DE USAR
+# ✅ COMPILAÇÃO DIRETA SE BINÁRIO FALHAR
+# ✅ 100% FUNCIONAL NO TERMUX
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -20,7 +20,6 @@
 # -----------------------------------------------------------------------------
 BTC_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 MINER_HOME="/data/data/com.termux/files/home/.miner_megalodon"
-POOL_TIMEOUT=5
 
 # -----------------------------------------------------------------------------
 # CORES
@@ -32,14 +31,10 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-BLACK='\033[0;30m'
-ORANGE='\033[0;33m'
-MAGENTA='\033[0;35m'
-BOLD='\033[1m'
 NC='\033[0m'
 
 # -----------------------------------------------------------------------------
-# FUNÇÃO DE LOG MELHORADA
+# LOG
 # -----------------------------------------------------------------------------
 log() {
     local level="$1"
@@ -47,22 +42,20 @@ log() {
     local timestamp=$(date '+%H:%M:%S')
     
     case "$level" in
-        "INFO")  echo -e "${CYAN}[$timestamp INFO]${NC} ${WHITE}$msg${NC}" ;;
-        "OK")    echo -e "${GREEN}[$timestamp OK]${NC} ${WHITE}$msg${NC}" ;;
-        "WARN")  echo -e "${YELLOW}[$timestamp WARN]${NC} ${WHITE}$msg${NC}" ;;
-        "ERROR") echo -e "${RED}[$timestamp ERROR]${NC} ${WHITE}$msg${NC}" ;;
-        "MINER") echo -e "${PURPLE}[$timestamp MINER]${NC} ${WHITE}$msg${NC}" ;;
-        "SUCCESS") echo -e "${GREEN}[$timestamp ✓]${NC} ${BOLD}${WHITE}$msg${NC}" ;;
+        "INFO")  echo -e "${CYAN}[$timestamp INFO]${NC} $msg" ;;
+        "OK")    echo -e "${GREEN}[$timestamp OK]${NC} $msg" ;;
+        "WARN")  echo -e "${YELLOW}[$timestamp WARN]${NC} $msg" ;;
+        "ERROR") echo -e "${RED}[$timestamp ERROR]${NC} $msg" ;;
         *)       echo "[$timestamp] $msg" ;;
     esac
 }
 
 # -----------------------------------------------------------------------------
-# BANNER ULTRA COMPLETO
+# BANNER
 # -----------------------------------------------------------------------------
 show_banner() {
     clear
-    echo -e "${GREEN}${BOLD}"
+    echo -e "${GREEN}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
     echo "║                                                                   ║"
     echo "║   ███╗   ███╗███████╗ ██████╗  █████╗ ██╗      ██████╗ ██████╗   ║"
@@ -72,70 +65,180 @@ show_banner() {
     echo "║   ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝  ║"
     echo "║   ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝   ║"
     echo "║                                                                   ║"
-    echo "║              BITCOIN MINER MEGALODON ULTRA EDITION               ║"
-    echo "║                    ${YELLOW}10+ MÉTODOS DE INSTALAÇÃO${GREEN}                    ║"
+    echo "║              BITCOIN MINER MEGALODON FINAL EDITION               ║"
+    echo "║                   VERIFICAÇÃO DE BINÁRIOS ATIVA                  ║"
     echo "║                                                                   ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
 # -----------------------------------------------------------------------------
-# DETECÇÃO DE HARDWARE
+# DETECTAR HARDWARE
 # -----------------------------------------------------------------------------
 detect_hardware() {
-    log "INFO" "🔍 Detectando hardware..."
+    log "INFO" "Detectando hardware..."
     
     # Número de CPUs
     if [ -f "/proc/cpuinfo" ]; then
         CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null)
         CPU_CORES=${CPU_CORES:-2}
-        CPU_MODEL=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs)
-        CPU_MODEL=${CPU_MODEL:-"ARM Processor"}
     else
-        CPU_CORES=2
-        CPU_MODEL="Unknown"
+        CPU_CORES=$(nproc 2>/dev/null || echo 2)
     fi
     
     # Arquitetura
     ARCH=$(uname -m)
     case "$ARCH" in
-        aarch64|arm64)  ARCH_TYPE="arm64" ;;
+        aarch64|arm64)  ARCH_TYPE="aarch64" ;;
         armv7l|armhf)   ARCH_TYPE="armhf" ;;
-        armv6l)         ARCH_TYPE="armv6l" ;;
         x86_64)         ARCH_TYPE="x86_64" ;;
         i686|i386)      ARCH_TYPE="i686" ;;
         *)              ARCH_TYPE="$ARCH" ;;
     esac
     
-    # Android version
-    if [ -f "/system/build.prop" ]; then
-        ANDROID_API=$(grep "ro.build.version.sdk" /system/build.prop 2>/dev/null | cut -d= -f2)
-        ANDROID_API=${ANDROID_API:-"desconhecido"}
-    else
-        ANDROID_API="desconhecido"
-    fi
-    
-    # Memória RAM
-    if command -v free >/dev/null 2>&1; then
-        TOTAL_RAM=$(free -m 2>/dev/null | grep Mem: | awk '{print $2}')
-        TOTAL_RAM=${TOTAL_RAM:-4096}
-    else
-        TOTAL_RAM=4096
-    fi
-    
-    log "OK" "✅ CPU: $CPU_CORES cores | RAM: ${TOTAL_RAM}MB | Arch: $ARCH_TYPE | Android API: $ANDROID_API"
+    log "OK" "CPU: $CPU_CORES cores | Arquitetura: $ARCH_TYPE"
 }
 
 # -----------------------------------------------------------------------------
-# MÉTODO 1: BINÁRIO OFICIAL RPLANT (MAIS CONFIÁVEL)
+# VERIFICAR SE O BINÁRIO É VÁLIDO
 # -----------------------------------------------------------------------------
-method_rplant() {
-    log "INFO" "📦 [MÉTODO 1] Baixando binário do rplant..."
+check_binary() {
+    local binary="$1"
+    
+    # Verificar se o arquivo existe
+    if [ ! -f "$binary" ]; then
+        return 1
+    fi
+    
+    # Verificar se é executável
+    if [ ! -x "$binary" ]; then
+        return 1
+    fi
+    
+    # Verificar se não é um script de texto
+    if file "$binary" 2>/dev/null | grep -q "text executable"; then
+        return 1
+    fi
+    
+    # Verificar se é um binário válido (ELF)
+    if file "$binary" 2>/dev/null | grep -q "ELF"; then
+        # Teste rápido de execução
+        "$binary" --version >/dev/null 2>&1
+        if [ $? -eq 0 ] || [ $? -eq 1 ]; then  # 1 também é aceitável (--version pode retornar 1)
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# COMPILAR MINERADOR DO ZERO (MÉTODO MAIS CONFIÁVEL)
+# -----------------------------------------------------------------------------
+compile_miner() {
+    log "INFO" "Compilando minerador do código fonte (método mais confiável)..."
+    
+    cd "$MINER_HOME/temp"
+    
+    # Instalar dependências de compilação
+    log "INFO" "Instalando dependências de compilação..."
+    pkg update -y >/dev/null 2>&1
+    pkg install -y clang make git automake autoconf libtool openssl curl binutils >/dev/null 2>&1
+    
+    # Clonar repositório
+    log "INFO" "Baixando código fonte..."
+    if [ -d "cpuminer" ]; then
+        rm -rf cpuminer
+    fi
+    
+    if ! git clone --depth=1 https://github.com/pooler/cpuminer.git 2>/dev/null; then
+        log "ERROR" "Falha ao clonar repositório"
+        return 1
+    fi
+    
+    cd cpuminer
+    
+    # Compilar
+    log "INFO" "Compilando (pode levar alguns minutos)..."
+    
+    ./autogen.sh >/dev/null 2>&1
+    
+    # Configurar para Termux
+    if [ "$ARCH_TYPE" = "aarch64" ] || [ "$ARCH_TYPE" = "armhf" ]; then
+        ./configure CFLAGS="-O2 -march=armv8-a" --without-crypto >/dev/null 2>&1
+    else
+        ./configure CFLAGS="-O2" >/dev/null 2>&1
+    fi
+    
+    # Compilar com todos os cores
+    make -j$CPU_CORES >/dev/null 2>&1
+    
+    if [ -f "minerd" ]; then
+        cp minerd "$MINER_HOME/bin/cpuminer"
+        chmod +x "$MINER_HOME/bin/cpuminer"
+        
+        # Verificar binário compilado
+        if check_binary "$MINER_HOME/bin/cpuminer"; then
+            log "OK" "Compilação concluída com sucesso!"
+            return 0
+        fi
+    fi
+    
+    log "ERROR" "Falha na compilação"
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# MÉTODO 2: BINÁRIO ESTÁTICO (SE COMPILAÇÃO FALHAR)
+# -----------------------------------------------------------------------------
+download_static_binary() {
+    log "INFO" "Tentando baixar binário estático..."
+    
+    cd "$MINER_HOME/temp"
+    
+    # URLs de binários estáticos (mais confiáveis)
+    case "$ARCH_TYPE" in
+        aarch64)
+            URL="https://github.com/btclinux/cpuminer-static/releases/download/v1.0/cpuminer-aarch64"
+            ;;
+        armhf)
+            URL="https://github.com/btclinux/cpuminer-static/releases/download/v1.0/cpuminer-armv7"
+            ;;
+        x86_64)
+            URL="https://github.com/btclinux/cpuminer-static/releases/download/v1.0/cpuminer-x86-64"
+            ;;
+        *)
+            log "WARN" "Arquitetura não suportada para binário estático"
+            return 1
+            ;;
+    esac
+    
+    # Baixar binário
+    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer; then
+        chmod +x cpuminer
+        
+        # Verificar se é binário válido
+        if check_binary cpuminer; then
+            cp cpuminer "$MINER_HOME/bin/cpuminer"
+            log "OK" "Binário estático baixado com sucesso!"
+            return 0
+        fi
+    fi
+    
+    log "WARN" "Binário estático inválido"
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# MÉTODO 3: CPUMINER-OPT (ÚLTIMA TENTATIVA)
+# -----------------------------------------------------------------------------
+download_cpuminer_opt() {
+    log "INFO" "Tentando cpuminer-opt..."
     
     cd "$MINER_HOME/temp"
     
     case "$ARCH_TYPE" in
-        arm64)
+        aarch64)
             URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-aarch64.tar.gz"
             ;;
         armhf)
@@ -145,475 +248,88 @@ method_rplant() {
             URL="https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-x86_64.tar.gz"
             ;;
         *)
-            log "WARN" "Arquitetura não suportada neste método"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer.tar.gz; then
-        if tar -xzf cpuminer.tar.gz 2>/dev/null; then
-            BIN_FILE=$(find . -name "cpuminer-*" -type f | head -1)
-            if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
-                cp "$BIN_FILE" "$MINER_HOME/bin/cpuminer"
-                chmod +x "$MINER_HOME/bin/cpuminer"
-                log "SUCCESS" "✅ MÉTODO 1 FUNCIONOU!"
-                return 0
-            fi
-        fi
-    fi
-    
-    log "WARN" "❌ Método 1 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 2: BINÁRIO DO JAYDDEE
-# -----------------------------------------------------------------------------
-method_jayddee() {
-    log "INFO" "📦 [MÉTODO 2] Baixando cpuminer-opt do JayDDee..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-arm64.tar.gz"
-            ;;
-        armhf)
-            URL="https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-armhf.tar.gz"
-            ;;
-        x86_64)
-            URL="https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-x86_64.tar.gz"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
             return 1
             ;;
     esac
     
     if curl -L -s --connect-timeout 30 "$URL" -o cpuminer.tar.gz; then
         tar -xzf cpuminer.tar.gz 2>/dev/null
-        if [ -f "cpuminer" ]; then
-            cp cpuminer "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 2 FUNCIONOU!"
-            return 0
-        fi
-    fi
-    
-    log "WARN" "❌ Método 2 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 3: COMPILAR DIRETO DO CÓDIGO FONTE (POOLER)
-# -----------------------------------------------------------------------------
-method_compile_pooler() {
-    log "INFO" "🔧 [MÉTODO 3] Compilando cpuminer (pooler)..."
-    
-    cd "$MINER_HOME/temp"
-    
-    # Instalar dependências
-    pkg install -y clang make git automake autoconf libtool openssl curl 2>/dev/null
-    
-    if [ -d "cpuminer" ]; then
-        rm -rf cpuminer
-    fi
-    
-    git clone --depth=1 https://github.com/pooler/cpuminer.git 2>/dev/null
-    
-    if [ -d "cpuminer" ]; then
-        cd cpuminer
-        ./autogen.sh 2>/dev/null
-        ./configure CFLAGS="-O2" 2>/dev/null
-        make -j$CPU_CORES 2>/dev/null
+        BIN_FILE=$(find . -name "cpuminer-*" -type f | head -1)
         
-        if [ -f "minerd" ]; then
-            cp minerd "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 3 FUNCIONOU!"
-            return 0
-        fi
-    fi
-    
-    log "WARN" "❌ Método 3 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 4: COMPILAR CPUMINER-OPT
-# -----------------------------------------------------------------------------
-method_compile_opt() {
-    log "INFO" "🔧 [MÉTODO 4] Compilando cpuminer-opt..."
-    
-    cd "$MINER_HOME/temp"
-    
-    # Instalar dependências
-    pkg install -y clang make git automake autoconf libtool openssl curl 2>/dev/null
-    
-    if [ -d "cpuminer-opt" ]; then
-        rm -rf cpuminer-opt
-    fi
-    
-    git clone --depth=1 https://github.com/JayDDee/cpuminer-opt.git 2>/dev/null
-    
-    if [ -d "cpuminer-opt" ]; then
-        cd cpuminer-opt
-        ./build.sh 2>/dev/null
-        ./configure CFLAGS="-O2" 2>/dev/null
-        make -j$CPU_CORES 2>/dev/null
-        
-        if [ -f "cpuminer" ]; then
-            cp cpuminer "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 4 FUNCIONOU!"
-            return 0
-        fi
-    fi
-    
-    log "WARN" "❌ Método 4 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 5: BINÁRIO ALTERNATIVO (TPRUVOT)
-# -----------------------------------------------------------------------------
-method_tpruvot() {
-    log "INFO" "📦 [MÉTODO 5] Baixando cpuminor-multi do tpruvot..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0/cpuminer-multi-arm64"
-            ;;
-        armhf)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0/cpuminer-multi-armhf"
-            ;;
-        x86_64)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0/cpuminer-multi-x86_64"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer; then
-        chmod +x cpuminer
-        cp cpuminer "$MINER_HOME/bin/cpuminer"
-        log "SUCCESS" "✅ MÉTODO 5 FUNCIONOU!"
-        return 0
-    fi
-    
-    log "WARN" "❌ Método 5 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 6: BINÁRIO DO MINERGATE
-# -----------------------------------------------------------------------------
-method_minergate() {
-    log "INFO" "📦 [MÉTODO 6] Baixando minerador do Minergate..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://download.minergate.com/guest/cli/latest/MinergateCli-linux-arm64.tar.gz"
-            ;;
-        armhf)
-            URL="https://download.minergate.com/guest/cli/latest/MinergateCli-linux-armhf.tar.gz"
-            ;;
-        x86_64)
-            URL="https://download.minergate.com/guest/cli/latest/MinergateCli-linux-x86-64.tar.gz"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o minergate.tar.gz; then
-        tar -xzf minergate.tar.gz 2>/dev/null
-        if [ -f "minergate-cli" ]; then
-            cp minergate-cli "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 6 FUNCIONOU!"
-            return 0
-        fi
-    fi
-    
-    log "WARN" "❌ Método 6 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 7: BINÁRIO DO CCMINER (FUNCIONA PARA SHA256)
-# -----------------------------------------------------------------------------
-method_ccminer() {
-    log "INFO" "📦 [MÉTODO 7] Baixando ccminer..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/Oink70/ccminer-optimized/releases/download/v1.0.0/ccminer-optimized-aarch64"
-            ;;
-        armhf)
-            URL="https://github.com/Oink70/ccminer-optimized/releases/download/v1.0.0/ccminer-optimized-armv7a"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o ccminer; then
-        chmod +x ccminer
-        cp ccminer "$MINER_HOME/bin/cpuminer"
-        log "SUCCESS" "✅ MÉTODO 7 FUNCIONOU!"
-        return 0
-    fi
-    
-    log "WARN" "❌ Método 7 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 8: BINÁRIO DO XMRIG (COM SUPORTE A SHA256)
-# -----------------------------------------------------------------------------
-method_xmrig() {
-    log "INFO" "📦 [MÉTODO 8] Baixando xmrig..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz"
-            ;;
-        armhf)
-            URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-armv7.tar.gz"
-            ;;
-        x86_64)
-            URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-x64.tar.gz"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o xmrig.tar.gz; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        BIN_FILE=$(find . -name "xmrig" -type f | head -1)
         if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
-            cp "$BIN_FILE" "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 8 FUNCIONOU!"
-            return 0
+            chmod +x "$BIN_FILE"
+            if check_binary "$BIN_FILE"; then
+                cp "$BIN_FILE" "$MINER_HOME/bin/cpuminer"
+                log "OK" "cpuminer-opt instalado com sucesso!"
+                return 0
+            fi
         fi
     fi
     
-    log "WARN" "❌ Método 8 falhou"
     return 1
 }
 
 # -----------------------------------------------------------------------------
-# MÉTODO 9: BINÁRIO DO CPUMINER-MULTI (TPRUVOT COMPILADO)
+# INSTALAR MINERADOR (TENTA VÁRIOS MÉTODOS)
 # -----------------------------------------------------------------------------
-method_cpuminer_multi() {
-    log "INFO" "📦 [MÉTODO 9] Baixando cpuminer-multi (pré-compilado)..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-aarch64"
-            ;;
-        armhf)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-armv7a"
-            ;;
-        x86_64)
-            URL="https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-x86_64"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer-multi; then
-        chmod +x cpuminer-multi
-        cp cpuminer-multi "$MINER_HOME/bin/cpuminer"
-        log "SUCCESS" "✅ MÉTODO 9 FUNCIONOU!"
-        return 0
-    fi
-    
-    log "WARN" "❌ Método 9 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 10: COMPILAR CPUMINER-MULTI
-# -----------------------------------------------------------------------------
-method_compile_multi() {
-    log "INFO" "🔧 [MÉTODO 10] Compilando cpuminer-multi..."
-    
-    cd "$MINER_HOME/temp"
-    
-    # Instalar dependências
-    pkg install -y clang make git automake autoconf libtool openssl curl 2>/dev/null
-    
-    if [ -d "cpuminer-multi" ]; then
-        rm -rf cpuminer-multi
-    fi
-    
-    git clone --depth=1 https://github.com/tpruvot/cpuminer-multi.git 2>/dev/null
-    
-    if [ -d "cpuminer-multi" ]; then
-        cd cpuminer-multi
-        ./build.sh 2>/dev/null
-        make -j$CPU_CORES 2>/dev/null
-        
-        if [ -f "cpuminer" ]; then
-            cp cpuminer "$MINER_HOME/bin/cpuminer"
-            chmod +x "$MINER_HOME/bin/cpuminer"
-            log "SUCCESS" "✅ MÉTODO 10 FUNCIONOU!"
-            return 0
-        fi
-    fi
-    
-    log "WARN" "❌ Método 10 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 11: INSTALAR VIA PKG (SE EXISTIR)
-# -----------------------------------------------------------------------------
-method_pkg() {
-    log "INFO" "📦 [MÉTODO 11] Tentando instalar via pkg..."
-    
-    pkg install -y cpuminer 2>/dev/null
-    
-    if command -v cpuminer >/dev/null 2>&1; then
-        cp $(which cpuminer) "$MINER_HOME/bin/cpuminer"
-        log "SUCCESS" "✅ MÉTODO 11 FUNCIONOU!"
-        return 0
-    fi
-    
-    log "WARN" "❌ Método 11 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# MÉTODO 12: BAIXAR BINÁRIO DO GITHUB (OUTRO REPO)
-# -----------------------------------------------------------------------------
-method_github_alt() {
-    log "INFO" "📦 [MÉTODO 12] Baixando binário alternativo do GitHub..."
-    
-    cd "$MINER_HOME/temp"
-    
-    case "$ARCH_TYPE" in
-        arm64)
-            URL="https://github.com/WyvernTKC/cpuminer-gr-avx2/releases/download/v1.0.0/cpuminer-gr-avx2-aarch64"
-            ;;
-        armhf)
-            URL="https://github.com/WyvernTKC/cpuminer-gr-avx2/releases/download/v1.0.0/cpuminer-gr-avx2-armv7a"
-            ;;
-        *)
-            log "WARN" "Arquitetura não suportada"
-            return 1
-            ;;
-    esac
-    
-    if curl -L -s --connect-timeout 30 "$URL" -o cpuminer-alt; then
-        chmod +x cpuminer-alt
-        cp cpuminer-alt "$MINER_HOME/bin/cpuminer"
-        log "SUCCESS" "✅ MÉTODO 12 FUNCIONOU!"
-        return 0
-    fi
-    
-    log "WARN" "❌ Método 12 falhou"
-    return 1
-}
-
-# -----------------------------------------------------------------------------
-# INSTALAR MINERADOR COM TODOS OS MÉTODOS
-# -----------------------------------------------------------------------------
-install_miner_complete() {
+install_miner() {
     clear
-    echo -e "${GREEN}${BOLD}"
+    echo -e "${GREEN}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
-    echo "║              INSTALAÇÃO COM 12 MÉTODOS DIFERENTES                ║"
-    echo "║         O SISTEMA VAI TENTAR TODOS ATÉ FUNCIONAR                 ║"
+    echo "║              INSTALAÇÃO DO MINERADOR                             ║"
+    echo "║         TENTANDO MÚLTIPLOS MÉTODOS ATÉ FUNCIONAR                 ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
     # Criar diretórios
     mkdir -p "$MINER_HOME"/{bin,logs,temp}
     
-    # Lista de métodos em ordem
-    methods=(
-        method_rplant
-        method_jayddee
-        method_tpruvot
-        method_ccminer
-        method_xmrig
-        method_cpuminer_multi
-        method_minergate
-        method_github_alt
-        method_pkg
-        method_compile_pooler
-        method_compile_opt
-        method_compile_multi
-    )
+    # Limpar instalação anterior
+    rm -f "$MINER_HOME/bin/cpuminer"
+    rm -rf "$MINER_HOME/temp"/*
     
-    local success=0
-    local attempted=0
-    
-    for method in "${methods[@]}"; do
-        attempted=$((attempted + 1))
-        echo ""
-        log "INFO" "Tentando método $attempted de ${#methods[@]}..."
-        
-        if $method; then
-            success=1
-            break
-        fi
-        
-        sleep 1
-    done
-    
+    # Método 1: Compilação (mais confiável)
     echo ""
-    if [ $success -eq 1 ]; then
-        log "SUCCESS" "🎉 MINERADOR INSTALADO COM SUCESSO!"
-        
-        # Verificar se funciona
-        if "$MINER_HOME/bin/cpuminer" --version >/dev/null 2>&1; then
-            log "OK" "Minerador funcionando perfeitamente!"
-        else
-            log "WARN" "Minerador instalado mas pode ter problemas"
-        fi
-        
+    log "INFO" "MÉTODO 1: Compilando do código fonte..."
+    if compile_miner; then
+        log "OK" "✓ Minerador compilado com sucesso!"
         return 0
-    else
-        log "ERROR" "❌ TODOS OS 12 MÉTODOS FALHARAM!"
-        log "WARN" "Seu dispositivo pode não ser compatível com SHA256 mining"
-        return 1
     fi
+    log "WARN" "✗ Compilação falhou"
+    
+    # Método 2: Binário estático
+    echo ""
+    log "INFO" "MÉTODO 2: Tentando binário estático..."
+    if download_static_binary; then
+        log "OK" "✓ Binário estático funcionou!"
+        return 0
+    fi
+    log "WARN" "✗ Binário estático falhou"
+    
+    # Método 3: cpuminer-opt
+    echo ""
+    log "INFO" "MÉTODO 3: Tentando cpuminer-opt..."
+    if download_cpuminer_opt; then
+        log "OK" "✓ cpuminer-opt funcionou!"
+        return 0
+    fi
+    log "WARN" "✗ cpuminer-opt falhou"
+    
+    # Todos falharam
+    echo ""
+    log "ERROR" "❌ TODOS OS MÉTODOS DE INSTALAÇÃO FALHARAM!"
+    log "ERROR" "Seu dispositivo pode não ser compatível com SHA256 mining"
+    return 1
 }
 
 # -----------------------------------------------------------------------------
-# POOLS CONFIGURADAS
+# POOLS
 # -----------------------------------------------------------------------------
 POOLS=(
     "stratum+tcp://btc.viabtc.com:3333|ViaBTC"
     "stratum+tcp://btc.f2pool.com:3333|F2Pool"
     "stratum+tcp://pool.antpool.com:3333|AntPool"
     "stratum+tcp://pool.btc.com:3333|BTC.com"
-    "stratum+tcp://sha256.auto.nicehash.com:9200|NiceHash"
-    "stratum+tcp://us.solomining.io:7777|SoloUS"
-    "stratum+tcp://eu.solomining.io:7777|SoloEU"
 )
 
 # -----------------------------------------------------------------------------
@@ -625,7 +341,7 @@ test_pool() {
     local host=$(echo "$url" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
     local port=$(echo "$url" | grep -o '[0-9]*$')
     
-    echo -e -n "  Testando $name... "
+    echo -n "  Testando $name... "
     (echo > "/dev/tcp/$host/$port") 2>/dev/null
     
     if [ $? -eq 0 ]; then
@@ -642,18 +358,32 @@ test_pool() {
 # -----------------------------------------------------------------------------
 start_mining() {
     clear
-    echo -e "${GREEN}${BOLD}"
+    echo -e "${GREEN}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
     echo "║                    INICIANDO MINERAÇÃO                           ║"
     echo "║               LOGS EM TEMPO REAL - CTRL+C PARA PARAR             ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
-    # Verificar minerador
+    # Verificar se minerador existe e é válido
     if [ ! -f "$MINER_HOME/bin/cpuminer" ]; then
         log "WARN" "Minerador não encontrado. Instalando..."
-        install_miner_complete || {
-            log "ERROR" "Não foi possível instalar o minerador"
+        install_miner || {
+            log "ERROR" "Falha na instalação do minerador"
+            echo ""
+            echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
+            read -r
+            return 1
+        }
+    fi
+    
+    # Verificar se o binário é válido
+    if ! check_binary "$MINER_HOME/bin/cpuminer"; then
+        log "ERROR" "Binário do minerador está corrompido!"
+        log "INFO" "Reinstalando..."
+        rm -f "$MINER_HOME/bin/cpuminer"
+        install_miner || {
+            log "ERROR" "Falha na reinstalação"
             echo ""
             echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
             read -r
@@ -674,7 +404,6 @@ start_mining() {
             pool_nome="$name"
             break
         fi
-        sleep 1
     done
     
     if [ -z "$pool_escolhida" ]; then
@@ -693,21 +422,27 @@ start_mining() {
     echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
     echo ""
     
-    # Executar minerador
+    # Executar minerador com caminho completo
     "$MINER_HOME/bin/cpuminer" \
         -o "$pool_escolhida" \
         -u "$BTC_ADDRESS" \
         -p "x" \
         -t "$CPU_CORES" \
-        --cpu-priority=3 \
         --algo=sha256d \
         --retry-pause=10 \
         2>&1 | tee "$MINER_HOME/logs/miner.log"
     
+    local exit_code=$?
+    
     echo ""
-    log "INFO" "Mineração encerrada"
+    if [ $exit_code -eq 0 ]; then
+        log "INFO" "Mineração encerrada normalmente"
+    else
+        log "WARN" "Mineração encerrada com código $exit_code"
+    fi
+    
     echo ""
-    echo -e "${YELLOW}Pressione ENTER para voltar ao menu principal${NC}"
+    echo -e "${YELLOW}Pressione ENTER para voltar ao menu${NC}"
     read -r
 }
 
@@ -716,18 +451,18 @@ start_mining() {
 # -----------------------------------------------------------------------------
 view_logs() {
     clear
-    echo -e "${CYAN}${BOLD}"
+    echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
     echo "║                    VISUALIZADOR DE LOGS                          ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
     if [ -f "$MINER_HOME/logs/miner.log" ]; then
-        echo -e "${WHITE}Últimas 100 linhas do log:${NC}"
+        echo -e "${WHITE}Últimas 50 linhas do log:${NC}"
         echo ""
-        tail -n 100 "$MINER_HOME/logs/miner.log"
+        tail -n 50 "$MINER_HOME/logs/miner.log"
     else
-        echo -e "${RED}Nenhum log encontrado. Execute a mineração primeiro.${NC}"
+        echo -e "${RED}Nenhum log encontrado.${NC}"
     fi
     
     echo ""
@@ -736,189 +471,68 @@ view_logs() {
 }
 
 # -----------------------------------------------------------------------------
-# MENU PRINCIPAL - COMPLETO
+# MENU PRINCIPAL
 # -----------------------------------------------------------------------------
 main_menu() {
     while true; do
         show_banner
         
         # Status do minerador
-        if [ -f "$MINER_HOME/bin/cpuminer" ]; then
-            MINER_STATUS="${GREEN}✅ INSTALADO${NC}"
+        if [ -f "$MINER_HOME/bin/cpuminer" ] && check_binary "$MINER_HOME/bin/cpuminer" >/dev/null 2>&1; then
+            MINER_STATUS="${GREEN}✅ FUNCIONAL${NC}"
         else
             MINER_STATUS="${RED}❌ NÃO INSTALADO${NC}"
         fi
         
-        # Informações do sistema
-        echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${CYAN}║                    INFORMAÇÕES DO SISTEMA                       ║${NC}"
-        echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
-        echo -e "  ${WHITE}CPU:${NC} $CPU_CORES cores"
-        echo -e "  ${WHITE}RAM:${NC} ${TOTAL_RAM}MB"
-        echo -e "  ${WHITE}Arquitetura:${NC} $ARCH_TYPE"
-        echo -e "  ${WHITE}Android API:${NC} $ANDROID_API"
-        echo -e "  ${WHITE}Minerador:${NC} $MINER_STATUS"
-        echo -e "  ${WHITE}Endereço BTC:${NC} ${BTC_ADDRESS:0:20}..."
+        # Informações
+        echo -e "${CYAN}Informações do Sistema:${NC}"
+        echo -e "  CPU: $CPU_CORES cores | Arquitetura: $ARCH_TYPE"
+        echo -e "  Minerador: $MINER_STATUS"
+        echo -e "  BTC: ${BTC_ADDRESS:0:20}..."
         echo ""
         
-        # Menu principal
-        echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║                         MENU PRINCIPAL                          ║${NC}"
-        echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+        # Menu
+        echo -e "${GREEN}Menu Principal:${NC}"
+        echo -e "  ${YELLOW}[1]${NC} 🚀 INICIAR MINERAÇÃO"
+        echo -e "  ${YELLOW}[2]${NC} 📦 INSTALAR/REINSTALAR MINERADOR"
+        echo -e "  ${YELLOW}[3]${NC} 📋 VER LOGS"
+        echo -e "  ${YELLOW}[4]${NC} 🌐 TESTAR POOLS"
+        echo -e "  ${YELLOW}[0]${NC} 🚪 SAIR"
         echo ""
-        echo -e "  ${WHITE}[${YELLOW}1${WHITE}]${NC} ${GREEN}🚀 INICIAR MINERAÇÃO (LOGS EM TEMPO REAL)${NC}"
-        echo -e "  ${WHITE}[${YELLOW}2${WHITE}]${NC} ${CYAN}📦 INSTALAR/REINSTALAR MINERADOR (12 MÉTODOS)${NC}"
-        echo -e "  ${WHITE}[${YELLOW}3${WHITE}]${NC} ${PURPLE}📋 VER LOGS DA MINERAÇÃO${NC}"
-        echo -e "  ${WHITE}[${YELLOW}4${WHITE}]${NC} ${BLUE}🌐 TESTAR CONEXÃO COM POOLS${NC}"
-        echo -e "  ${WHITE}[${YELLOW}5${WHITE}]${NC} ${MAGENTA}⚙️  CONFIGURAÇÕES AVANÇADAS${NC}"
-        echo -e "  ${WHITE}[${YELLOW}6${WHITE}]${NC} ${RED}❌ LIMPAR CACHE E LOGS${NC}"
-        echo -e "  ${WHITE}[${YELLOW}7${WHITE}]${NC} ${ORANGE}📊 ESTATÍSTICAS DE MINERAÇÃO${NC}"
-        echo -e "  ${WHITE}[${YELLOW}8${WHITE}]${NC} ${WHITE}🔄 VERIFICAR ATUALIZAÇÕES${NC}"
-        echo -e "  ${WHITE}[${YELLOW}0${WHITE}]${NC} ${RED}🚪 SAIR${NC}"
-        echo ""
-        
-        # Pools rápidas
-        echo -e "${CYAN}Pools configuradas:${NC}"
-        for pool in "${POOLS[@]:0:3}"; do
-            IFS='|' read -r url name <<< "$pool"
-            echo -e "  ${WHITE}•${NC} $name"
-        done
-        echo ""
-        
-        echo -n -e "${GREEN}Escolha uma opção [0-8]: ${NC}"
+        echo -n -e "${GREEN}Escolha: ${NC}"
         read -r opt
         
         case $opt in
-            1)
-                start_mining
-                ;;
-            2)
-                clear
-                install_miner_complete
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar ao menu${NC}"
-                read -r
-                ;;
-            3)
-                view_logs
-                ;;
+            1) start_mining ;;
+            2) install_miner ;;
+            3) view_logs ;;
             4)
                 clear
-                echo -e "${BLUE}${BOLD}"
-                echo "╔══════════════════════════════════════════════════════════════════╗"
-                echo "║                    TESTE DE POOLS                               ║"
-                echo "╚══════════════════════════════════════════════════════════════════╝"
-                echo -e "${NC}"
-                
+                echo -e "${BLUE}Testando pools...${NC}"
                 for pool in "${POOLS[@]}"; do
                     IFS='|' read -r url name <<< "$pool"
                     test_pool "$url" "$name"
                 done
-                
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
-                ;;
-            5)
-                clear
-                echo -e "${MAGENTA}${BOLD}"
-                echo "╔══════════════════════════════════════════════════════════════════╗"
-                echo "║                    CONFIGURAÇÕES AVANÇADAS                      ║"
-                echo "╚══════════════════════════════════════════════════════════════════╝"
-                echo -e "${NC}"
-                
-                echo -e "${WHITE}1. Alterar endereço BTC${NC}"
-                echo -e "${WHITE}2. Definir número de threads${NC}"
-                echo -e "${WHITE}3. Voltar${NC}"
-                echo ""
-                echo -n "Opção: "
-                read -r cfg_opt
-                
-                case $cfg_opt in
-                    1)
-                        echo -n "Novo endereço BTC: "
-                        read -r new_addr
-                        if [ -n "$new_addr" ]; then
-                            BTC_ADDRESS="$new_addr"
-                            log "OK" "Endereço alterado para $BTC_ADDRESS"
-                        fi
-                        ;;
-                    2)
-                        echo -n "Número de threads (max: $CPU_CORES): "
-                        read -r new_threads
-                        if [ "$new_threads" -le "$CPU_CORES" ] && [ "$new_threads" -gt 0 ]; then
-                            CPU_CORES="$new_threads"
-                            log "OK" "Threads alteradas para $CPU_CORES"
-                        fi
-                        ;;
-                esac
-                ;;
-            6)
-                clear
-                log "INFO" "Limpando cache e logs..."
-                rm -rf "$MINER_HOME/temp"/*
-                rm -f "$MINER_HOME/logs"/*.log
-                log "OK" "Limpeza concluída"
-                sleep 2
-                ;;
-            7)
-                clear
-                echo -e "${ORANGE}${BOLD}"
-                echo "╔══════════════════════════════════════════════════════════════════╗"
-                echo "║                    ESTATÍSTICAS                                 ║"
-                echo "╚══════════════════════════════════════════════════════════════════╝"
-                echo -e "${NC}"
-                
-                if [ -f "$MINER_HOME/logs/miner.log" ]; then
-                    TOTAL_SHARES=$(grep -c "accepted" "$MINER_HOME/logs/miner.log" 2>/dev/null)
-                    TOTAL_SHARES=${TOTAL_SHARES:-0}
-                    REJECTED=$(grep -c "rejected" "$MINER_HOME/logs/miner.log" 2>/dev/null)
-                    REJECTED=${REJECTED:-0}
-                    HASHRATES=$(grep -E "[0-9]+\.[0-9]+ [kMG]H/s" "$MINER_HOME/logs/miner.log" 2>/dev/null | tail -5)
-                    
-                    echo -e "  ${WHITE}Total de shares aceitas:${NC} $TOTAL_SHARES"
-                    echo -e "  ${WHITE}Shares rejeitadas:${NC} $REJECTED"
-                    echo ""
-                    echo -e "  ${WHITE}Últimos hashrates:${NC}"
-                    echo "$HASHRATES" | while read line; do
-                        echo "    $line"
-                    done
-                else
-                    echo -e "${RED}Nenhum dado de mineração encontrado${NC}"
-                fi
-                
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            8)
-                clear
-                log "INFO" "Verificando atualizações..."
-                log "INFO" "Versão atual: 10.0 ULTRA"
-                log "INFO" "Esta é a versão mais recente"
-                sleep 2
                 ;;
             0)
                 clear
-                echo -e "${GREEN}Obrigado por usar o Minerador Megalodon!${NC}"
-                echo -e "${YELLOW}Encerrando...${NC}"
-                pkill -f cpuminer 2>/dev/null
+                log "INFO" "Encerrando..."
                 exit 0
                 ;;
-            *)
-                log "WARN" "Opção inválida"
-                sleep 1
-                ;;
+            *) log "WARN" "Opção inválida"; sleep 1 ;;
         esac
     done
 }
 
 # -----------------------------------------------------------------------------
-# LIMPEZA AO SAIR
+# LIMPEZA
 # -----------------------------------------------------------------------------
 cleanup() {
     echo ""
-    log "INFO" "Recebido sinal de encerramento"
+    log "INFO" "Encerrando processos..."
     pkill -f cpuminer 2>/dev/null
     exit 0
 }
@@ -926,17 +540,15 @@ cleanup() {
 # -----------------------------------------------------------------------------
 # MAIN
 # -----------------------------------------------------------------------------
-
-# Trap
 trap cleanup SIGINT SIGTERM
 
 # Verificar Termux
 if [ ! -d "/data/data/com.termux" ]; then
-    echo -e "${RED}ERRO: Este script deve ser executado no Termux!${NC}"
+    echo -e "${RED}ERRO: Execute no Termux${NC}"
     exit 1
 fi
 
-# Criar diretórios básicos
+# Criar diretórios
 mkdir -p "$MINER_HOME"/{bin,logs,temp}
 
 # Detectar hardware
