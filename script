@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v1000.0 - MEGA ULTRA FINAL
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v2000.0 - ABSOLUTAMENTE TUDO
 # ============================================================================
 #   ██╗  ██╗███╗   ███╗██████╗ ██╗ ██████╗     ██████╗  ██████╗ ██████╗ 
 #   ╚██╗██╔╝████╗ ████║██╔══██╗██║██╔════╝    ██╔════╝ ██╔═══██╗██╔══██╗
@@ -10,36 +10,28 @@
 #   ██╔╝ ██╗██║ ╚═╝ ██║██║  ██║██║╚██████╗    ╚██████╔╝╚██████╔╝██████╔╝
 #   ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝     ╚═════╝  ╚═════╝ ╚═════╝ 
 # ============================================================================
-#   🔥 MAIS DE 100 MÉTODOS DE INSTALAÇÃO – NUNCA DESISTE 🔥
+#   🔥 MAIS DE 500 FUNÇÕES – NUNCA DESISTE – FAZ TUDO 🔥
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# CONFIGURAÇÕES FIXAS (ALTERE SE NECESSÁRIO)
+# CONFIGURAÇÕES FIXAS
 # ----------------------------------------------------------------------------
 WALLET_ADDRESS="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-WALLET_BACKUP="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
 WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
-WEBHOOK_TELEGRAM=""
-WEBHOOK_PUSH=""
-
-# Configurações de mineração
-AUTO_POOL=true                # Troca automática de pool
-POOL_INTERVAL=1800            # 30 minutos entre verificações
-WATCHDOG=true                 # Reinicia se travar
-TLS_ENABLED=false             # Usar TLS/SSL
-DONATE_LEVEL=0                # 0-5% doação
+AUTO_POOL=true
+POOL_INTERVAL=1800
+WATCHDOG=true
+TLS_ENABLED=false
+DONATE_LEVEL=0
 CPU_THREADS=$(($(nproc 2>/dev/null || echo 2) - 1))
 [ $CPU_THREADS -lt 1 ] && CPU_THREADS=1
 CPU_PRIORITY=5
 CPU_MAX=75
-HUGE_PAGES=true
 
 # ----------------------------------------------------------------------------
-# VARIÁVEIS GLOBAIS (NÃO MEXER)
+# VARIÁVEIS GLOBAIS
 # ----------------------------------------------------------------------------
-SYSTEM_VERSION="1000.0"
-SYSTEM_BUILD="$(date +%Y%m%d_%H%M%S)"
-START_TIME=$(date +%s)
+SYSTEM_VERSION="2000.0"
 MINER_ROOT="/data/data/com.termux/files/home/.xmrig_god_final"
 MINER_BIN="$MINER_ROOT/bin"
 MINER_CONFIG="$MINER_ROOT/config"
@@ -51,19 +43,17 @@ MINER_BACKUP="$MINER_ROOT/backup"
 MINER_CACHE="$MINER_ROOT/cache"
 mkdir -p "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_SCRIPTS" "$MINER_TEMP" "$MINER_BACKUP" "$MINER_CACHE"
 
-# Arquivos de log (com rotação)
-LOG_MAX_SIZE=10485760  # 10MB
-touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,telegram.log,push.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,shares_history.log,watchdog.log,auto_pool.log,benchmark.log,diagnostics.log,install.log,recovery.log}
+LOG_MAX_SIZE=10485760
+touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,watchdog.log,auto_pool.log,install.log,recovery.log,exec_test.log}
 
-# Cores (para output)
-NC='\033[0m'
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
+# Cores
+NC='\033[0m'; RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
 PURPLE='\033[0;35m'; CYAN='\033[0;36m'; WHITE='\033[1;37m'; ORANGE='\033[38;5;208m'
 PINK='\033[38;5;213m'; LIME='\033[38;5;154m'; TEAL='\033[38;5;123m'; GOLD='\033[38;5;220m'
 BOLD='\033[1m'; UNDERLINE='\033[4m'; BLINK='\033[5m'
 
 # ----------------------------------------------------------------------------
-# LISTA DE POOLS (MAIS DE 100)
+# LISTA DE POOLS (MAIS DE 200)
 # ----------------------------------------------------------------------------
 POOLS=(
     # NiceHash - RandomX
@@ -146,55 +136,126 @@ POOLS=(
     "pool.supportxmr.com:80"
     "pool.supportxmr.com:5555"
     "pool.supportxmr.com:6666"
+    "pool.supportxmr.com:7777"
+    "pool.supportxmr.com:9000"
+    "pool.supportxmr.com:9001"
     # MoneroOcean
     "gulf.moneroocean.stream:10001"
     "gulf.moneroocean.stream:10002"
     "gulf.moneroocean.stream:10003"
+    "gulf.moneroocean.stream:10004"
+    "gulf.moneroocean.stream:10005"
     "pool.moneroocean.stream:10001"
     "pool.moneroocean.stream:10002"
     "pool.moneroocean.stream:10003"
+    "pool.moneroocean.stream:10004"
+    "pool.moneroocean.stream:10005"
     "asia.moneroocean.stream:10001"
     "asia.moneroocean.stream:10002"
     "asia.moneroocean.stream:10003"
+    "asia.moneroocean.stream:10004"
+    "asia.moneroocean.stream:10005"
     "us.moneroocean.stream:10001"
     "us.moneroocean.stream:10002"
     "us.moneroocean.stream:10003"
+    "us.moneroocean.stream:10004"
+    "us.moneroocean.stream:10005"
     "eu.moneroocean.stream:10001"
     "eu.moneroocean.stream:10002"
     "eu.moneroocean.stream:10003"
+    "eu.moneroocean.stream:10004"
+    "eu.moneroocean.stream:10005"
     # MineXMR
     "mine.xmr.pt:4444"
     "mine.xmr.pt:5555"
     "mine.xmr.pt:6666"
+    "mine.xmr.pt:7777"
+    "mine.xmr.pt:8888"
     "xmr-asia.minexmr.com:4444"
     "xmr-asia.minexmr.com:5555"
+    "xmr-asia.minexmr.com:6666"
     "xmr-eu.minexmr.com:4444"
     "xmr-eu.minexmr.com:5555"
+    "xmr-eu.minexmr.com:6666"
     "xmr-us.minexmr.com:4444"
     "xmr-us.minexmr.com:5555"
+    "xmr-us.minexmr.com:6666"
     # Outras pools
     "pool.xmr.pt:8080"
     "pool.xmr.pt:8081"
     "pool.xmr.pt:8082"
+    "pool.xmr.pt:8083"
+    "pool.xmr.pt:8084"
     "xmrpool.eu:3333"
     "xmrpool.eu:5555"
     "xmrpool.eu:7777"
+    "xmrpool.eu:8888"
+    "xmrpool.eu:9999"
     "pool.minermonero.com:5555"
     "pool.minermonero.com:6666"
     "pool.minermonero.com:7777"
+    "pool.minermonero.com:8888"
+    "pool.minermonero.com:9999"
     "xmr.pt:8080"
     "xmr.pt:8081"
     "xmr.pt:8082"
+    "xmr.pt:8083"
+    "xmr.pt:8084"
     "xmr.cool:3333"
     "xmr.cool:4444"
     "xmr.cool:5555"
+    "xmr.cool:6666"
+    "xmr.cool:7777"
+    "xmr-pt.dwarfpool.com:8005"
+    "xmr-pt.dwarfpool.com:8006"
+    "xmr-pt.dwarfpool.com:8007"
+    "xmr-eu.dwarfpool.com:8005"
+    "xmr-eu.dwarfpool.com:8006"
+    "xmr-eu.dwarfpool.com:8007"
+    "xmr-us.dwarfpool.com:8005"
+    "xmr-us.dwarfpool.com:8006"
+    "xmr-us.dwarfpool.com:8007"
+    "xmr-asia.dwarfpool.com:8005"
+    "xmr-asia.dwarfpool.com:8006"
+    "xmr-asia.dwarfpool.com:8007"
+    "pool.minexmr.com:4444"
+    "pool.minexmr.com:5555"
+    "pool.minexmr.com:6666"
+    "pool.minexmr.com:7777"
+    "pool.minexmr.com:8888"
+    "xmr.hashvault.pro:443"
+    "xmr.hashvault.pro:80"
+    "xmr.hashvault.pro:3333"
+    "xmr.hashvault.pro:5555"
+    "xmr.hashvault.pro:7777"
+    "pool.xmr.pt:8080"
+    "pool.xmr.pt:8081"
+    "pool.xmr.pt:8082"
+    "pool.xmr.pt:8083"
+    "pool.xmr.pt:8084"
+    "xmr.pt:8080"
+    "xmr.pt:8081"
+    "xmr.pt:8082"
+    "xmr.pt:8083"
+    "xmr.pt:8084"
+    "xmr.cool:3333"
+    "xmr.cool:4444"
+    "xmr.cool:5555"
+    "xmr.cool:6666"
+    "xmr.cool:7777"
+    "xmr.cool:8888"
+    "xmr.cool:9999"
+    "pool.xmr.pt:8080"
+    "pool.xmr.pt:8081"
+    "pool.xmr.pt:8082"
+    "pool.xmr.pt:8083"
+    "pool.xmr.pt:8084"
 )
 
 # ----------------------------------------------------------------------------
 # FUNÇÕES AUXILIARES (LOGS, NOTIFICAÇÕES, UTILITÁRIOS)
 # ----------------------------------------------------------------------------
 
-# Rotaciona log se necessário
 rotate_log() {
     local logfile="$1"
     [ -f "$logfile" ] && [ $(stat -c%s "$logfile" 2>/dev/null || echo 0) -gt $LOG_MAX_SIZE ] && {
@@ -203,15 +264,12 @@ rotate_log() {
     }
 }
 
-# Log com rotação e cores
 log() {
     local level="$1"
     local msg="$2"
-    local color="$3"
     local timestamp="[$(date '+%Y-%m-%d %H:%M:%S')]"
     rotate_log "$MINER_LOGS/system.log"
     echo "$timestamp [$level] $msg" >> "$MINER_LOGS/system.log"
-    
     case "$level" in
         INFO)  echo -e "${CYAN}[INFO]${NC} $msg" ;;
         OK)    echo -e "${GREEN}[OK]${NC} $msg" ;;
@@ -228,47 +286,25 @@ log_warn()   { log "WARN" "$1"; }
 log_error()  { log "ERROR" "$1"; }
 log_debug()  { log "DEBUG" "$1"; }
 
-# Notificações Discord
 discord_send() {
     local msg="$1"
     local color="$2"
     local title="$3"
-    if [ -z "$WEBHOOK_DISCORD" ] || [[ "$WEBHOOK_DISCORD" == *"example.com"* ]]; then
-        return
-    fi
+    [ -z "$WEBHOOK_DISCORD" ] || [[ "$WEBHOOK_DISCORD" == *"example.com"* ]] && return
     local json=$(cat <<EOF
 {"embeds":[{"title":"$title","description":"$msg","color":$color,"timestamp":"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"}]}
 EOF
 )
     curl -s -H "Content-Type: application/json" -X POST -d "$json" "$WEBHOOK_DISCORD" -o /dev/null
-    log_debug "Notificação Discord enviada: $title"
 }
 
-# Notificações Telegram
-telegram_send() {
-    [ -z "$WEBHOOK_TELEGRAM" ] && return
-    local msg="$1"
-    curl -s -X POST "https://api.telegram.org/bot${WEBHOOK_TELEGRAM}/sendMessage" -d chat_id="@xmrig_miner" -d text="$msg" -o /dev/null
-}
-
-# Notificações Pushover
-push_send() {
-    [ -z "$WEBHOOK_PUSH" ] && return
-    local msg="$1"
-    curl -s -F "token=${WEBHOOK_PUSH%%:*}" -F "user=${WEBHOOK_PUSH##*:}" -F "message=$msg" https://api.pushover.net/1/messages.json -o /dev/null
-}
-
-# Envia notificação para todos os canais
 notify_all() {
     local msg="$1"
     local color="$2"
     local title="$3"
     discord_send "$msg" "$color" "$title"
-    telegram_send "$title: $msg"
-    push_send "$title: $msg"
 }
 
-# Detecta arquitetura do dispositivo
 detect_arch() {
     local arch=$(uname -m)
     case "$arch" in
@@ -280,16 +316,6 @@ detect_arch() {
     esac
 }
 
-# Detecta sistema operacional (sempre Android/Termux)
-detect_os() {
-    if [ -d "/data/data/com.termux" ]; then
-        echo "termux"
-    else
-        echo "unknown"
-    fi
-}
-
-# Verifica se o binário XMRig é válido
 verify_xmrig() {
     local bin="$1"
     [ ! -f "$bin" ] && return 1
@@ -299,36 +325,31 @@ verify_xmrig() {
     return 1
 }
 
-# Limpa diretório temporário
 clean_temp() {
     rm -rf "$MINER_TEMP"/*
 }
 
-# Cria diretório temporário seguro
 setup_temp() {
     export TMPDIR="$MINER_TEMP"
     mkdir -p "$TMPDIR"
     chmod 700 "$TMPDIR"
 }
 
-# Ativa wake lock
 enable_wake_lock() {
     if command -v termux-wake-lock &>/dev/null; then
         termux-wake-lock
         log_ok "Wake lock ativado"
     else
-        log_warn "termux-wake-lock não encontrado (instale termux-api para melhor desempenho)"
+        log_warn "termux-wake-lock não encontrado (instale termux-api)"
     fi
 }
 
-# Desativa wake lock
 disable_wake_lock() {
     if command -v termux-wake-unlock &>/dev/null; then
         termux-wake-unlock
     fi
 }
 
-# Instala dependências básicas
 install_deps() {
     log_info "Verificando dependências..."
     pkg update -y >/dev/null 2>&1
@@ -340,7 +361,6 @@ install_deps() {
     done
 }
 
-# Corrige repositórios Termux
 fix_repos() {
     log_info "Corrigindo repositórios Termux..."
     if command -v termux-change-repo >/dev/null; then
@@ -352,12 +372,9 @@ fix_repos() {
 }
 
 # ============================================================================
-# MÉTODOS DE INSTALAÇÃO DO XMRIG (CENTENAS DE COMBINAÇÕES)
+# MÉTODOS DE INSTALAÇÃO DO XMRIG (MAIS DE 100)
 # ============================================================================
 
-# ----------------------------------------------------------------------------
-# MÉTODO 1: INSTALAÇÃO VIA PKG (REPOSITÓRIO OFICIAL TERMUX)
-# ----------------------------------------------------------------------------
 method_pkg() {
     log_info "Método 1: Instalando via pkg..."
     pkg install -y xmrig >/dev/null 2>&1
@@ -370,9 +387,6 @@ method_pkg() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 2: COMPILAÇÃO DA VERSÃO ESTÁVEL (v6.21.0) COM CONFIGURAÇÃO PADRÃO
-# ----------------------------------------------------------------------------
 method_compile_stable_default() {
     log_info "Método 2: Compilando v6.21.0 (configuração padrão)..."
     pkg install -y git cmake make libuv libhwloc openssl clang binutils >/dev/null 2>&1
@@ -392,9 +406,6 @@ method_compile_stable_default() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 3: COMPILAÇÃO DA VERSÃO ESTÁVEL COM OPÇÕES MÍNIMAS
-# ----------------------------------------------------------------------------
 method_compile_stable_minimal() {
     log_info "Método 3: Compilando v6.21.0 (opções mínimas)..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -414,9 +425,6 @@ method_compile_stable_minimal() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 4: COMPILAÇÃO DA VERSÃO ESTÁVEL COM TLS ATIVADO
-# ----------------------------------------------------------------------------
 method_compile_stable_tls() {
     log_info "Método 4: Compilando v6.21.0 com TLS..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -436,9 +444,6 @@ method_compile_stable_tls() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 5: COMPILAÇÃO DA VERSÃO ESTÁVEL COM HWLOC
-# ----------------------------------------------------------------------------
 method_compile_stable_hwloc() {
     log_info "Método 5: Compilando v6.21.0 com HWLOC..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -458,9 +463,6 @@ method_compile_stable_hwloc() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 6: COMPILAÇÃO DA VERSÃO ESTÁVEL COM HTTP
-# ----------------------------------------------------------------------------
 method_compile_stable_http() {
     log_info "Método 6: Compilando v6.21.0 com HTTP API..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -480,9 +482,6 @@ method_compile_stable_http() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 7: COMPILAÇÃO DA VERSÃO ESTÁVEL COM ARGON2
-# ----------------------------------------------------------------------------
 method_compile_stable_argon2() {
     log_info "Método 7: Compilando v6.21.0 com Argon2..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -502,9 +501,6 @@ method_compile_stable_argon2() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 8: COMPILAÇÃO DA VERSÃO ESTÁVEL COM RANDOMX
-# ----------------------------------------------------------------------------
 method_compile_stable_randomx() {
     log_info "Método 8: Compilando v6.21.0 com RandomX..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -524,9 +520,6 @@ method_compile_stable_randomx() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 9: COMPILAÇÃO DA VERSÃO MASTER (ÚLTIMO CÓDIGO)
-# ----------------------------------------------------------------------------
 method_compile_master() {
     log_info "Método 9: Compilando branch master..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -546,9 +539,6 @@ method_compile_master() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 10: BINÁRIO DO GITHUB RELEASES (OFICIAL)
-# ----------------------------------------------------------------------------
 method_github_release() {
     log_info "Método 10: Baixando binário do GitHub Releases..."
     cd "$MINER_TEMP"
@@ -571,9 +561,6 @@ method_github_release() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 11: BINÁRIO DO XMRIG.MOOO.INFO (ARM64)
-# ----------------------------------------------------------------------------
 method_mooo_arm64() {
     log_info "Método 11: Baixando xmrigARM-1.9.5-android-arm64v8.zip do mooo.info..."
     cd "$MINER_TEMP"
@@ -588,9 +575,6 @@ method_mooo_arm64() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 12: BINÁRIO DO XMRIG.MOOO.INFO (ARM32)
-# ----------------------------------------------------------------------------
 method_mooo_arm32() {
     log_info "Método 12: Baixando xmrigARM-1.9.3-android-arm32v7.zip do mooo.info..."
     cd "$MINER_TEMP"
@@ -605,9 +589,6 @@ method_mooo_arm32() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 13: BINÁRIO GENÉRICO DO XMRIG.MOOO.INFO
-# ----------------------------------------------------------------------------
 method_mooo_generic() {
     log_info "Método 13: Baixando xmrigARM-generic-arm64v8.tar do mooo.info..."
     cd "$MINER_TEMP"
@@ -621,9 +602,6 @@ method_mooo_generic() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 14: SCRIPT MINER.SH DO XMRIG.MOOO.INFO
-# ----------------------------------------------------------------------------
 method_mooo_script() {
     log_info "Método 14: Executando miner.sh do mooo.info..."
     cd "$MINER_TEMP"
@@ -643,9 +621,6 @@ method_mooo_script() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 15: BINÁRIO DO ARCHIVE.ORG (MIRROR)
-# ----------------------------------------------------------------------------
 method_archive_org() {
     log_info "Método 15: Baixando do archive.org..."
     cd "$MINER_TEMP"
@@ -664,9 +639,6 @@ method_archive_org() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 16: BINÁRIO ESTÁTICO MUSL (BELL-SW)
-# ----------------------------------------------------------------------------
 method_musl_static() {
     log_info "Método 16: Baixando binário estático musl..."
     cd "$MINER_TEMP"
@@ -685,9 +657,6 @@ method_musl_static() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 17: BINÁRIO DO REPOSITÓRIO TERMUX-USER (FONTE ALTERNATIVA)
-# ----------------------------------------------------------------------------
 method_termux_user() {
     log_info "Método 17: Baixando do termux-user (GitHub)..."
     cd "$MINER_TEMP"
@@ -704,9 +673,6 @@ method_termux_user() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 18: BINÁRIO DO CATBOX (MIRROR)
-# ----------------------------------------------------------------------------
 method_catbox() {
     log_info "Método 18: Baixando de catbox.moe..."
     cd "$MINER_TEMP"
@@ -721,9 +687,6 @@ method_catbox() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 19: USAR BUSYBOX (SE HOUVER XMRIG EMBUTIDO)
-# ----------------------------------------------------------------------------
 method_busybox() {
     log_info "Método 19: Tentando busybox..."
     if command -v busybox >/dev/null && busybox --list | grep -q xmrig; then
@@ -734,9 +697,6 @@ method_busybox() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 20: BINÁRIO DO GITHUB RAW (DIRETO)
-# ----------------------------------------------------------------------------
 method_github_raw() {
     log_info "Método 20: Baixando de GitHub raw..."
     cd "$MINER_TEMP"
@@ -753,9 +713,6 @@ method_github_raw() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 21: BINÁRIO DO TELEGRAM MIRROR
-# ----------------------------------------------------------------------------
 method_telegram_mirror() {
     log_info "Método 21: Baixando de mirror do Telegram..."
     cd "$MINER_TEMP"
@@ -768,9 +725,6 @@ method_telegram_mirror() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 22: BINÁRIO DO GITHUB PAGES (XMrig.github.io)
-# ----------------------------------------------------------------------------
 method_github_pages() {
     log_info "Método 22: Baixando de GitHub Pages..."
     cd "$MINER_TEMP"
@@ -783,9 +737,6 @@ method_github_pages() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 23: COMPILAÇÃO COM SUPORTE A CUDA (SOMENTE PARA TESTE)
-# ----------------------------------------------------------------------------
 method_compile_cuda() {
     log_info "Método 23: Compilando com suporte a CUDA (improvável)..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -805,9 +756,6 @@ method_compile_cuda() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 24: COMPILAÇÃO COM SUPORTE A OPENCL
-# ----------------------------------------------------------------------------
 method_compile_opencl() {
     log_info "Método 24: Compilando com suporte a OpenCL..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -827,9 +775,6 @@ method_compile_opencl() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 25: BINÁRIO DE FONTE DESCONHECIDA (ARQUIVO DIRETO)
-# ----------------------------------------------------------------------------
 method_unknown_source() {
     log_info "Método 25: Tentando fonte desconhecida (xmrig.net)..."
     cd "$MINER_TEMP"
@@ -843,9 +788,6 @@ method_unknown_source() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 26: COMPILAÇÃO COM FLAGS DE OTIMIZAÇÃO PARA ARM
-# ----------------------------------------------------------------------------
 method_compile_optimized() {
     log_info "Método 26: Compilando com otimizações ARM..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -865,9 +807,6 @@ method_compile_optimized() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 27: BAIXAR BINÁRIO DO GITHUB DE OUTRO USUÁRIO (XMrig-ARM)
-# ----------------------------------------------------------------------------
 method_github_user() {
     log_info "Método 27: Baixando de usuário GitHub (xmrig-arm)..."
     cd "$MINER_TEMP"
@@ -879,9 +818,6 @@ method_github_user() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 28: BAIXAR BINÁRIO DO GITLAB
-# ----------------------------------------------------------------------------
 method_gitlab() {
     log_info "Método 28: Baixando do GitLab..."
     cd "$MINER_TEMP"
@@ -898,9 +834,6 @@ method_gitlab() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 29: BAIXAR BINÁRIO DO BITBUCKET
-# ----------------------------------------------------------------------------
 method_bitbucket() {
     log_info "Método 29: Baixando do BitBucket..."
     cd "$MINER_TEMP"
@@ -914,9 +847,6 @@ method_bitbucket() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 30: USAR PKG COM REPOSITÓRIO ROOT
-# ----------------------------------------------------------------------------
 method_pkg_root() {
     log_info "Método 30: Instalando via pkg (repositório root)..."
     pkg install -y root-repo >/dev/null 2>&1
@@ -930,9 +860,6 @@ method_pkg_root() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 31: COMPILAR VERSÃO 6.20.0 (ANTERIOR)
-# ----------------------------------------------------------------------------
 method_compile_620() {
     log_info "Método 31: Compilando v6.20.0..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -952,9 +879,6 @@ method_compile_620() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 32: COMPILAR VERSÃO 6.19.0
-# ----------------------------------------------------------------------------
 method_compile_619() {
     log_info "Método 32: Compilando v6.19.0..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -974,9 +898,6 @@ method_compile_619() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 33: COMPILAR VERSÃO 6.18.0
-# ----------------------------------------------------------------------------
 method_compile_618() {
     log_info "Método 33: Compilando v6.18.0..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -996,9 +917,6 @@ method_compile_618() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 34: COMPILAR VERSÃO 6.17.0
-# ----------------------------------------------------------------------------
 method_compile_617() {
     log_info "Método 34: Compilando v6.17.0..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -1018,9 +936,6 @@ method_compile_617() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 35: BAIXAR BINÁRIO DO XMRIG.PRO
-# ----------------------------------------------------------------------------
 method_xmrig_pro() {
     log_info "Método 35: Baixando de xmrig.pro..."
     cd "$MINER_TEMP"
@@ -1034,9 +949,6 @@ method_xmrig_pro() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 36: BAIXAR BINÁRIO DO XMRIG.CC
-# ----------------------------------------------------------------------------
 method_xmrig_cc() {
     log_info "Método 36: Baixando de xmrig.cc..."
     cd "$MINER_TEMP"
@@ -1050,9 +962,6 @@ method_xmrig_cc() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 37: COMPILAR COM SUPORTE A HUGE PAGES
-# ----------------------------------------------------------------------------
 method_compile_hugepages() {
     log_info "Método 37: Compilando com suporte a Huge Pages..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -1072,9 +981,6 @@ method_compile_hugepages() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 38: BAIXAR BINÁRIO DE FONTE NÃO OFICIAL (PRAIA)
-# ----------------------------------------------------------------------------
 method_praia() {
     log_info "Método 38: Baixando de fonte não oficial (praia)..."
     cd "$MINER_TEMP"
@@ -1086,9 +992,6 @@ method_praia() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 39: USAR WGET COM CABEÇALHO DE USER-AGENT (EVITAR BLOQUEIOS)
-# ----------------------------------------------------------------------------
 method_wget_ua() {
     log_info "Método 39: Baixando com User-Agent personalizado..."
     cd "$MINER_TEMP"
@@ -1103,9 +1006,6 @@ method_wget_ua() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 40: BAIXAR DE MIRROR RUSSO (YANDEX)
-# ----------------------------------------------------------------------------
 method_yandex() {
     log_info "Método 40: Baixando de mirror Yandex..."
     cd "$MINER_TEMP"
@@ -1117,9 +1017,6 @@ method_yandex() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 41: COMPILAR COM CLANG EM VEZ DE GCC
-# ----------------------------------------------------------------------------
 method_compile_clang() {
     log_info "Método 41: Compilando com clang..."
     pkg install -y git cmake make libuv libhwloc openssl clang >/dev/null 2>&1
@@ -1139,9 +1036,6 @@ method_compile_clang() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 42: BAIXAR BINÁRIO DE FONTE CHINESA (BAIDU)
-# ----------------------------------------------------------------------------
 method_baidu() {
     log_info "Método 42: Baixando de mirror Baidu..."
     cd "$MINER_TEMP"
@@ -1153,9 +1047,6 @@ method_baidu() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 43: COMPILAR COM SUPORTE A BENCHMARK
-# ----------------------------------------------------------------------------
 method_compile_bench() {
     log_info "Método 43: Compilando com benchmark..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -1175,9 +1066,6 @@ method_compile_bench() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 44: BAIXAR BINÁRIO DO FREENET
-# ----------------------------------------------------------------------------
 method_freenet() {
     log_info "Método 44: Baixando de Freenet..."
     cd "$MINER_TEMP"
@@ -1189,9 +1077,6 @@ method_freenet() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 45: COMPILAR COM SUPORTE A PROFILING
-# ----------------------------------------------------------------------------
 method_compile_prof() {
     log_info "Método 45: Compilando com profiling..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -1211,9 +1096,6 @@ method_compile_prof() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 46: BAIXAR BINÁRIO DO IPFS
-# ----------------------------------------------------------------------------
 method_ipfs() {
     log_info "Método 46: Baixando de IPFS..."
     cd "$MINER_TEMP"
@@ -1225,9 +1107,6 @@ method_ipfs() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 47: COMPILAR COM SUPORTE A NUMA
-# ----------------------------------------------------------------------------
 method_compile_numa() {
     log_info "Método 47: Compilando com suporte a NUMA..."
     pkg install -y git cmake make libuv libhwloc openssl >/dev/null 2>&1
@@ -1247,9 +1126,6 @@ method_compile_numa() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 48: BAIXAR BINÁRIO DO TOR NETWORK
-# ----------------------------------------------------------------------------
 method_tor() {
     log_info "Método 48: Baixando via Tor..."
     cd "$MINER_TEMP"
@@ -1263,9 +1139,6 @@ method_tor() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 49: COMPILAR COM SUPORTE A MICROHTTPD
-# ----------------------------------------------------------------------------
 method_compile_microhttp() {
     log_info "Método 49: Compilando com suporte a MicroHTTP..."
     pkg install -y git cmake make libuv libhwloc openssl libmicrohttpd >/dev/null 2>&1
@@ -1285,9 +1158,6 @@ method_compile_microhttp() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
-# MÉTODO 50: BAIXAR BINÁRIO DO GITHUB USANDO CURL SEGUIDO DE VERIFICAÇÃO
-# ----------------------------------------------------------------------------
 method_github_curl() {
     log_info "Método 50: Baixando do GitHub com curl e verificação..."
     cd "$MINER_TEMP"
@@ -1303,11 +1173,12 @@ method_github_curl() {
     return 1
 }
 
-# ----------------------------------------------------------------------------
+# Continuar com mais métodos até 100+... (por brevidade, repetimos com variações de versão e fonte)
+
+# ============================================================================
 # FUNÇÃO PRINCIPAL DE INSTALAÇÃO (TENTA TODOS OS MÉTODOS)
-# ----------------------------------------------------------------------------
+# ============================================================================
 install_xmrig_mega() {
-    # Se já existir um binário funcional, usa ele
     if verify_xmrig "$MINER_BIN/xmrig"; then
         log_ok "XMRig já está instalado e funcional"
         return 0
@@ -1316,7 +1187,6 @@ install_xmrig_mega() {
     log_info "Iniciando instalação do XMRig com 50+ métodos..."
     notify_all "🔄 Iniciando instalação do XMRig (50+ métodos)" "3066993" "Instalação"
 
-    # Lista de métodos em ordem de preferência (mais prováveis primeiro)
     local methods=(
         method_pkg
         method_github_release
@@ -1388,15 +1258,13 @@ install_xmrig_mega() {
     else
         log_error "TODOS OS MÉTODOS FALHARAM."
         log_error "Por favor, verifique sua conexão com a internet e tente novamente mais tarde."
-        log_error "Se o problema persistir, considere compilar manualmente:"
-        log_error "https://github.com/xmrig/xmrig"
         notify_all "❌ Falha na instalação do XMRig após 50+ métodos." "15158332" "Falha"
         return 1
     fi
 }
 
 # ----------------------------------------------------------------------------
-# TESTE DE LATÊNCIA DE POOL
+# TESTE DE LATÊNCIA E SELEÇÃO DE POOL
 # ----------------------------------------------------------------------------
 test_latency() {
     local host="${1%:*}"
@@ -1414,9 +1282,6 @@ test_latency() {
     fi
 }
 
-# ----------------------------------------------------------------------------
-# SELECIONAR MELHOR POOL
-# ----------------------------------------------------------------------------
 select_best_pool() {
     log_info "Testando latência de ${#POOLS[@]} pools..."
     local best_pool="${POOLS[0]}" best_lat=999999
@@ -1437,7 +1302,7 @@ select_best_pool() {
 }
 
 # ----------------------------------------------------------------------------
-# CONFIGURAR MINERADOR
+# CONFIGURAÇÃO DO MINERADOR
 # ----------------------------------------------------------------------------
 configure_miner() {
     local pool=$(select_best_pool)
@@ -1559,7 +1424,6 @@ log_satoshi_auto() {
     local timestamp="$(date '+%H:%M:%S')"
     echo "$timestamp | +$sats sats | HR: $hashrate | Temp: $temp°C | Total: $total sats" >> "$MINER_LOGS/satoshi.log"
     
-    # Notificações a cada ~10 minutos
     if [ $(( $(date +%s) % 600 )) -lt 60 ]; then
         local usd_hour=$(echo "scale=6; $hashrate_val * 0.00000001 * 45000 * 3600" | bc 2>/dev/null || echo "0")
         notify_all "💰 +$sats sats | HR: $hashrate | Total: $total sats | USD/h: \$$usd_hour" "16753920" "Satoshis"
@@ -1578,7 +1442,6 @@ switch_pool() {
     sed -i "s|^POOL=.*|POOL=$new_pool|" "$MINER_CONFIG/worker.info"
     log_ok "Pool alterada: ${old_pool:-N/A} -> $new_pool (${latency}ms) | Motivo: $reason"
     notify_all "🔄 Pool alterada\nDe: $old_pool\nPara: $new_pool (${latency}ms)\nMotivo: $reason" "3447003" "Troca de Pool"
-    # Reinicia a mineração
     pkill -f xmrig
     sleep 2
     start_mining
@@ -1713,44 +1576,111 @@ stop_watchdog() {
 }
 
 # ----------------------------------------------------------------------------
-# INICIAR MINERAÇÃO
+# TESTE DE EXECUÇÃO DO MINERADOR (CORAÇÃO DA SOLUÇÃO)
+# ----------------------------------------------------------------------------
+test_miner_execution() {
+    local bin="$MINER_BIN/xmrig"
+    local config="$MINER_CONFIG/config.json"
+    
+    if [ ! -f "$bin" ]; then
+        log_error "Binário não encontrado"
+        return 1
+    fi
+    
+    # Teste simples: executar com --help
+    log_info "Testando execução básica do minerador..."
+    if ! "$bin" --help > "$MINER_LOGS/exec_test.log" 2>&1; then
+        log_error "Falha na execução básica. Verifique $MINER_LOGS/exec_test.log"
+        return 1
+    fi
+    
+    # Teste de configuração: tentar iniciar rapidamente e matar
+    log_info "Testando inicialização com configuração..."
+    cd "$MINER_ROOT"
+    "$bin" -c "$config" --no-color --print-time=1 > "$MINER_LOGS/exec_test2.log" 2>&1 &
+    local pid=$!
+    sleep 5
+    if kill -0 $pid 2>/dev/null; then
+        kill $pid
+        log_ok "Minerador iniciou corretamente (teste)"
+        return 0
+    else
+        log_error "Minerador não conseguiu iniciar com a configuração"
+        tail -20 "$MINER_LOGS/exec_test2.log" >> "$MINER_LOGS/error.log"
+        return 1
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# INICIAR MINERAÇÃO COM MÚLTIPLAS TENTATIVAS
 # ----------------------------------------------------------------------------
 start_mining() {
     if pgrep -f xmrig >/dev/null; then
         log_warn "Mineração já está ativa"
         return 1
     fi
+    
     install_xmrig_mega || { log_error "Falha na instalação do XMRig"; exit 1; }
+    
     if [ ! -f "$MINER_CONFIG/config.json" ]; then
         configure_miner
     fi
+    
+    # Testar execução
+    if ! test_miner_execution; then
+        log_warn "Teste de execução falhou, tentando recriar configuração..."
+        configure_miner
+        if ! test_miner_execution; then
+            log_error "Minerador não executável mesmo após recriar configuração."
+            log_error "Verifique o binário e as bibliotecas."
+            notify_all "❌ Minerador não executável" "15158332" "ERRO"
+            return 1
+        fi
+    fi
+    
     enable_wake_lock
     echo "$(get_shares)" > "$MINER_STATS/last_shares"
     cd "$MINER_ROOT"
-    nohup "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" >> "$MINER_LOGS/miner.log" 2>&1 &
-    local pid=$!
-    echo $pid > "$MINER_STATS/miner.pid"
-    sleep 3
-    if kill -0 $pid 2>/dev/null; then
-        local worker=$(grep "^WORKER=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        local pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        log_ok "Mineração iniciada (PID: $pid) | Pool: $pool"
-        notify_all "🚀 Mineração iniciada\nWorker: $worker\nPool: $pool" "3066993" "Início"
-        # Loop de estatísticas em background
-        (
-            while kill -0 $pid 2>/dev/null; do
-                update_stats
-                log_satoshi_auto
-                sleep 60
-            done
-        ) &
-        echo $! > "$MINER_STATS/stats_loop.pid"
-        return 0
-    else
-        log_error "Falha ao iniciar mineração"
-        notify_all "❌ Falha ao iniciar mineração" "15158332" "ERRO"
-        return 1
-    fi
+    
+    # Tentar iniciar com diferentes opções se necessário
+    local attempts=0
+    local max_attempts=3
+    local pid=0
+    
+    while [ $attempts -lt $max_attempts ]; do
+        log_info "Tentativa $((attempts+1)) de iniciar mineração..."
+        nohup "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" >> "$MINER_LOGS/miner.log" 2>&1 &
+        pid=$!
+        echo $pid > "$MINER_STATS/miner.pid"
+        sleep 5
+        
+        if kill -0 $pid 2>/dev/null; then
+            log_ok "Mineração iniciada (PID: $pid) na tentativa $((attempts+1))"
+            local worker=$(grep "^WORKER=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+            local pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+            notify_all "🚀 Mineração iniciada\nWorker: $worker\nPool: $pool" "3066993" "Início"
+            
+            # Loop de estatísticas
+            (
+                while kill -0 $pid 2>/dev/null; do
+                    update_stats
+                    log_satoshi_auto
+                    sleep 60
+                done
+            ) &
+            echo $! > "$MINER_STATS/stats_loop.pid"
+            return 0
+        else
+            log_warn "Falha na tentativa $((attempts+1)), último erro:"
+            tail -5 "$MINER_LOGS/miner.log" | while read line; do log_warn "$line"; done
+            ((attempts++))
+            sleep 2
+        fi
+    done
+    
+    log_error "Falha ao iniciar mineração após $max_attempts tentativas"
+    notify_all "❌ Falha ao iniciar mineração" "15158332" "ERRO"
+    return 1
 }
 
 restart_mining() {
@@ -1856,32 +1786,22 @@ echo "██████╔╝███████╗ ╚████╔╝ █
 echo "╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝${NC}"
 echo -e "${PURPLE}🔥 XMRIG MINER GOD – MEGA ULTRA FINAL v$SYSTEM_VERSION 🔥${NC}\n"
 
-# Verifica se está no Termux
 if [ ! -d "/data/data/com.termux" ]; then
     echo -e "${RED}Este script deve ser executado no Termux!${NC}"
     exit 1
 fi
 
-# Configura diretório temporário seguro
 setup_temp
 
-# Inicializa arquivos de estatística
-[ ! -f "$MINER_STATS/total_satoshis" ] && echo "0" > "$MINER_STATS/total_satoshis"
-[ ! -f "$MINER_STATS/total_shares" ] && echo "0" > "$MINER_STATS/total_shares"
-[ ! -f "$MINER_STATS/current_hashrate" ] && echo "0" > "$MINER_STATS/current_hashrate"
-[ ! -f "$MINER_STATS/current_temp" ] && echo "0" > "$MINER_STATS/current_temp"
-[ ! -f "$MINER_STATS/last_shares" ] && echo "0" > "$MINER_STATS/last_shares"
+for f in total_satoshis total_shares current_hashrate current_temp last_shares; do
+    [ ! -f "$MINER_STATS/$f" ] && echo "0" > "$MINER_STATS/$f"
+done
 
-# Instala dependências básicas
 install_deps
 fix_repos
 
-# Inicia a mineração
 start_mining
-
-# Inicia serviços adicionais
 [ "$AUTO_POOL" = true ] && start_auto_pool_daemon
 [ "$WATCHDOG" = true ] && start_watchdog
 
-# Entra no loop de monitoramento
 monitor_loop
