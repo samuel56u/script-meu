@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.3 (COMPLETO E CORRIGIDO)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.5 (MEGA COMPLEXO)
 # ============================================================================
 #   Versão definitiva com menu de 14 opções, auto pool, watchdog, Discord,
 #   instalação automática (3 métodos), estatísticas reais e muito mais.
@@ -739,7 +739,7 @@ show_help() {
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}\n"
-    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.3 🔥"
+    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.5 🔥"
     echo ""
     echo "   📌 PRIMEIRA EXECUÇÃO:"
     echo "   • Opção 9 → Instala o XMRig (automático)"
@@ -789,7 +789,7 @@ echo "║   ██║ ╚████║██║╚██████╗██�
 echo "║   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ║"
 echo "║                                                                      ║"
 echo "║              XMRIG MINER GOD – TERMUX ULTIMATE EDITION              ║"
-echo "║                         v77.3 – 100% FUNCIONAL                      ║"
+echo "║                         v77.5 – 100% FUNCIONAL                      ║"
 echo "║                                                                      ║"
 echo "║              ✅ SEM BUGS – MENU SEM COMANDOS EXTERNOS               ║"
 echo "║              ✅ INSTALAÇÃO AUTOMÁTICA – 3 MÉTODOS                   ║"
