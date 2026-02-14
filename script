@@ -1,11 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.8 (CORREÇÃO TOTAL)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.9 (INÍCIO MANUAL)
 # ============================================================================
 #   Versão definitiva com menu de 20 opções, auto pool, watchdog, Discord,
 #   instalação automática (3 métodos), estatísticas reais e muito mais.
-#   Todos os bugs listados foram corrigidos.
+#   A mineração só inicia quando você escolhe a opção 1.
 # ============================================================================
 
 # ---------- CORES (PALETA COMPLETA) ----------
@@ -894,7 +894,7 @@ show_help() {
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}\n"
-    echo "   🔥 XMRIG MINER GOD – TERMUX ULTIMATE EDITION v77.8 🔥"
+    echo "   🔥 XMRIG MINER GOD – TERMUX ULTIMATE EDITION v77.9 🔥"
     echo ""
     echo "   📌 PRIMEIRA EXECUÇÃO:"
     echo "   • Opção 5 → Instala o XMRig (automático)"
@@ -944,11 +944,11 @@ echo "║   ██║ ╚████║██║╚██████╗██�
 echo "║   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ║"
 echo "║                                                                      ║"
 echo "║              XMRIG MINER GOD – TERMUX ULTIMATE EDITION              ║"
-echo "║                         v77.8 – 100% FUNCIONAL                      ║"
+echo "║                         v77.9 – INÍCIO MANUAL                       ║"
 echo "║                                                                      ║"
+echo "║              ✅ MINERAÇÃO SÓ COMEÇA NA OPÇÃO 1                      ║"
 echo "║              ✅ TODOS OS BUGS CORRIGIDOS                            ║"
 echo "║              ✅ WATCHDOG FUNCIONAL                                  ║"
-echo "║              ✅ LATÊNCIA PRECISA                                    ║"
 echo "║              ✅ NOTIFICAÇÕES CONFIGURÁVEIS                          ║"
 echo "║              ✅ ESTATÍSTICAS PERSISTENTES                           ║"
 echo "║                                                                      ║"
@@ -972,6 +972,7 @@ fi
 install_deps
 
 # ---------- INICIAR AUTO POOL SE ATIVADO ----------
+# (Apenas o serviço, não a mineração)
 if [ "$AUTO_POOL" = true ]; then
     start_auto_pool
 fi
