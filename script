@@ -506,10 +506,9 @@ install_miner() {
 # TESTAR POOL
 # =============================================================================
 test_pool() {
-    local pool_entry="$1"
-    local pool_name=$(echo "$pool_entry" | cut -d'|' -f1)
-    local pool_url=$(echo "$pool_entry" | cut -d'|' -f2)
-    local pool_type=$(echo "$pool_entry" | cut -d'|' -f3)
+    local pool_name="$1"
+    local pool_entry="${POOLS[$pool_name]}"
+    local pool_url=$(echo "$pool_entry" | cut -d'|' -f1)
     
     local host=$(echo "$pool_url" | sed -e 's|^stratum+tcp://||' -e 's|^stratum+ssl://||' -e 's|:[0-9]*$||')
     local port=$(echo "$pool_url" | grep -o '[0-9]*$')
@@ -520,14 +519,6 @@ test_pool() {
     
     if [ $? -eq 0 ]; then
         god_log "OK" "Pool" "✓ $pool_name está acessível"
-        
-        # Medir latência
-        local start=$(date +%s%N)
-        (echo > "/dev/tcp/$host/$port") 2>/dev/null
-        local end=$(date +%s%N)
-        local latency=$(( (end - start) / 1000000 ))
-        
-        echo "$pool_name:$latency" >> "$METRICS_DIR/pool_latency.tmp"
         return 0
     else
         god_log "WARN" "Pool" "✗ $pool_name não respondeu"
@@ -536,70 +527,52 @@ test_pool() {
 }
 
 # =============================================================================
-# ENCONTRAR MELHOR POOL
+# FUNÇÃO CORRIGIDA: INICIAR MINERAÇÃO EM PRIMEIRO PLANO (MOSTRA LOGS)
 # =============================================================================
-find_best_pool() {
-    god_log "POOL" "AutoSwitch" "Procurando melhor pool disponível..."
+start_mining_foreground() {
+    local pool_name="$1"
+    local pool_entry="${POOLS[$pool_name]}"
+    local pool_url=$(echo "$pool_entry" | cut -d'|' -f1)
     
-    local best_pool=""
-    local best_latency=99999
-    local pool_list=()
+    clear
+    echo -e "${GREEN}${BOLD}"
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║                    MINERAÇÃO ATIVA                               ║"
+    echo "║              LOGS EM TEMPO REAL - CTRL+C PARA PARAR              ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    echo ""
+    echo -e "${CYAN}Pool:${NC} $pool_name"
+    echo -e "${CYAN}Endereço:${NC} ${NICEHASH_WALLET:0:20}..."
+    echo -e "${CYAN}Threads:${NC} $THREADS"
+    echo -e "${CYAN}URL:${NC} $pool_url"
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
     
-    # Testar todas as pools
-    for pool_name in "${!POOLS[@]}"; do
-        local pool_entry="${POOLS[$pool_name]}"
-        if test_pool "$pool_name|$pool_entry"; then
-            pool_list+=("$pool_name|$pool_entry")
-        fi
-    done
-    
-    # Se encontrou pools, escolher a de menor latência
-    if [ ${#pool_list[@]} -gt 0 ]; then
-        if [ -f "$METRICS_DIR/pool_latency.tmp" ]; then
-            best_pool=$(sort -t':' -k2 -n "$METRICS_DIR/pool_latency.tmp" | head -1 | cut -d':' -f1)
-            rm -f "$METRICS_DIR/pool_latency.tmp"
-        else
-            best_pool=$(echo "${pool_list[0]}" | cut -d'|' -f1)
-        fi
-        
-        god_log "SUCCESS" "Pool" "Melhor pool encontrada: $best_pool"
-        echo "$best_pool"
-    else
-        god_log "WARN" "Pool" "Nenhuma pool acessível, usando ViaBTC como fallback"
-        echo "ViaBTC"
-    fi
-}
-
-# =============================================================================
-# INICIAR MINERAÇÃO
-# =============================================================================
-start_mining() {
     god_log "GOD" "Mining" "=== INICIANDO OPERAÇÃO DIVINA DE MINERAÇÃO ==="
-    
-    # Verificar minerador
-    if [ ! -f "$BIN_DIR/cpuminer" ]; then
-        god_log "INFO" "Mining" "Minerador não encontrado. Instalando..."
-        install_miner || {
-            discord_log "Falha ao iniciar mineração" "Verifique os logs imediatamente." "16711680" ""
-            return 1
-        }
-    fi
-    
-    # Escolher melhor pool
-    local selected_pool=$(find_best_pool)
-    local pool_url="${POOLS[$selected_pool]%%|*}"
-    
-    god_log "INFO" "Mining" "Conectando à pool: $selected_pool"
+    god_log "INFO" "Mining" "Pool: $pool_name"
     god_log "INFO" "Mining" "URL: $pool_url"
     god_log "INFO" "Mining" "Endereço: $NICEHASH_WALLET"
     god_log "INFO" "Mining" "Threads: $THREADS"
     
+    # Verificar se minerador existe
+    if [ ! -f "$BIN_DIR/cpuminer" ]; then
+        god_log "INFO" "Mining" "Minerador não encontrado. Instalando..."
+        install_miner || {
+            god_log "ERROR" "Mining" "Falha na instalação do minerador"
+            discord_log "Falha ao iniciar mineração" "Verifique os logs imediatamente." "16711680" ""
+            echo ""
+            echo -e "${YELLOW}Pressione ENTER para voltar ao menu${NC}"
+            read -r
+            return 1
+        }
+    fi
+    
     # Enviar notificação Discord
-    discord_log "AUTO POOL ON" "TROCA AUTOMÁTICA DE POOL\n\nAtivada. O sistema selecionará a pool com menor latência a cada 30 minutos." "65280" ""
+    discord_log "MINERAÇÃO INICIADA" "Pool: $pool_name\nThreads: $THREADS" "65280" ""
     
-    # Iniciar minerador
-    cd "$MINER_HOME"
-    
+    # Executar minerador em PRIMEIRO PLANO - os logs aparecem na tela
     "$BIN_DIR/cpuminer" \
         -o "$pool_url" \
         -u "$NICEHASH_WALLET" \
@@ -607,80 +580,71 @@ start_mining() {
         -t "$THREADS" \
         --algo=sha256d \
         --retry-pause=10 \
-        2>&1 | while read line; do
-            
-            # Log da mineração
-            echo "$line" >> "$LOG_DIR/miner_output.log"
-            
-            # Detectar hashrate
-            if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (k?H/s|MH/s) ]]; then
-                local hr="${BASH_REMATCH[1]} ${BASH_REMATCH[2]}"
-                god_log "HASHRATE" "Miner" "Hashrate: $hr"
-            fi
-            
-            # Detectar shares
-            if [[ "$line" == *"accepted"* ]]; then
-                god_log "SHARE" "Miner" "Share aceito! ✅"
-                ((TOTAL_SHARES++))
-                
-                # A cada 10 shares, enviar stats pro Discord
-                if [ $((TOTAL_SHARES % 10)) -eq 0 ]; then
-                    local fields='{
-                        "name": "Shares Aceitas",
-                        "value": "'"$TOTAL_SHARES"'",
-                        "inline": true
-                    },{
-                        "name": "Rejeitadas",
-                        "value": "'"$TOTAL_REJECTED"'",
-                        "inline": true
-                    }'
-                    discord_log "PROGRESSO" "" "65280" "$fields"
-                fi
-            fi
-            
-            if [[ "$line" == *"rejected"* ]]; then
-                god_log "SHARE" "Miner" "Share rejeitado! ❌"
-                ((TOTAL_REJECTED++))
-            fi
-        done
+        2>&1 | tee -a "$LOG_DIR/miner_output.log"
     
+    # Quando sair (Ctrl+C ou erro)
     local exit_code=$?
     
-    if [ $exit_code -ne 0 ]; then
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    if [ $exit_code -eq 0 ] || [ $exit_code -eq 130 ]; then
+        god_log "INFO" "Mining" "Mineração encerrada pelo usuário"
+        discord_log "MINERAÇÃO ENCERRADA" "Motivo: Usuário interrompeu" "16711680" ""
+    else
         god_log "ERROR" "Mining" "Mineração encerrada com erro (código: $exit_code)"
-        discord_log "Falha ao iniciar mineração" "Verifique os logs imediatamente." "16711680" ""
-        return 1
+        discord_log "MINERAÇÃO ENCERRADA COM ERRO" "Código: $exit_code\nVerifique os logs." "16711680" ""
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}Pressione ENTER para voltar ao menu principal${NC}"
+    read -r
+}
+
+# =============================================================================
+# ENCONTRAR MELHOR POOL
+# =============================================================================
+find_best_pool() {
+    god_log "POOL" "AutoSwitch" "Procurando melhor pool disponível..."
+    
+    local available_pools=()
+    
+    for pool_name in "${!POOLS[@]}"; do
+        if test_pool "$pool_name" 2>/dev/null; then
+            available_pools+=("$pool_name")
+        fi
+    done
+    
+    if [ ${#available_pools[@]} -gt 0 ]; then
+        echo "${available_pools[0]}"
+        god_log "SUCCESS" "Pool" "Pool encontrada: ${available_pools[0]}"
+    else
+        god_log "WARN" "Pool" "Nenhuma pool acessível, usando NiceHash EU como fallback"
+        echo "NiceHash EU"
     fi
 }
 
 # =============================================================================
-# AUTO POOL SWITCH (a cada 30 minutos)
+# AUTO POOL SWITCH
 # =============================================================================
 auto_pool_switch() {
     while true; do
         sleep 1800  # 30 minutos
         
-        god_log "POOL" "AutoSwitch" "Verificando latência das pools..."
+        god_log "POOL" "AutoSwitch" "Verificando pools disponíveis..."
         
-        local current_time=$(date +%s)
         local best_pool=$(find_best_pool)
         local current_pool=$(cat "$CONFIG_DIR/current_pool" 2>/dev/null || echo "none")
         
         if [ "$best_pool" != "$current_pool" ] && [ -n "$best_pool" ]; then
-            god_log "POOL" "AutoSwitch" "Trocando de pool: $current_pool → $best_pool"
-            
-            # Parar mineração atual
-            pkill -f cpuminer 2>/dev/null
-            sleep 5
-            
-            # Reiniciar com nova pool
+            god_log "POOL" "AutoSwitch" "Nova pool disponível: $best_pool"
             echo "$best_pool" > "$CONFIG_DIR/current_pool"
-            start_mining &
             
-            discord_log "POOL TROCADA" "Nova pool: $best_pool\nLatência otimizada." "65280" ""
+            discord_log "AUTO POOL ON" "TROCA AUTOMÁTICA DE POOL\n\nAtivada. O sistema selecionará a pool com menor latência a cada 30 minutos." "65280" ""
         fi
         
-        LAST_POOL_SWITCH=$current_time
+        LAST_POOL_SWITCH=$(date +%s)
     done
 }
 
@@ -696,16 +660,7 @@ temperature_monitor() {
             
             if [ $temp -gt 80 ]; then
                 god_log "WARN" "Temperature" "Temperatura crítica: ${temp}°C!"
-                discord_log "⚠️ ALERTA DE TEMPERATURA" "Temperatura: ${temp}°C\nReduzindo hashrate..." "16744192" ""
-                
-                # Reduzir threads pela metade
-                pkill -f cpuminer
-                sleep 5
-                THREADS_HALF=$((THREADS / 2))
-                [ $THREADS_HALF -lt 1 ] && THREADS_HALF=1
-                
-                cd "$MINER_HOME"
-                "$BIN_DIR/cpuminer" -o "$pool_url" -u "$NICEHASH_WALLET" -p "x" -t "$THREADS_HALF" --algo=sha256d &
+                discord_log "⚠️ ALERTA DE TEMPERATURA" "Temperatura: ${temp}°C\nReduza a carga do dispositivo." "16744192" ""
             fi
         fi
     done
@@ -764,7 +719,7 @@ test_webhook() {
 }
 
 # =============================================================================
-# MENU PRINCIPAL - COM MUITAS OPÇÕES
+# MENU PRINCIPAL - CORRIGIDO
 # =============================================================================
 show_menu() {
     while true; do
@@ -775,201 +730,111 @@ show_menu() {
         echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
         echo ""
+        
         echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}INFOS DO SISTEMA${NC}"
+        echo -e "${WHITE}SISTEMA${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  CPU Threads: $THREADS"
-        echo "  Arquitetura: $ARCH_TYPE"
-        echo "  Sessão: ${SESSION_ID:0:20}..."
+        echo "  CPU Threads: $THREADS | Arquitetura: $ARCH_TYPE"
+        echo "  Shares: $TOTAL_SHARES (Rejeitadas: $TOTAL_REJECTED)"
+        echo "  Sessão: ${SESSION_ID:0:30}..."
         echo "  Log Entries: $LOG_COUNTER"
-        echo "  Shares: $TOTAL_SHARES (R: $TOTAL_REJECTED)"
         echo ""
         
         echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}OPÇÕES PRINCIPAIS${NC}"
+        echo -e "${WHITE}MINERAÇÃO - ESCOLHA A POOL${NC}"
         echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  [1] 🚀 INICIAR MINERAÇÃO (MODO DEUS)"
-        echo "  [2] ⏹️  PARAR MINERAÇÃO"
-        echo "  [3] 🔄 REINICIAR MINERAÇÃO"
-        echo "  [4] 📊 VER STATUS COMPLETO"
-        echo "  [5] 📋 VER LOGS EM TEMPO REAL"
-        echo ""
         
+        local i=1
+        declare -A menu_pools
+        for pool in "${!POOLS[@]}"; do
+            echo "  [$i] 🚀 $pool"
+            menu_pools[$i]="$pool"
+            ((i++))
+            [ $i -gt 10 ] && break
+        done
+        
+        echo ""
         echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}CONFIGURAÇÕES DE POOL${NC}"
+        echo -e "${WHITE}OPÇÕES EXTRAS${NC}"
         echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  [6] 🌐 TESTAR TODAS AS POOLS"
-        echo "  [7] 🔍 ESCOLHER POOL MANUALMENTE"
-        echo "  [8] 🤖 ATIVAR AUTO POOL SWITCH (30min)"
-        echo "  [9] 📍 VER POOL ATUAL"
+        echo "  [A] 🌐 TESTAR TODAS AS POOLS"
+        echo "  [B] 🤖 AUTO POOL SWITCH (30min)"
+        echo "  [C] 📦 INSTALAR/REINSTALAR MINERADOR"
+        echo "  [D] 🔧 EXECUTAR BENCHMARK"
+        echo "  [E] 📊 VER ESTATÍSTICAS"
+        echo "  [F] 📋 VER LOGS"
+        echo "  [G] 🛑 PARAR MINERAÇÃO"
         echo ""
         
         echo -e "${PURPLE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}FERRAMENTAS E UTILITÁRIOS${NC}"
+        echo -e "${WHITE}DISCORD${NC}"
         echo -e "${PURPLE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  [10] 📦 INSTALAR/REINSTALAR MINERADOR"
-        echo "  [11] 🔧 EXECUTAR BENCHMARK COMPLETO"
-        echo "  [12] 📊 VER ESTATÍSTICAS DETALHADAS"
-        echo "  [13] 📈 VER HISTÓRICO DE HASHRATE"
-        echo "  [14] 🌡️  MONITOR DE TEMPERATURA"
-        echo "  [15] 💾 CRIAR BACKUP"
-        echo "  [16] 🧹 LIMPAR CACHE E LOGS"
-        echo ""
-        
-        echo -e "${ORANGE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}DISCORD INTEGRATION${NC}"
-        echo -e "${ORANGE}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  [17] 📤 ENVIAR RELATÓRIO DIÁRIO"
-        echo "  [18] 📤 ENVIAR STATUS AGORA"
-        echo "  [19] 🔔 TESTAR WEBHOOK"
-        echo "  [20] ⚙️  CONFIGURAR WEBHOOK"
-        echo ""
-        
-        echo -e "${RED}═══════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}WALLET E CREDENCIAIS${NC}"
-        echo -e "${RED}═══════════════════════════════════════════════════════════════════${NC}"
-        echo "  [21] 👛 ALTERAR ENDEREÇO BTC"
-        echo "  [22] 🔑 ALTERAR API KEY"
-        echo "  [23] 👀 VER CONFIGURAÇÕES ATUAIS"
+        echo "  [H] 📤 ENVIAR SISTEMA INICIADO"
+        echo "  [I] 📤 ENVIAR BENCHMARK"
+        echo "  [J] 📤 ENVIAR RELATÓRIO DIÁRIO"
+        echo "  [K] 🔔 TESTAR WEBHOOK"
         echo ""
         
         echo -e "${GREEN}═══════════════════════════════════════════════════════════════════${NC}"
         echo "  [0] 🚪 SAIR"
         echo -e "${GREEN}═══════════════════════════════════════════════════════════════════${NC}"
         echo ""
-        echo -n -e "${WHITE}ESCOLHA UMA OPÇÃO [0-23]: ${NC}"
+        echo -n -e "${WHITE}ESCOLHA UMA OPÇÃO: ${NC}"
         read -r opt
         
         case $opt in
-            1)
-                clear
-                god_log "GOD" "Menu" "Iniciando mineração modo Deus..."
-                start_mining &
-                sleep 2
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar ao menu${NC}"
-                read -r
-                ;;
-            2)
-                clear
-                god_log "INFO" "Menu" "Parando mineração..."
-                pkill -f cpuminer
-                echo ""
-                echo -e "${GREEN}Mineração parada${NC}"
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            3)
-                clear
-                god_log "INFO" "Menu" "Reiniciando mineração..."
-                pkill -f cpuminer
-                sleep 3
-                start_mining &
-                sleep 2
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            4)
-                clear
-                echo -e "${GREEN}STATUS COMPLETO DO SISTEMA${NC}"
-                echo ""
-                echo "Tempo ativo: $(( ($(date +%s) - START_TIME) / 3600 ))h"
-                echo "Shares aceitas: $TOTAL_SHARES"
-                echo "Shares rejeitadas: $TOTAL_REJECTED"
-                echo "Último hashrate: ${HASHRATE_HISTORY[-1]:-N/A}"
-                echo "Log entries: $LOG_COUNTER"
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            5)
-                clear
-                echo -e "${CYAN}LOGS EM TEMPO REAL (Ctrl+C para sair)${NC}"
-                echo ""
-                tail -f "$LOG_DIR/complete.log"
-                ;;
-            6)
-                clear
-                echo -e "${BLUE}TESTANDO TODAS AS POOLS${NC}"
-                echo ""
-                for pool_name in "${!POOLS[@]}"; do
-                    test_pool "$pool_name|${POOLS[$pool_name]}"
-                done
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            7)
-                clear
-                echo -e "${BLUE}ESCOLHA UMA POOL MANUALMENTE${NC}"
-                echo ""
-                local i=1
-                declare -A pool_options
-                for pool_name in "${!POOLS[@]}"; do
-                    echo "  [$i] $pool_name"
-                    pool_options[$i]="$pool_name"
-                    ((i++))
-                done
-                echo ""
-                echo -n "Escolha: "
-                read -r pool_choice
-                
-                if [ -n "${pool_options[$pool_choice]}" ]; then
-                    local selected="${pool_options[$pool_choice]}"
-                    echo "$selected" > "$CONFIG_DIR/current_pool"
-                    god_log "INFO" "Pool" "Pool alterada para: $selected"
-                    
-                    # Reiniciar mineração
-                    pkill -f cpuminer
-                    sleep 3
-                    start_mining &
+            [0-9]*)
+                if [ "$opt" -ge 1 ] && [ "$opt" -le 10 ] 2>/dev/null; then
+                    start_mining_foreground "${menu_pools[$opt]}"
+                else
+                    echo -e "${RED}Opção inválida!${NC}"
+                    sleep 1
                 fi
                 ;;
-            8)
+            [Aa])
+                clear
+                echo -e "${BLUE}TESTANDO POOLS${NC}"
+                echo ""
+                for pool in "${!POOLS[@]}"; do
+                    test_pool "$pool"
+                done
+                echo ""
+                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
+                read -r
+                ;;
+            [Bb])
                 clear
                 god_log "INFO" "Menu" "Ativando Auto Pool Switch"
                 auto_pool_switch &
                 discord_log "AUTO POOL ON" "TROCA AUTOMÁTICA DE POOL\n\nAtivada. O sistema selecionará a pool com menor latência a cada 30 minutos." "65280" ""
-                echo -e "${GREEN}Auto Pool Switch ativado!${NC}"
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            9)
-                clear
-                local current=$(cat "$CONFIG_DIR/current_pool" 2>/dev/null)
-                if [ -n "$current" ]; then
-                    echo -e "${GREEN}Pool atual: $current${NC}"
-                else
-                    echo -e "${RED}Nenhuma pool selecionada${NC}"
-                fi
+                echo -e "${GREEN}Auto Pool Switch ativado em background!${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            10)
+            [Cc])
                 clear
                 install_miner
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            11)
+            [Dd])
                 clear
                 run_benchmark
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            12)
+            [Ee])
                 clear
-                echo -e "${PURPLE}ESTATÍSTICAS DETALHADAS${NC}"
+                echo -e "${PURPLE}ESTATÍSTICAS${NC}"
                 echo ""
                 echo "Total de shares: $TOTAL_SHARES"
                 echo "Rejeitadas: $TOTAL_REJECTED"
                 echo "Taxa de aceitação: $(( (TOTAL_SHARES - TOTAL_REJECTED) * 100 / (TOTAL_SHARES + 1) ))%"
                 echo ""
-                echo "Histórico de hashrate:"
+                echo "Últimos hashrates:"
                 for hr in "${HASHRATE_HISTORY[@]: -5}"; do
                     echo "  $hr"
                 done
@@ -977,178 +842,69 @@ show_menu() {
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            13)
+            [Ff])
                 clear
-                echo -e "${CYAN}HISTÓRICO DE HASHRATE${NC}"
-                echo ""
-                if [ -f "$HASHRATE_FILE" ]; then
-                    tail -20 "$HASHRATE_FILE"
+                if [ -f "$LOG_DIR/complete.log" ]; then
+                    echo -e "${CYAN}Últimas 50 linhas do log:${NC}"
+                    echo ""
+                    tail -50 "$LOG_DIR/complete.log"
                 else
-                    echo "Nenhum histórico encontrado"
+                    echo "Nenhum log encontrado"
                 fi
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            14)
+            [Gg])
                 clear
-                echo -e "${ORANGE}MONITOR DE TEMPERATURA${NC}"
-                echo ""
-                if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
-                    local temp=$(($(cat /sys/class/thermal/thermal_zone0/temp) / 1000))
-                    echo "Temperatura atual: ${temp}°C"
-                    
-                    if [ $temp -gt 70 ]; then
-                        echo -e "${RED}⚠️ Temperatura alta!${NC}"
-                    elif [ $temp -gt 50 ]; then
-                        echo -e "${YELLOW}⚠️ Temperatura moderada${NC}"
-                    else
-                        echo -e "${GREEN}✅ Temperatura normal${NC}"
-                    fi
-                else
-                    echo "Sensor de temperatura não disponível"
-                fi
+                pkill -f cpuminer
+                god_log "INFO" "System" "Mineração parada manualmente"
+                discord_log "MINERAÇÃO PARADA" "Comando manual do usuário" "16711680" ""
+                echo -e "${GREEN}Mineração parada${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            15)
+            [Hh])
                 clear
-                god_log "INFO" "Menu" "Criando backup..."
-                mkdir -p "$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S)"
-                cp -r "$CONFIG_DIR" "$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S)/"
-                cp -r "$LOG_DIR" "$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S)/"
-                echo -e "${GREEN}Backup criado em $BACKUP_DIR${NC}"
+                discord_sistema_iniciado
+                echo -e "${GREEN}Mensagem enviada ao Discord!${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            16)
+            [Ii])
                 clear
-                god_log "INFO" "Menu" "Limpando cache e logs..."
-                rm -rf "$TEMP_DIR"/*
-                rm -f "$LOG_DIR"/*.tmp
-                echo -e "${GREEN}Limpeza concluída${NC}"
+                run_benchmark
+                echo -e "${GREEN}Benchmark enviado ao Discord!${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            17)
+            [Jj])
                 clear
                 send_daily_report
-                echo -e "${GREEN}Relatório diário enviado!${NC}"
+                echo -e "${GREEN}Relatório diário enviado ao Discord!${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
-            18)
-                clear
-                local fields='{
-                    "name": "Status",
-                    "value": "'"$(pgrep -f cpuminer >/dev/null && echo "✅ ATIVO" || echo "❌ INATIVO")"'",
-                    "inline": true
-                },{
-                    "name": "Shares",
-                    "value": "'"$TOTAL_SHARES"'",
-                    "inline": true
-                },{
-                    "name": "Hashrate",
-                    "value": "'"${HASHRATE_HISTORY[-1]:-0}"'",
-                    "inline": true
-                }'
-                discord_log "STATUS AGORA - MODO DEUS" "" "65280" "$fields"
-                echo -e "${GREEN}Status enviado!${NC}"
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            19)
+            [Kk])
                 clear
                 test_webhook
-                echo -e "${GREEN}Teste enviado! Verifique o Discord.${NC}"
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            20)
-                clear
-                echo -e "${ORANGE}CONFIGURAR WEBHOOK${NC}"
-                echo ""
-                echo "Webhook atual: ${DISCORD_WEBHOOK:0:50}..."
-                echo ""
-                echo -n "Novo webhook URL (Enter para manter): "
-                read -r new_webhook
-                if [ -n "$new_webhook" ]; then
-                    DISCORD_WEBHOOK="$new_webhook"
-                    echo -e "${GREEN}Webhook atualizado!${NC}"
-                fi
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            21)
-                clear
-                echo -e "${RED}ALTERAR ENDEREÇO BTC${NC}"
-                echo ""
-                echo "Endereço atual: $NICEHASH_WALLET"
-                echo ""
-                echo -n "Novo endereço BTC: "
-                read -r new_wallet
-                if [ -n "$new_wallet" ]; then
-                    NICEHASH_WALLET="$new_wallet"
-                    echo -e "${GREEN}Endereço atualizado!${NC}"
-                    
-                    # Reiniciar mineração se ativa
-                    if pgrep -f cpuminer >/dev/null; then
-                        pkill -f cpuminer
-                        sleep 3
-                        start_mining &
-                    fi
-                fi
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            22)
-                clear
-                echo -e "${RED}ALTERAR API KEY${NC}"
-                echo ""
-                echo "API Key atual: ${NICEHASH_API_KEY:0:10}..."
-                echo ""
-                echo -n "Nova API Key: "
-                read -r new_key
-                if [ -n "$new_key" ]; then
-                    NICEHASH_API_KEY="$new_key"
-                    echo -e "${GREEN}API Key atualizada!${NC}"
-                fi
-                echo ""
-                echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
-                read -r
-                ;;
-            23)
-                clear
-                echo -e "${CYAN}CONFIGURAÇÕES ATUAIS${NC}"
-                echo ""
-                echo "Endereço BTC: $NICEHASH_WALLET"
-                echo "API Key: ${NICEHASH_API_KEY:0:10}..."
-                echo "Webhook: ${DISCORD_WEBHOOK:0:50}..."
-                echo "Pool atual: $(cat "$CONFIG_DIR/current_pool" 2>/dev/null || echo 'Nenhuma')"
-                echo "Threads: $THREADS"
-                echo "Arquitetura: $ARCH_TYPE"
+                echo -e "${GREEN}Teste enviado ao Discord! Verifique o canal.${NC}"
                 echo ""
                 echo -e "${YELLOW}Pressione ENTER para voltar${NC}"
                 read -r
                 ;;
             0)
                 clear
-                god_log "GOD" "System" "Encerrando sistema..."
+                god_log "INFO" "System" "Encerrando sistema"
                 pkill -f cpuminer 2>/dev/null
                 pkill -f auto_pool_switch 2>/dev/null
                 pkill -f temperature_monitor 2>/dev/null
                 pkill -f send_heartbeat 2>/dev/null
-                
                 discord_log "SISTEMA ENCERRADO" "Até a próxima, minerador divino!" "16711680" ""
-                
                 echo -e "${GREEN}Obrigado por usar o NiceHash Miner God!${NC}"
                 exit 0
                 ;;
@@ -1161,25 +917,22 @@ show_menu() {
 }
 
 # =============================================================================
-# FUNÇÃO DE LIMPEZA (QUANDO O SCRIPT MORRE)
+# FUNÇÃO DE LIMPEZA
 # =============================================================================
 cleanup() {
     echo ""
-    god_log "INFO" "System" "Recebido sinal de encerramento..."
+    god_log "INFO" "System" "Encerrando processos..."
     pkill -f cpuminer 2>/dev/null
     pkill -f auto_pool_switch 2>/dev/null
     pkill -f temperature_monitor 2>/dev/null
     pkill -f send_heartbeat 2>/dev/null
-    
     discord_log "SISTEMA ENCERRADO" "Encerramento forçado detectado." "16711680" ""
     exit 0
 }
 
 # =============================================================================
-# MAIN - PONTO DE ENTRADA
+# MAIN
 # =============================================================================
-
-# Configurar traps
 trap cleanup SIGINT SIGTERM
 
 # Verificar Termux
@@ -1188,40 +941,14 @@ if [ ! -d "/data/data/com.termux" ]; then
     exit 1
 fi
 
-# Instalar dependências básicas
-pkg install -y curl wget 2>/dev/null
-
 # Criar diretórios
 mkdir -p "$MINER_HOME" "$LOG_DIR" "$CONFIG_DIR" "$BIN_DIR" "$TEMP_DIR" "$BACKUP_DIR" "$METRICS_DIR" "$AUDIT_DIR" "$REPORTS_DIR" 2>/dev/null
+
+# Instalar dependências básicas
+pkg install -y curl wget 2>/dev/null
 
 # Detectar hardware
 detect_hardware
 
-# Verificar se tem argumento --auto
-if [ "$1" = "--auto" ]; then
-    # Modo automático - já inicia minerando
-    discord_sistema_iniciado
-    run_benchmark
-    start_mining &
-    auto_pool_switch &
-    temperature_monitor &
-    send_heartbeat &
-    
-    # Ficar em loop mostrando status
-    while true; do
-        clear
-        echo -e "${GREEN}NICEHASH MINER GOD - MODO AUTOMÁTICO${NC}"
-        echo ""
-        echo "Tempo ativo: $(( ($(date +%s) - START_TIME) / 3600 ))h $(( (($(date +%s) - START_TIME) % 3600) / 60 ))m"
-        echo "Shares: $TOTAL_SHARES (R: $TOTAL_REJECTED)"
-        echo "Último hashrate: ${HASHRATE_HISTORY[-1]:-N/A}"
-        echo ""
-        echo "Logs: $LOG_DIR/complete.log"
-        echo ""
-        echo "Pressione Ctrl+C para parar"
-        sleep 10
-    done
-else
-    # Modo normal - mostrar menu
-    show_menu
-fi
+# Iniciar menu
+show_menu
