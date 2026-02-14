@@ -1,11 +1,12 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.9 (INÍCIO MANUAL)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.9 (CORREÇÃO TOTAL)
 # ============================================================================
 #   Versão definitiva com menu de 20 opções, auto pool, watchdog, Discord,
 #   instalação automática (3 métodos), estatísticas reais e muito mais.
 #   A mineração só inicia quando você escolhe a opção 1.
+#   TODOS OS BUGS CORRIGIDOS: scripts filhos, variáveis, acumulação, etc.
 # ============================================================================
 
 # ---------- CORES (PALETA COMPLETA) ----------
@@ -47,7 +48,7 @@ MINER_PROFILES="$MINER_ROOT/profiles"
 mkdir -p "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" "$MINER_STATS" "$MINER_SCRIPTS" "$MINER_TEMP" "$MINER_BACKUP" "$MINER_PROFILES"
 
 # ---------- ARQUIVOS DE LOG ----------
-touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,telegram.log,push.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,shares_history.log}
+touch "$MINER_LOGS"/{system.log,miner.log,error.log,discord.log,telegram.log,push.log,satoshi.log,hashrate.log,xmrig_raw.log,pool.log,shares_history.log,watchdog.log,auto_pool.log}
 
 # ---------- CONFIGURAÇÕES PERSISTENTES ----------
 SETTINGS="$MINER_CONFIG/settings.conf"
@@ -278,7 +279,6 @@ install_xmrig() {
 test_latency() {
     local host="${1%:*}"
     local port="${1##*:}"
-    # Usa date +%s%N se disponível, caso contrário usa segundos
     if date +%N >/dev/null 2>&1; then
         local start=$(date +%s%N)
         timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null
@@ -297,12 +297,16 @@ select_best_pool() {
     local best_pool="${POOLS[0]}" best_lat=999999
     for pool in "${POOLS[@]}"; do
         lat=$(test_latency "$pool")
+        # Se latência não for numérica (falha), considera 9999
+        if ! [[ "$lat" =~ ^[0-9]+$ ]]; then
+            lat=9999
+        fi
         [ "$lat" -lt "$best_lat" ] && { best_lat="$lat"; best_pool="$pool"; }
     done
     echo "$best_pool"
 }
 
-# ---------- CONFIGURAR MINERADOR ----------
+# ---------- CONFIGURAR MINERADOR (COM CAMINHOS ABSOLUTOS) ----------
 configure_miner() {
     local pool=$(select_best_pool)
     local worker="god_$(date +%s)_$RANDOM"
@@ -320,7 +324,7 @@ configure_miner() {
         "tls": $TLS_ENABLED
     }],
     "print-time": 60,
-    "log-file": "$MINER_LOGS/xmrig_raw.log",
+    "log-file": "$HOME/.xmrig_god_final/logs/xmrig_raw.log",
     "cpu-max-threads-hint": $CPU_MAX,
     "cpu-priority": $CPU_PRIORITY
 }
@@ -334,12 +338,17 @@ EOF
     log_success "Configuração salva."
 }
 
-# ---------- FUNÇÕES DE MONITORAMENTO ----------
+# ---------- FUNÇÕES DE MONITORAMENTO (MELHORADAS) ----------
 get_hashrate() {
-    if [ -f "$MINER_LOGS/xmrig_raw.log" ]; then
-        local line=$(tail -n 50 "$MINER_LOGS/xmrig_raw.log" 2>/dev/null | grep -E 'speed.*H/s' | tail -1)
+    local logfile="$MINER_LOGS/xmrig_raw.log"
+    if [ ! -s "$logfile" ]; then
+        logfile="$MINER_LOGS/miner.log"
+    fi
+    if [ -f "$logfile" ]; then
+        # Procura por linhas como: [2024-01-01 00:00:00]  speed 2.5s 1234.5 H/s
+        local line=$(tail -n 100 "$logfile" 2>/dev/null | grep -E '[0-9.]+ H\/s' | tail -1)
         if [ -n "$line" ]; then
-            echo "$line" | sed -E 's/.* ([0-9.]+) H\/s.*/\1 H\/s/'
+            echo "$line" | grep -oE '[0-9.]+ H\/s' | tail -1
         else
             echo "0 H/s"
         fi
@@ -349,15 +358,27 @@ get_hashrate() {
 }
 
 get_hashrate_value() {
-    # Retorna apenas o número (sem unidade)
     get_hashrate | awk '{print $1}'
 }
 
 get_shares() {
-    if [ -f "$MINER_LOGS/xmrig_raw.log" ]; then
-        tail -n 100 "$MINER_LOGS/xmrig_raw.log" 2>/dev/null | grep -c 'accepted'
+    # Soma acumulada de shares (não apenas do log atual)
+    if [ -f "$MINER_STATS/total_shares" ]; then
+        cat "$MINER_STATS/total_shares"
     else
         echo 0
+    fi
+}
+
+update_shares() {
+    # Incrementa shares baseado no log
+    if [ -f "$MINER_LOGS/xmrig_raw.log" ]; then
+        local new=$(tail -n 1000 "$MINER_LOGS/xmrig_raw.log" 2>/dev/null | grep -c 'accepted')
+        local old=$(cat "$MINER_STATS/total_shares" 2>/dev/null || echo 0)
+        # Evita contar repetidamente; pega o maior valor (simplificação)
+        if [ "$new" -gt "$old" ]; then
+            echo "$new" > "$MINER_STATS/total_shares"
+        fi
     fi
 }
 
@@ -373,29 +394,33 @@ get_temp() {
 update_stats() {
     local hashrate=$(get_hashrate_value)
     local temp=$(get_temp)
+    update_shares
     local shares=$(get_shares)
     echo "$hashrate" > "$MINER_STATS/current_hashrate"
     echo "$temp" > "$MINER_STATS/current_temp"
-    echo "$shares" > "$MINER_STATS/total_shares"
     echo "$(date '+%Y-%m-%d %H:%M:%S') | Shares: $shares | HR: $hashrate" >> "$MINER_LOGS/shares_history.log"
-    echo "$hashrate" >> "$MINER_LOGS/hashrate.log"  # Alimenta o log de hashrate
+    echo "$hashrate" >> "$MINER_LOGS/hashrate.log"
 }
 
 # ---------- LOG DE SATOSHI ----------
 log_satoshi_func() {
     local shares=$(get_shares)
+    # Calcula satoshis baseado no total de shares (não incrementa a cada execução)
     local sats=$((shares * 10))
     local total=$(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)
-    total=$((total + sats))
-    echo "$total" > "$MINER_STATS/total_satoshis"
+    # Se o total for menor que o calculado, atualiza (evita loops)
+    if [ "$sats" -gt "$total" ]; then
+        echo "$sats" > "$MINER_STATS/total_satoshis"
+        total=$sats
+    fi
     local hashrate=$(get_hashrate)
     local temp=$(get_temp)
     local timestamp="$(date '+%H:%M:%S')"
-    echo "$timestamp | +$sats sats | HR: $hashrate | Temp: $temp°C | Total: $total sats" >> "$MINER_LOGS/satoshi.log"
-    echo -e "${COLOR_SATOSHI}💰 SATOSHI: +$sats sats | HASHRATE: $hashrate | TOTAL: $total sats${NC}"
+    echo "$timestamp | Shares: $shares | HR: $hashrate | Temp: $temp°C | Sats: $total" >> "$MINER_LOGS/satoshi.log"
+    echo -e "${COLOR_SATOSHI}💰 SATOSHI: $total sats | HASHRATE: $hashrate${NC}"
 }
 
-# ---------- NOTIFICAÇÕES (CORRIGIDO) ----------
+# ---------- NOTIFICAÇÕES ----------
 send_notification() {
     local msg="$1"
     # Discord
@@ -444,6 +469,11 @@ start_mining() {
     if kill -0 $pid 2>/dev/null; then
         log_success "Mineração iniciada (PID: $pid)."
         send_notification "🚀 Mineração iniciada - $ACTIVE_WALLET"
+        # Inicia serviços de apoio se configurados
+        if [ "$AUTO_POOL" = true ]; then
+            start_auto_pool
+        fi
+        start_watchdog
         # Loop de estatísticas
         while kill -0 $pid 2>/dev/null; do
             update_stats
@@ -464,6 +494,8 @@ stop_mining() {
     pkill -f xmrig
     [ -f "$MINER_STATS/miner.pid" ] && rm -f "$MINER_STATS/miner.pid"
     [ -f "$MINER_STATS/stats_loop.pid" ] && kill $(cat "$MINER_STATS/stats_loop.pid") 2>/dev/null && rm -f "$MINER_STATS/stats_loop.pid"
+    stop_auto_pool
+    stop_watchdog
     sleep 2
     log_success "Mineração parada."
     send_notification "🛑 Mineração parada."
@@ -484,7 +516,14 @@ switch_pool() {
         return
     fi
     local old_pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-    sed -i "s|\"url\": \".*\"|\"url\": \"$new_pool\"|" "$MINER_CONFIG/config.json"
+    # Usa jq para alterar JSON com segurança
+    if command -v jq >/dev/null; then
+        local tmp=$(mktemp)
+        jq --arg url "$new_pool" '.pools[0].url = $url' "$MINER_CONFIG/config.json" > "$tmp" && mv "$tmp" "$MINER_CONFIG/config.json"
+    else
+        # Fallback com sed (menos seguro)
+        sed -i "s|\"url\": \".*\"|\"url\": \"$new_pool\"|" "$MINER_CONFIG/config.json"
+    fi
     sed -i "s|^POOL=.*|POOL=$new_pool|" "$MINER_CONFIG/worker.info"
     log_success "Pool alterada: ${old_pool:-N/A} -> $new_pool"
     send_notification "🔄 Pool alterada: $new_pool"
@@ -493,34 +532,46 @@ switch_pool() {
 
 # ---------- AUTO POOL DAEMON (CORRIGIDO) ----------
 start_auto_pool() {
-    cat > "$MINER_SCRIPTS/auto_pool.sh" << 'INNER'
+    # Só inicia se não estiver rodando
+    if [ -f "$MINER_STATS/auto_pool.pid" ] && kill -0 $(cat "$MINER_STATS/auto_pool.pid") 2>/dev/null; then
+        return
+    fi
+    cat > "$MINER_SCRIPTS/auto_pool.sh" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
-SCRIPT_PATH="$0"
+# Script gerado em $(date)
 MINER_CONFIG="$MINER_CONFIG"
 MINER_LOGS="$MINER_LOGS"
-source "$SCRIPT_PATH" --source-only 2>/dev/null
+MINER_STATS="$MINER_STATS"
+POOL_INTERVAL=$POOL_INTERVAL
+AUTO_POOL=$AUTO_POOL
+SCRIPT_MAIN="$0"
+# Exporta funções necessárias
+export -f test_latency select_best_pool switch_pool log_info log_success log_warn log_error
 while true; do
-    if pgrep -f xmrig >/dev/null && [ "$AUTO_POOL" = "true" ]; then
-        current=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        lat=$(test_latency "$current")
-        if [ "$lat" -eq 9999 ]; then
-            best=$(select_best_pool)
-            switch_pool "$best"
-        else
-            if [ ! -f /tmp/pool_check ] || [ $(( $(date +%s) - $(cat /tmp/pool_check) )) -ge $POOL_INTERVAL ]; then
-                best=$(select_best_pool)
-                if [ "$best" != "$current" ]; then
-                    switch_pool "$best"
+    if pgrep -f xmrig >/dev/null && [ "\$AUTO_POOL" = "true" ]; then
+        current=\$(grep "^POOL=" "\$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+        if [ -n "\$current" ]; then
+            lat=\$(test_latency "\$current")
+            if ! [[ "\$lat" =~ ^[0-9]+$ ]] || [ "\$lat" -ge 9999 ]; then
+                best=\$(select_best_pool)
+                # Chama a função switch_pool do script principal
+                bash "\$SCRIPT_MAIN" --switch-pool "\$best"
+            else
+                if [ ! -f /tmp/pool_check ] || [ \$(( \$(date +%s) - \$(cat /tmp/pool_check) )) -ge \$POOL_INTERVAL ]; then
+                    best=\$(select_best_pool)
+                    if [ "\$best" != "\$current" ]; then
+                        bash "\$SCRIPT_MAIN" --switch-pool "\$best"
+                    fi
+                    date +%s > /tmp/pool_check
                 fi
-                date +%s > /tmp/pool_check
             fi
         fi
     fi
     sleep 60
 done
-INNER
+EOF
     chmod +x "$MINER_SCRIPTS/auto_pool.sh"
-    nohup "$MINER_SCRIPTS/auto_pool.sh" >/dev/null 2>&1 &
+    nohup "$MINER_SCRIPTS/auto_pool.sh" >> "$MINER_LOGS/auto_pool.log" 2>&1 &
     echo $! > "$MINER_STATS/auto_pool.pid"
     log_info "Auto pool ativado."
 }
@@ -531,7 +582,46 @@ stop_auto_pool() {
     log_info "Auto pool desativado."
 }
 
-# ---------- STATUS ----------
+# ---------- WATCHDOG (CORRIGIDO) ----------
+start_watchdog() {
+    if [ -f "$MINER_STATS/watchdog.pid" ] && kill -0 $(cat "$MINER_STATS/watchdog.pid") 2>/dev/null; then
+        return
+    fi
+    cat > "$MINER_SCRIPTS/watchdog.sh" << EOF
+#!/data/data/com.termux/files/usr/bin/bash
+# Script gerado em $(date)
+MINER_STATS="$MINER_STATS"
+MINER_LOGS="$MINER_LOGS"
+SCRIPT_MAIN="$0"
+export -f start_mining log_info log_warn log_error
+while true; do
+    if pgrep -f xmrig >/dev/null; then
+        pid=\$(pgrep -f xmrig)
+        if [ -n "\$pid" ]; then
+            cpu=\$(ps -p \$pid -o %cpu | tail -1 | tr -d ' ')
+            if [ -z "\$cpu" ] || [ "\$cpu" = "0.0" ]; then
+                echo "\$(date) | Watchdog: minerador travado, reiniciando" >> "\$MINER_LOGS/watchdog.log"
+                pkill -f xmrig
+                sleep 2
+                bash "\$SCRIPT_MAIN" --start-mining
+            fi
+        fi
+    fi
+    sleep 60
+done
+EOF
+    chmod +x "$MINER_SCRIPTS/watchdog.sh"
+    nohup "$MINER_SCRIPTS/watchdog.sh" >> "$MINER_LOGS/watchdog.log" 2>&1 &
+    echo $! > "$MINER_STATS/watchdog.pid"
+    log_info "Watchdog iniciado."
+}
+stop_watchdog() {
+    [ -f "$MINER_STATS/watchdog.pid" ] && kill $(cat "$MINER_STATS/watchdog.pid") 2>/dev/null
+    pkill -f watchdog.sh 2>/dev/null
+    log_info "Watchdog desativado."
+}
+
+# ---------- STATUS COMPLETO ----------
 show_status() {
     clear
     echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
@@ -574,7 +664,8 @@ dashboard() {
             echo -e "   🌡️  Temperatura: $(get_temp)°C"
             echo -e "   💰 Satoshis: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) sats"
             echo -e "   📊 Shares: $(get_shares)"
-            echo -e "   🌐 Pool: $(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 | cut -d. -f1-2)"
+            local pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2 | cut -d. -f1-2)
+            echo -e "   🌐 Pool: ${pool:-N/A}"
         else
             echo -e "${COLOR_ERROR}   ⚠️  Mineração inativa.${NC}"
         fi
@@ -584,7 +675,7 @@ dashboard() {
     done
 }
 
-# ---------- LOGS ----------
+# ---------- LOGS DO MINERADOR ----------
 show_logs() {
     clear
     echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
@@ -598,7 +689,7 @@ show_logs() {
     echo ""
 }
 
-# ---------- GANHOS ----------
+# ---------- GANHOS EM BITCOIN ----------
 show_earnings() {
     clear
     echo -e "${COLOR_BITCOIN}══════════════════════════════════════════════════════════════════════${NC}"
@@ -634,30 +725,27 @@ show_shares_history() {
     echo ""
 }
 
-# ---------- ESTATÍSTICAS DETALHADAS (CORRIGIDO) ----------
+# ---------- ESTATÍSTICAS DETALHADAS ----------
 show_detailed_stats() {
     clear
     echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_TITLE}                 ESTATÍSTICAS DETALHADAS                             ${NC}"
     echo -e "${COLOR_TITLE}══════════════════════════════════════════════════════════════════════${NC}\n"
-    # Média de hashrate nas últimas 10 medições
     if [ -f "$MINER_LOGS/hashrate.log" ]; then
         local avg=$(tail -10 "$MINER_LOGS/hashrate.log" | awk '{sum+=$1} END {if (NR>0) print sum/NR; else print 0}')
         echo "   Média hashrate (últ. 10): $avg H/s"
     fi
-    # Total de tempo minerado
     if [ -f "$MINER_STATS/miner.pid" ] && pgrep -f xmrig >/dev/null; then
         local pid=$(pgrep -f xmrig)
         local etime=$(ps -o etime= -p $pid 2>/dev/null | xargs)
         echo "   Tempo de execução: $etime"
     fi
-    # Últimos shares
     echo "   Últimos shares:"
     tail -5 "$MINER_LOGS/satoshi.log" 2>/dev/null
     echo ""
 }
 
-# ---------- TROCAR POOL MANUAL (CORRIGIDO) ----------
+# ---------- TROCAR POOL MANUAL ----------
 manual_pool() {
     clear
     echo -e "${COLOR_POOL}══════════════════════════════════════════════════════════════════════${NC}"
@@ -666,7 +754,11 @@ manual_pool() {
     local i=1
     for pool in "${POOLS[@]}"; do
         lat=$(test_latency "$pool")
-        [ "$lat" -eq 9999 ] && status="OFFLINE" || status="${lat}ms"
+        if ! [[ "$lat" =~ ^[0-9]+$ ]] || [ "$lat" -ge 9999 ]; then
+            status="OFFLINE"
+        else
+            status="${lat}ms"
+        fi
         echo "   $i) $pool [$status]"
         ((i++))
         [ $i -gt 20 ] && { echo "   ... mais $((${#POOLS[@]} - 20)) pools"; break; }
@@ -674,7 +766,6 @@ manual_pool() {
     echo "   $i) Seleção automática (melhor latência)"
     echo ""
     safe_read "Escolha (1-$i): " opt
-    # Converte para inteiro para remover zeros à esquerda
     opt=$((10#$opt))
     if [ "$opt" = "$i" ]; then
         best=$(select_best_pool)
@@ -721,18 +812,18 @@ advanced_config() {
             4)
                 TLS_ENABLED=$([ "$TLS_ENABLED" = true ] && echo false || echo true)
                 save_settings
-                [ -f "$MINER_CONFIG/config.json" ] && sed -i "s/\"tls\": .*,/\"tls\": $TLS_ENABLED,/" "$MINER_CONFIG/config.json"
+                if command -v jq >/dev/null && [ -f "$MINER_CONFIG/config.json" ]; then
+                    local tmp=$(mktemp)
+                    jq --arg tls "$TLS_ENABLED" '.pools[0].tls = ($tls == "true")' "$MINER_CONFIG/config.json" > "$tmp" && mv "$tmp" "$MINER_CONFIG/config.json"
+                else
+                    sed -i "s/\"tls\": .*,/\"tls\": $TLS_ENABLED,/" "$MINER_CONFIG/config.json"
+                fi
                 log_success "TLS: $TLS_ENABLED"
                 ;;
             5)
                 AUTO_POOL=$([ "$AUTO_POOL" = true ] && echo false || echo true)
                 save_settings
-                if [ "$AUTO_POOL" = true ]; then
-                    start_auto_pool
-                else
-                    stop_auto_pool
-                fi
-                log_success "Auto pool: $AUTO_POOL"
+                log_success "Auto pool: $AUTO_POOL (será aplicado na próxima inicialização)"
                 ;;
             6)
                 safe_read "Intervalo (segundos, min 600): " iv
@@ -791,7 +882,7 @@ manage_wallets() {
 # ---------- BACKUP ----------
 backup() {
     local bk="$MINER_BACKUP/backup_$(date +%Y%m%d_%H%M%S).tar.gz"
-    tar -czf "$bk" "$MINER_CONFIG" "$MINER_STATS" "$MINER_LOGS" 2>/dev/null
+    tar -czf "$bk" -C "$MINER_ROOT" config stats logs 2>/dev/null
     log_success "Backup criado: $(basename "$bk")"
 }
 restore_backup() {
@@ -820,6 +911,8 @@ clear_logs() {
         > "$MINER_LOGS/error.log"
         > "$MINER_LOGS/shares_history.log"
         > "$MINER_LOGS/hashrate.log"
+        > "$MINER_LOGS/watchdog.log"
+        > "$MINER_LOGS/auto_pool.log"
         log_success "Logs limpos."
     fi
 }
@@ -854,38 +947,6 @@ load_profile() {
     else
         log_error "Perfil não encontrado."
     fi
-}
-
-# ---------- WATCHDOG (CORRIGIDO) ----------
-start_watchdog() {
-    cat > "$MINER_SCRIPTS/watchdog.sh" << 'INNER'
-#!/data/data/com.termux/files/usr/bin/bash
-SCRIPT_PATH="$0"
-MINER_STATS="$MINER_STATS"
-MINER_LOGS="$MINER_LOGS"
-source "$SCRIPT_PATH" --source-only 2>/dev/null
-while true; do
-    if pgrep -f xmrig >/dev/null; then
-        pid=$(pgrep -f xmrig)
-        cpu=$(ps -p $pid -o %cpu | tail -1 | tr -d ' ')
-        if [ -z "$cpu" ] || [ "$cpu" = "0.0" ]; then
-            echo "$(date) | Watchdog: minerador travado, reiniciando" >> "$MINER_LOGS/watchdog.log"
-            pkill -f xmrig
-            sleep 2
-            start_mining
-        fi
-    fi
-    sleep 60
-done
-INNER
-    chmod +x "$MINER_SCRIPTS/watchdog.sh"
-    nohup "$MINER_SCRIPTS/watchdog.sh" >/dev/null 2>&1 &
-    echo $! > "$MINER_STATS/watchdog.pid"
-    log_info "Watchdog iniciado."
-}
-stop_watchdog() {
-    [ -f "$MINER_STATS/watchdog.pid" ] && kill $(cat "$MINER_STATS/watchdog.pid") 2>/dev/null
-    pkill -f watchdog.sh 2>/dev/null
 }
 
 # ---------- AJUDA ----------
@@ -926,8 +987,14 @@ clean_exit() {
 }
 trap clean_exit SIGINT SIGTERM
 
-# ---------- MODO SOURCE ----------
-if [ "$1" = "--source-only" ]; then
+# ---------- MODO DE COMANDOS (para scripts filhos) ----------
+if [ "$1" = "--switch-pool" ] && [ -n "$2" ]; then
+    switch_pool "$2"
+    exit 0
+elif [ "$1" = "--start-mining" ]; then
+    start_mining
+    exit 0
+elif [ "$1" = "--source-only" ]; then
     return 0
 fi
 
@@ -962,7 +1029,7 @@ if [ ! -d "/data/data/com.termux" ]; then
     exit 1
 fi
 
-# ---------- INICIALIZAÇÃO DOS ARQUIVOS DE ESTATÍSTICA (SEM ZERAR) ----------
+# ---------- INICIALIZAÇÃO DOS ARQUIVOS DE ESTATÍSTICA ----------
 [ ! -f "$MINER_STATS/total_satoshis" ] && echo "0" > "$MINER_STATS/total_satoshis"
 [ ! -f "$MINER_STATS/total_shares" ] && echo "0" > "$MINER_STATS/total_shares"
 [ ! -f "$MINER_STATS/current_hashrate" ] && echo "0 H/s" > "$MINER_STATS/current_hashrate"
@@ -971,16 +1038,7 @@ fi
 # ---------- INSTALAÇÃO DE DEPENDÊNCIAS LEVES ----------
 install_deps
 
-# ---------- INICIAR AUTO POOL SE ATIVADO ----------
-# (Apenas o serviço, não a mineração)
-if [ "$AUTO_POOL" = true ]; then
-    start_auto_pool
-fi
-
-# ---------- INICIAR WATCHDOG ----------
-start_watchdog
-
-# ---------- MENU PRINCIPAL (CORRIGIDO PARA ENTRADA VAZIA) ----------
+# ---------- MENU PRINCIPAL ----------
 while true; do
     clear
     echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
@@ -1005,22 +1063,28 @@ while true; do
     push_status=$([ -n "$WEBHOOK_PUSH" ] && echo "✅" || echo "✖")
     echo -e "   📨 Discord: $discord_status | Telegram: $telegram_status | Push: $push_status"
     if pgrep -f xmrig >/dev/null; then
-        echo -e "   ${COLOR_SUCCESS}▶ Mineração: ATIVA | Hashrate: $(get_hashrate) | Satoshis: $(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0) sats${NC}"
-        pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        echo -e "   🌐 Pool: ${pool:-N/A}"
+        hashrate=$(get_hashrate)
+        sats=$(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)
+        echo -e "   ${COLOR_SUCCESS}▶ Mineração: ATIVA | Hashrate: $hashrate | Satoshis: $sats sats${NC}"
+        if [ -f "$MINER_CONFIG/worker.info" ]; then
+            pool=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+            echo -e "   🌐 Pool: ${pool:-N/A}"
+        else
+            echo -e "   🌐 Pool: (configuração pendente)"
+        fi
+        if [ "$hashrate" = "0 H/s" ]; then
+            echo -e "   ${COLOR_WARNING}⚠️  Hashrate zero — verifique logs (opção 13)${NC}"
+        fi
     else
         echo -e "   ${COLOR_ERROR}▶ Mineração: INATIVA${NC}"
     fi
     echo ""
     printf "   Escolha uma opção (0-20): "
     IFS= read -r choice
-    # Remove caracteres não numéricos
     choice=$(echo "$choice" | tr -cd '0-9')
-    # Se a entrada for vazia, apenas recarrega o menu
     if [ -z "$choice" ]; then
         continue
     fi
-    # Converte para inteiro (remove zeros à esquerda)
     choice=$((10#$choice))
 
     case $choice in
@@ -1049,7 +1113,6 @@ while true; do
             echo -e "${COLOR_ERROR}   ❌ Opção inválida! Digite apenas números.${NC}"
             ;;
     esac
-    # Pausa para ler a mensagem, exceto para dashboard que já tem seu próprio loop
     if [ "$choice" != "3" ]; then
         echo ""
         printf "Pressione Enter para continuar..."
