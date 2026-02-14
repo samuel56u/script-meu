@@ -324,7 +324,7 @@ POOL=$pool
 WALLET=$WALLET_ADDRESS
 TLS=$TLS_ENABLED
 EOF
-    log_ok "Configuração salva com pool: $pool (latência: ${best_lat}ms)"
+    log_ok "Configuração salva com pool: $pool"
 }
 
 # ----------------------------------------------------------------------------
@@ -360,7 +360,7 @@ get_shares() {
 
 get_temp() {
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-        local t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | head -1)
+        local t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1}')
         if [[ "$t" =~ ^[0-9]+$ ]]; then
             echo $((t / 1000))
         else
@@ -453,7 +453,7 @@ switch_pool() {
 # ----------------------------------------------------------------------------
 start_auto_pool_daemon() {
     local SCRIPT_PATH="$(realpath "$0")"
-    cat > "$MINER_SCRIPTS/auto_pool_daemon.sh" << INNEREOF
+    cat > "$MINER_SCRIPTS/auto_pool_daemon.sh" << 'INNEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
 MINER_CONFIG="$MINER_CONFIG"
 MINER_LOGS="$MINER_LOGS"
@@ -462,22 +462,22 @@ AUTO_POOL="$AUTO_POOL"
 SCRIPT_PATH="$SCRIPT_PATH"
 
 log_pool_auto() {
-    echo "\$(date) | \$1" >> "$MINER_LOGS/auto_pool.log"
+    echo "$(date) | $1" >> "$MINER_LOGS/auto_pool.log"
 }
 
 test_latency() {
-    local host="\${1%:*}"
-    local port="\${1##*:}"
+    local host="${1%:*}"
+    local port="${1##*:}"
     if date +%N >/dev/null 2>&1; then
-        local start=\$(date +%s%N)
-        timeout 2 nc -z -w 2 "\$host" "\$port" 2>/dev/null
-        local end=\$(date +%s%N)
-        echo \$(( (end - start) / 1000000 ))
+        local start=$(date +%s%N)
+        timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null
+        local end=$(date +%s%N)
+        echo $(( (end - start) / 1000000 ))
     else
-        local start=\$(date +%s)
-        timeout 2 nc -z -w 2 "\$host" "\$port" 2>/dev/null
-        local end=\$(date +%s)
-        echo \$(( (end - start) * 1000 ))
+        local start=$(date +%s)
+        timeout 2 nc -z -w 2 "$host" "$port" 2>/dev/null
+        local end=$(date +%s)
+        echo $(( (end - start) * 1000 ))
     fi
 }
 
@@ -490,34 +490,34 @@ select_best_pool() {
         "pool.supportxmr.com:443"
         "gulf.moneroocean.stream:10001"
     )
-    local best_pool="\${pools[0]}" best_lat=999999
-    for pool in "\${pools[@]}"; do
-        lat=\$(test_latency "\$pool" 2>/dev/null || echo 9999)
-        if [[ "\$lat" =~ ^[0-9]+$ ]] && [ "\$lat" -lt "\$best_lat" ]; then
-            best_lat="\$lat"
-            best_pool="\$pool"
+    local best_pool="${pools[0]}" best_lat=999999
+    for pool in "${pools[@]}"; do
+        lat=$(test_latency "$pool" 2>/dev/null || echo 9999)
+        if [[ "$lat" =~ ^[0-9]+$ ]] && [ "$lat" -lt "$best_lat" ]; then
+            best_lat="$lat"
+            best_pool="$pool"
         fi
     done
-    echo "\$best_pool"
+    echo "$best_pool"
 }
 
 while true; do
     if pgrep -f xmrig >/dev/null && [ "$AUTO_POOL" = true ]; then
-        current=\$(grep "^POOL=" "\$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        if [ -n "\$current" ]; then
-            lat=\$(test_latency "\$current" 2>/dev/null || echo 9999)
-            if [ "\$lat" -ge 9999 ]; then
-                best=\$(select_best_pool)
-                log_pool_auto "Pool offline, trocando para \$best"
-                "\$SCRIPT_PATH" --switch-pool "\$best" "fallback (pool offline)"
+        current=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+        if [ -n "$current" ]; then
+            lat=$(test_latency "$current" 2>/dev/null || echo 9999)
+            if [ "$lat" -ge 9999 ]; then
+                best=$(select_best_pool)
+                log_pool_auto "Pool offline, trocando para $best"
+                "$SCRIPT_PATH" --switch-pool "$best" "fallback (pool offline)"
             else
-                if [ ! -f /tmp/pool_check ] || [ \$(( \$(date +%s) - \$(cat /tmp/pool_check) )) -ge \$POOL_INTERVAL ]; then
-                    best=\$(select_best_pool)
-                    if [ "\$best" != "\$current" ]; then
-                        best_lat=\$(test_latency "\$best")
-                        if [ "\$best_lat" -lt "\$lat" ]; then
-                            log_pool_auto "Melhor pool encontrada: \$best (\${best_lat}ms) vs atual \$current (\${lat}ms)"
-                            "\$SCRIPT_PATH" --switch-pool "\$best" "otimização (latência \${best_lat}ms < \${lat}ms)"
+                if [ ! -f /tmp/pool_check ] || [ $(( $(date +%s) - $(cat /tmp/pool_check) )) -ge $POOL_INTERVAL ]; then
+                    best=$(select_best_pool)
+                    if [ "$best" != "$current" ]; then
+                        best_lat=$(test_latency "$best")
+                        if [ "$best_lat" -lt "$lat" ]; then
+                            log_pool_auto "Melhor pool encontrada: $best (${best_lat}ms) vs atual $current (${lat}ms)"
+                            "$SCRIPT_PATH" --switch-pool "$best" "otimização (latência ${best_lat}ms < ${lat}ms)"
                         fi
                     fi
                     date +%s > /tmp/pool_check
