@@ -382,7 +382,7 @@ update_stats() {
 }
 
 # ---------- LOG DE SATOSHI ----------
-log_satoshi() {
+log_satoshi_func() {
     local shares=$(get_shares)
     local sats=$((shares * 10))
     local total=$(cat "$MINER_STATS/total_satoshis" 2>/dev/null || echo 0)
@@ -447,7 +447,7 @@ start_mining() {
         # Loop de estatísticas
         while kill -0 $pid 2>/dev/null; do
             update_stats
-            log_satoshi
+            log_satoshi_func
             sleep 60
         done &
         echo $! > "$MINER_STATS/stats_loop.pid"
@@ -493,24 +493,24 @@ switch_pool() {
 
 # ---------- AUTO POOL DAEMON (CORRIGIDO) ----------
 start_auto_pool() {
-    cat > "$MINER_SCRIPTS/auto_pool.sh" << INNER
+    cat > "$MINER_SCRIPTS/auto_pool.sh" << 'INNER'
 #!/data/data/com.termux/files/usr/bin/bash
 SCRIPT_PATH="$0"
 MINER_CONFIG="$MINER_CONFIG"
 MINER_LOGS="$MINER_LOGS"
-source "\$SCRIPT_PATH" --source-only 2>/dev/null
+source "$SCRIPT_PATH" --source-only 2>/dev/null
 while true; do
     if pgrep -f xmrig >/dev/null && [ "$AUTO_POOL" = "true" ]; then
-        current=\$(grep "^POOL=" "\$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
-        lat=\$(test_latency "\$current")
-        if [ "\$lat" -eq 9999 ]; then
-            best=\$(select_best_pool)
-            switch_pool "\$best"
+        current=$(grep "^POOL=" "$MINER_CONFIG/worker.info" 2>/dev/null | cut -d= -f2)
+        lat=$(test_latency "$current")
+        if [ "$lat" -eq 9999 ]; then
+            best=$(select_best_pool)
+            switch_pool "$best"
         else
-            if [ ! -f /tmp/pool_check ] || [ \$(( \$(date +%s) - \$(cat /tmp/pool_check) )) -ge \$POOL_INTERVAL ]; then
-                best=\$(select_best_pool)
-                if [ "\$best" != "\$current" ]; then
-                    switch_pool "\$best"
+            if [ ! -f /tmp/pool_check ] || [ $(( $(date +%s) - $(cat /tmp/pool_check) )) -ge $POOL_INTERVAL ]; then
+                best=$(select_best_pool)
+                if [ "$best" != "$current" ]; then
+                    switch_pool "$best"
                 fi
                 date +%s > /tmp/pool_check
             fi
@@ -858,18 +858,18 @@ load_profile() {
 
 # ---------- WATCHDOG (CORRIGIDO) ----------
 start_watchdog() {
-    cat > "$MINER_SCRIPTS/watchdog.sh" << INNER
+    cat > "$MINER_SCRIPTS/watchdog.sh" << 'INNER'
 #!/data/data/com.termux/files/usr/bin/bash
 SCRIPT_PATH="$0"
 MINER_STATS="$MINER_STATS"
 MINER_LOGS="$MINER_LOGS"
-source "\$SCRIPT_PATH" --source-only 2>/dev/null
+source "$SCRIPT_PATH" --source-only 2>/dev/null
 while true; do
     if pgrep -f xmrig >/dev/null; then
-        pid=\$(pgrep -f xmrig)
-        cpu=\$(ps -p \$pid -o %cpu | tail -1 | tr -d ' ')
-        if [ -z "\$cpu" ] || [ "\$cpu" = "0.0" ]; then
-            echo "\$(date) | Watchdog: minerador travado, reiniciando" >> "$MINER_LOGS/watchdog.log"
+        pid=$(pgrep -f xmrig)
+        cpu=$(ps -p $pid -o %cpu | tail -1 | tr -d ' ')
+        if [ -z "$cpu" ] || [ "$cpu" = "0.0" ]; then
+            echo "$(date) | Watchdog: minerador travado, reiniciando" >> "$MINER_LOGS/watchdog.log"
             pkill -f xmrig
             sleep 2
             start_mining
@@ -980,7 +980,7 @@ fi
 # ---------- INICIAR WATCHDOG ----------
 start_watchdog
 
-# ---------- MENU PRINCIPAL (CORRIGIDO) ----------
+# ---------- MENU PRINCIPAL (CORRIGIDO PARA ENTRADA VAZIA) ----------
 while true; do
     clear
     echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
@@ -1016,12 +1016,12 @@ while true; do
     IFS= read -r choice
     # Remove caracteres não numéricos
     choice=$(echo "$choice" | tr -cd '0-9')
-    # Converte para inteiro (remove zeros à esquerda)
-    if [ -n "$choice" ]; then
-        choice=$((10#$choice))
-    else
-        choice=99
+    # Se a entrada for vazia, apenas recarrega o menu
+    if [ -z "$choice" ]; then
+        continue
     fi
+    # Converte para inteiro (remove zeros à esquerda)
+    choice=$((10#$choice))
 
     case $choice in
         0) clean_exit ;;
