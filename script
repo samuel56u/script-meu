@@ -1,9 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.1 (CORRIGIDO)
+# XMRIG MINER GOD - TERMUX ULTIMATE EDITION v77.3 (COMPLETO E CORRIGIDO)
 # ============================================================================
-#   Menu completo, instalação automática, logs reais, pools NiceHash
+#   Versão definitiva com menu de 14 opções, auto pool, watchdog, Discord,
+#   instalação automática (3 métodos), estatísticas reais e muito mais.
+#   Corrigido: leitura de opção robusta, sem loops infinitos.
 # ============================================================================
 
 # ---------- CORES (PALETA COMPLETA) ----------
@@ -27,7 +29,7 @@ COLOR_WALLET="${PINK}${BOLD}"
 
 # ---------- CONFIGURAÇÕES FIXAS ----------
 WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
-WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"  # Substitua pelo seu se quiser
+WEBHOOK_DISCORD="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
 
 # ---------- DIRETÓRIOS (ESTRUTURA COMPLETA) ----------
 MINER_ROOT="$HOME/.xmrig_god_final"
@@ -151,7 +153,7 @@ log_warn()    { log "WARN" "$1"; }
 log_error()   { log "ERRO" "$1"; }
 log_satoshi() { log "SATOSHI" "$1"; }
 
-# ---------- LEITURA SEGURA ----------
+# ---------- LEITURA SEGURA (CORRIGIDA) ----------
 safe_read() {
     local prompt="$1"
     local var_name="$2"
@@ -518,7 +520,6 @@ show_status() {
         echo -e "${COLOR_ERROR}▶ Mineração: INATIVA${NC}"
     fi
     echo ""
-    safe_read "Pressione Enter para voltar..." _
 }
 
 # ---------- DASHBOARD ----------
@@ -556,7 +557,6 @@ show_logs() {
         echo "Nenhum log encontrado."
     fi
     echo ""
-    safe_read "Pressione Enter para voltar..." _
 }
 
 # ---------- GANHOS ----------
@@ -579,7 +579,6 @@ show_earnings() {
     echo ""
     echo "   👛 Carteira: $WALLET"
     echo ""
-    safe_read "Pressione Enter para voltar..." _
 }
 
 # ---------- TROCAR POOL MANUAL ----------
@@ -609,7 +608,6 @@ manual_pool() {
     else
         log_error "Opção inválida."
     fi
-    safe_read "Pressione Enter..." _
 }
 
 # ---------- CONFIGURAÇÕES ----------
@@ -674,7 +672,6 @@ backup() {
     local bk="$MINER_BACKUP/backup_$(date +%Y%m%d_%H%M%S).tar.gz"
     tar -czf "$bk" "$MINER_CONFIG" "$MINER_STATS" 2>/dev/null
     log_success "Backup criado: $(basename "$bk")"
-    safe_read "Pressione Enter..." _
 }
 restore_backup() {
     echo "Backups disponíveis:"
@@ -686,7 +683,6 @@ restore_backup() {
     else
         log_error "Arquivo não encontrado."
     fi
-    safe_read "Pressione Enter..." _
 }
 
 # ---------- LIMPAR LOGS ----------
@@ -701,14 +697,12 @@ clear_logs() {
         > "$MINER_LOGS/error.log"
         log_success "Logs limpos."
     fi
-    safe_read "Pressione Enter..." _
 }
 
 # ---------- TESTAR DISCORD ----------
 test_discord() {
     discord_send "🔔 **Teste de webhook** - XMRig Miner God está funcionando!"
     log_success "Notificação enviada ao Discord."
-    safe_read "Pressione Enter..." _
 }
 
 # ---------- WATCHDOG SIMPLES ----------
@@ -745,7 +739,7 @@ show_help() {
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${COLOR_INFO}                         AJUDA DO SISTEMA                             ${NC}"
     echo -e "${COLOR_INFO}══════════════════════════════════════════════════════════════════════${NC}\n"
-    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.1 🔥"
+    echo "   🔥 XMRIG MINER GOD – TERMUX EDITION v77.3 🔥"
     echo ""
     echo "   📌 PRIMEIRA EXECUÇÃO:"
     echo "   • Opção 9 → Instala o XMRig (automático)"
@@ -765,7 +759,6 @@ show_help() {
     echo "   • Backups salvos em ~/.xmrig_god_final/backup/"
     echo "   • Logs em ~/.xmrig_god_final/logs/"
     echo ""
-    safe_read "Pressione Enter para voltar..." _
 }
 
 # ---------- TRAP DE SAÍDA ----------
@@ -796,7 +789,7 @@ echo "║   ██║ ╚████║██║╚██████╗██�
 echo "║   ╚═╝  ╚═══╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ║"
 echo "║                                                                      ║"
 echo "║              XMRIG MINER GOD – TERMUX ULTIMATE EDITION              ║"
-echo "║                         v77.1 – 100% FUNCIONAL                      ║"
+echo "║                         v77.3 – 100% FUNCIONAL                      ║"
 echo "║                                                                      ║"
 echo "║              ✅ SEM BUGS – MENU SEM COMANDOS EXTERNOS               ║"
 echo "║              ✅ INSTALAÇÃO AUTOMÁTICA – 3 MÉTODOS                   ║"
@@ -830,7 +823,7 @@ fi
 # ---------- INICIAR WATCHDOG ----------
 start_watchdog
 
-# ---------- MENU PRINCIPAL ----------
+# ---------- MENU PRINCIPAL (CORRIGIDO: SEM LOOP INFINITO) ----------
 while true; do
     clear
     echo -e "${COLOR_MENU}╔══════════════════════════════════════════════════════════════════════╗${NC}"
@@ -858,7 +851,9 @@ while true; do
     echo ""
     printf "   Escolha uma opção (0-14): "
     IFS= read -r choice
+    # Remove caracteres não numéricos
     choice=$(echo "$choice" | tr -cd '0-9')
+    # Se vazio, define como inválido
     [ -z "$choice" ] && choice=99
 
     case $choice in
@@ -891,9 +886,12 @@ while true; do
         14) show_help ;;
         *) 
             echo -e "${COLOR_ERROR}   ❌ Opção inválida! Digite apenas números.${NC}"
-            sleep 2
             ;;
     esac
-    # Pequena pausa para leitura da mensagem
-    [ "$choice" = "1" ] || [ "$choice" = "2" ] || [ "$choice" = "3" ] || [ "$choice" = "9" ] || [ "$choice" = "10" ] || [ "$choice" = "11" ] || [ "$choice" = "12" ] || [ "$choice" = "13" ] && sleep 1
+    # Pausa para ler a mensagem, exceto para dashboard que já tem seu próprio loop
+    if [ "$choice" != "5" ]; then
+        echo ""
+        printf "Pressione Enter para continuar..."
+        read -r
+    fi
 done
