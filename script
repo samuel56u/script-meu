@@ -6,14 +6,14 @@
 # ██╔████╔██║█████╗  ██║  ███╗███████║██║     ██║   ██║██║  ██║██║   ██║██╔██╗ ██║
 # ██║╚██╔╝██║██╔══╝  ██║   ██║██╔══██║██║     ██║   ██║██║  ██║██║   ██║██║╚██╗██║
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
-# ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ⚂
+# ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON RANDOMX GOD v300.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD v300.0
 # =============================================================================
 # ✅ 1 SATOSHI = R$1,30 NA NICEHASH
 # ✅ LOGS NÍVEL DEUS: console, arquivos e Discord (embeds)
 # ✅ XMRIG (RANDOMX) – O MAIS LUCRATIVO PARA CPU
-# ✅ MÚLTIPLAS POOLS RANDOMX COM FALLBACK AUTOMÁTICO E TLS
+# ✅ MÚLTIPLAS POOLS RANDOMX COM FALLBACK INTELIGENTE
 # ✅ AUTO RECONEXÃO EM CASO DE ERRO
 # ✅ RELATÓRIOS DIÁRIOS, POR HORA, E ACUMULADOS VIA DISCORD
 # ✅ MONITOR DE TEMPERATURA E WATCHDOG
@@ -31,20 +31,15 @@ SATOSHIS_POR_SHARE=100             # cada share ≈ 100 satoshis (estimativa)
 
 # =============================================================================
 # POOLS DE MINERAÇÃO RANDOMX (em ordem de prioridade)
-# Incluindo opções com TLS/SSL para maior estabilidade
 # =============================================================================
 declare -a POOLS=(
-    "NiceHash RandomX Auto|stratum+tcp://randomxmonero.auto.nicehash.com:9200|tcp"
-    "NiceHash RandomX EU|stratum+tcp://randomxmonero.eu.nicehash.com:3380|tcp"
-    "NiceHash RandomX USA|stratum+tcp://randomxmonero.usa.nicehash.com:3380|tcp"
-    "MoneroOcean|stratum+tcp://pool.moneroocean.stream:10000|tcp"
-    "SupportXMR|stratum+tcp://pool.supportxmr.com:5555|tcp"
-    "MineXMR|stratum+tcp://pool.minexmr.com:4444|tcp"
-    "XMRPool.eu|stratum+tcp://xmrpool.eu:9999|tcp"
-    "Cryptonote|stratum+tcp://pool.cryptonote.net:3333|tcp"
-    "NiceHash RandomX Auto SSL|stratum+ssl://randomxmonero.auto.nicehash.com:9200|ssl"
-    "NiceHash RandomX EU SSL|stratum+ssl://randomxmonero.eu.nicehash.com:3380|ssl"
-    "NiceHash RandomX USA SSL|stratum+ssl://randomxmonero.usa.nicehash.com:3380|ssl"
+    "NiceHash RandomX Auto|stratum+tcp://randomxmonero.auto.nicehash.com:9200"
+    "NiceHash RandomX EU|stratum+tcp://randomxmonero.eu.nicehash.com:3380"
+    "NiceHash RandomX USA|stratum+tcp://randomxmonero.usa.nicehash.com:3380"
+    "MoneroOcean|stratum+tcp://pool.moneroocean.stream:10000"
+    "SupportXMR|stratum+tcp://pool.supportxmr.com:5555"
+    "MineXMR|stratum+tcp://pool.minexmr.com:4444"
+    "XMRPool.eu|stratum+tcp://xmrpool.eu:9999"
 )
 
 # =============================================================================
@@ -104,7 +99,6 @@ BEST_HASHRATE=0
 START_TIME=$(date +%s)
 CURRENT_POOL=""
 CURRENT_POOL_URL=""
-CURRENT_POOL_PROTO="tcp"
 LAST_POOL_SWITCH=0
 TESTE_INICIO=$(date +%s)
 TESTE_FIM=$((TESTE_INICIO + 7*24*60*60))
@@ -393,46 +387,33 @@ install_xmrig() {
 }
 
 # =============================================================================
-# TESTAR CONEXÃO COM POOL (COM LATÊNCIA)
+# TESTAR CONEXÃO COM POOL (COM TIMEOUT)
 # =============================================================================
 test_pool_connection() {
     local host="$1"
     local port="$2"
-    local start=$(date +%s%N)
     (echo > "/dev/tcp/$host/$port") 2>/dev/null
-    local result=$?
-    local end=$(date +%s%N)
-    local latency=$(( (end - start) / 1000000 ))
-    if [ $result -eq 0 ]; then
-        echo "$latency"
-        return 0
-    else
-        echo "999999"
-        return 1
-    fi
+    return $?
 }
 
 # =============================================================================
-# ENCONTRAR MELHOR POOL (TESTA TODAS E ESCOLHE A PRIMEIRA QUE RESPONDER)
+# ENCONTRAR A PRIMEIRA POOL QUE RESPONDER
 # =============================================================================
-find_best_pool() {
+find_first_working_pool() {
     god_log "POOL" "Scan" "Procurando pool RandomX funcional..."
-    local best_pool=""
-    local best_url=""
-    local best_proto="tcp"
+    local found_pool=""
+    local found_url=""
     
     for pool_entry in "${POOLS[@]}"; do
-        IFS='|' read -r name addr proto <<< "$pool_entry"
-        # Extrair host e port do addr
-        local clean_addr="${addr#*://}"
-        local host="${clean_addr%:*}"
-        local port="${clean_addr#*:}"
+        local name="${pool_entry%%|*}"
+        local addr="${pool_entry#*|}"
+        local host=$(echo "$addr" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
+        local port=$(echo "$addr" | grep -o '[0-9]*$')
         god_log "POOL" "Test" "Testando $name ($host:$port)..."
-        if test_pool_connection "$host" "$port" >/dev/null; then
+        if test_pool_connection "$host" "$port"; then
             god_log "OK" "Pool" "$name respondeu."
-            best_pool="$name"
-            best_url="$addr"
-            best_proto="$proto"
+            found_pool="$pool_entry"
+            found_url="$addr"
             break
         else
             god_log "WARN" "Pool" "$name não respondeu."
@@ -440,13 +421,13 @@ find_best_pool() {
         sleep 1
     done
 
-    if [ -n "$best_pool" ]; then
-        god_log "OK" "Pool" "Pool selecionada: $best_pool"
-        CURRENT_POOL="$best_pool"
-        CURRENT_POOL_URL="$best_url"
-        CURRENT_POOL_PROTO="$best_proto"
-        echo "$best_pool" > "$CONFIG_DIR/last_pool.txt"
-        discord_embed "✅ Pool Selecionada" "**$best_pool**\n\`$best_url\`" "65280" ""
+    if [ -n "$found_pool" ]; then
+        local name="${found_pool%%|*}"
+        god_log "OK" "Pool" "Pool selecionada: $name"
+        CURRENT_POOL="$found_pool"
+        CURRENT_POOL_URL="$found_url"
+        echo "$found_pool" > "$CONFIG_DIR/last_pool.txt"
+        discord_embed "✅ Pool Selecionada" "**$name**\n\`$found_url\`" "65280" ""
         return 0
     else
         god_log "ERROR" "Pool" "Nenhuma pool respondeu. Verifique sua internet."
@@ -477,15 +458,14 @@ start_mining() {
         }
     fi
 
-    if ! find_best_pool; then
+    if ! find_first_working_pool; then
         god_log "ERROR" "Mining" "Não foi possível conectar a nenhuma pool. Abortando."
         read -p "Pressione ENTER para voltar."
         return 1
     fi
 
-    local pool_name="$CURRENT_POOL"
-    local pool_addr="$CURRENT_POOL_URL"
-    local pool_proto="$CURRENT_POOL_PROTO"
+    local pool_name="${CURRENT_POOL%%|*}"
+    local pool_addr="${CURRENT_POOL#*|}"
 
     earnings=$(estimar_ganhos "$THREADS")
     sat_dia=$(echo "$earnings" | cut -d'|' -f1)
@@ -503,11 +483,6 @@ start_mining() {
     read -p "Pressione ENTER para começar a minerar..." dummy
 
     # Criar configuração temporária
-    local tls_enabled="false"
-    if [ "$pool_proto" = "ssl" ]; then
-        tls_enabled="true"
-    fi
-
     cat > "$TEMP_DIR/config.json" << EOF
 {
     "autosave": false,
@@ -526,7 +501,7 @@ start_mining() {
             "pass": "x",
             "nicehash": true,
             "keepalive": true,
-            "tls": $tls_enabled
+            "tls": false
         }
     ],
     "print-time": 5
@@ -543,112 +518,55 @@ EOF
     echo "════════════════════════════════════════════════════════════════════"
 
     # Executar minerador e processar saída
-    local retry_count=0
-    local max_retries=${#POOLS[@]}  # número máximo de tentativas igual ao número de pools
+    "$BIN_DIR/xmrig" -c "$TEMP_DIR/config.json" 2>&1 | while read -r line; do
+        echo "$line"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $line" >> "$DEBUG_LOG"
 
-    while true; do
-        # Executar minerador, capturar saída e verificar erros
-        "$BIN_DIR/xmrig" -c "$TEMP_DIR/config.json" 2>&1 | while read -r line; do
-            echo "$line"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') $line" >> "$DEBUG_LOG"
-
-            # Capturar hashrate
-            if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
-                CURRENT_HASHRATE="${BASH_REMATCH[1]}"
-                earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
-                sat_agora=$(echo "$earnings_now" | cut -d'|' -f1)
-                reais_agora=$(echo "$earnings_now" | cut -d'|' -f2)
-                echo -e "${GREEN}⚡ $CURRENT_HASHRATE KH/s | $sat_agora sats/dia | R$ $reais_agora/dia${NC}"
-                god_log "HASHRATE" "Miner" "$CURRENT_HASHRATE KH/s | $sat_agora sats/dia"
-                echo "$(date '+%Y-%m-%d %H:%M:%S') $CURRENT_HASHRATE" >> "$HASHRATE_LOG"
-                
-                if (( $(echo "$CURRENT_HASHRATE > $BEST_HASHRATE" | bc -l 2>/dev/null) )); then
-                    BEST_HASHRATE=$CURRENT_HASHRATE
-                    god_log "OK" "Record" "Novo recorde de hashrate: $BEST_HASHRATE KH/s"
-                fi
-            fi
-
-            # Capturar shares aceitos
-            if [[ "$line" == *"accepted"* ]] || [[ "$line" == *"share accepted"* ]]; then
-                adicionar_share
-                echo -e "${YELLOW}✅ Share aceito! Total: $TOTAL_SHARES | Acumulado: $TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)${NC}"
-            fi
-
-            # Capturar shares rejeitados
-            if [[ "$line" == *"rejected"* ]]; then
-                adicionar_rejeitado
-                echo -e "${RED}❌ Share rejeitado! Total: $TOTAL_REJECTED${NC}"
-            fi
-
-            # Capturar erros de conexão (mas não interrompe o loop principal)
-            if [[ "$line" == *"read error"* ]] || [[ "$line" == *"connection refused"* ]] || [[ "$line" == *"EOF"* ]]; then
-                god_log "ERROR" "Pool" "Erro de conexão detectado: $line"
-                # Sinalizamos que houve erro, mas vamos deixar o minerador tentar reconectar sozinho
-                # Se ele não conseguir, eventualmente o processo terminará e o loop externo tratará
-            fi
-        done
-
-        # Quando sair do loop (minerador encerrou)
-        local exit_code=$?
-        if [ $exit_code -eq 0 ] || [ $exit_code -eq 130 ]; then
-            god_log "INFO" "Mining" "Mineração encerrada pelo usuário."
-            discord_embed "⏹️ Mineração Encerrada" "Usuário interrompeu." "16711680" ""
-            break
-        else
-            god_log "WARN" "Mining" "Mineração encerrada com erro (código $exit_code)."
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -le $max_retries ]; then
-                god_log "INFO" "Mining" "Tentando reconectar com nova pool (tentativa $retry_count de $max_retries)..."
-                # Procurar nova pool
-                if find_best_pool; then
-                    pool_name="$CURRENT_POOL"
-                    pool_addr="$CURRENT_POOL_URL"
-                    pool_proto="$CURRENT_POOL_PROTO"
-                    if [ "$pool_proto" = "ssl" ]; then
-                        tls_enabled="true"
-                    else
-                        tls_enabled="false"
-                    fi
-                    # Atualizar configuração
-                    cat > "$TEMP_DIR/config.json" << EOF
-{
-    "autosave": false,
-    "cpu": {
-        "enabled": true,
-        "max-threads-hint": $THREADS,
-        "priority": 1
-    },
-    "donate-level": 0,
-    "log-file": null,
-    "pools": [
-        {
-            "algo": "rx/0",
-            "url": "$pool_addr",
-            "user": "$NICEHASH_WALLET",
-            "pass": "x",
-            "nicehash": true,
-            "keepalive": true,
-            "tls": $tls_enabled
-        }
-    ],
-    "print-time": 5
-}
-EOF
-                    god_log "INFO" "Mining" "Tentando nova pool: $pool_name"
-                    discord_embed "🔄 Troca de Pool" "Tentando nova pool: $pool_name" "16744192" ""
-                    continue  # Volta ao início do while para reiniciar o minerador
-                else
-                    god_log "ERROR" "Mining" "Não foi possível encontrar outra pool. Parando."
-                    discord_embed "❌ Mineração Parada" "Sem pools disponíveis." "16711680" ""
-                    break
-                fi
-            else
-                god_log "ERROR" "Mining" "Máximo de tentativas atingido. Parando."
-                discord_embed "❌ Mineração Parada" "Máximo de tentativas de reconexão." "16711680" ""
-                break
+        # Capturar hashrate (formato: "speed 2.5s/60s 1.2 KH/s" ou "1.2 KH/s")
+        if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
+            CURRENT_HASHRATE="${BASH_REMATCH[1]}"
+            earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
+            sat_agora=$(echo "$earnings_now" | cut -d'|' -f1)
+            reais_agora=$(echo "$earnings_now" | cut -d'|' -f2)
+            echo -e "${GREEN}⚡ $CURRENT_HASHRATE KH/s | $sat_agora sats/dia | R$ $reais_agora/dia${NC}"
+            god_log "HASHRATE" "Miner" "$CURRENT_HASHRATE KH/s | $sat_agora sats/dia"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') $CURRENT_HASHRATE" >> "$HASHRATE_LOG"
+            
+            if (( $(echo "$CURRENT_HASHRATE > $BEST_HASHRATE" | bc -l 2>/dev/null) )); then
+                BEST_HASHRATE=$CURRENT_HASHRATE
+                god_log "OK" "Record" "Novo recorde de hashrate: $BEST_HASHRATE KH/s"
             fi
         fi
+
+        # Capturar shares aceitos
+        if [[ "$line" == *"accepted"* ]] || [[ "$line" == *"share accepted"* ]]; then
+            adicionar_share
+            echo -e "${YELLOW}✅ Share aceito! Total: $TOTAL_SHARES | Acumulado: $TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)${NC}"
+        fi
+
+        # Capturar shares rejeitados
+        if [[ "$line" == *"rejected"* ]]; then
+            adicionar_rejeitado
+            echo -e "${RED}❌ Share rejeitado! Total: $TOTAL_REJECTED${NC}"
+        fi
+
+        # Capturar erros de conexão para trocar de pool automaticamente
+        if [[ "$line" == *"read error"* ]] || [[ "$line" == *"connection refused"* ]] || [[ "$line" == *"EOF"* ]]; then
+            god_log "ERROR" "Pool" "Erro de conexão detectado: $line"
+            discord_embed "⚠️ Erro de Conexão" "Pool $pool_name falhou. Procurando nova pool..." "16744192" ""
+            break
+        fi
     done
+
+    # Se saiu do loop por erro, tenta encontrar nova pool e reiniciar
+    if [ $? -ne 0 ]; then
+        god_log "WARN" "Mining" "Mineração interrompida por erro. Procurando nova pool em 5s..."
+        sleep 5
+        start_mining
+    else
+        god_log "INFO" "Mining" "Mineração encerrada pelo usuário."
+        discord_embed "⏹️ Mineração Encerrada" "Usuário interrompeu." "16711680" ""
+    fi
 
     echo ""
     read -p "Pressione ENTER para voltar ao menu."
@@ -660,20 +578,19 @@ EOF
 test_pools_menu() {
     clear
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}         TESTANDO POOLS RANDOMX (COM LATÊNCIA)                 ${NC}"
+    echo -e "${BLUE}         TESTANDO POOLS RANDOMX                                 ${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
     local results=""
     for pool_entry in "${POOLS[@]}"; do
-        IFS='|' read -r name addr proto <<< "$pool_entry"
-        local clean_addr="${addr#*://}"
-        local host="${clean_addr%:*}"
-        local port="${clean_addr#*:}"
+        local name="${pool_entry%%|*}"
+        local addr="${pool_entry#*|}"
+        local host=$(echo "$addr" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
+        local port=$(echo "$addr" | grep -o '[0-9]*$')
         echo -n "Testando $name ($host:$port)... "
-        latency=$(test_pool_connection "$host" "$port")
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}OK (${latency}ms)${NC}"
-            results="$results\n✅ $name: ${latency}ms"
+        if test_pool_connection "$host" "$port"; then
+            echo -e "${GREEN}OK${NC}"
+            results="$results\n✅ $name: OK"
         else
             echo -e "${RED}FALHOU${NC}"
             results="$results\n❌ $name: FALHOU"
@@ -686,7 +603,7 @@ test_pools_menu() {
 }
 
 # =============================================================================
-# VER ESTIMATIVAS
+# VER ESTIMATIVAS (igual ao script original, mas usando as funções de cálculo)
 # =============================================================================
 view_estimates() {
     clear
@@ -735,7 +652,7 @@ view_estimates() {
 }
 
 # =============================================================================
-# VER RELATÓRIO ACUMULADO
+# VER RELATÓRIO ACUMULADO (igual ao script original)
 # =============================================================================
 view_report() {
     clear
@@ -847,7 +764,7 @@ view_test_status() {
 }
 
 # =============================================================================
-# CONFIGURAÇÕES AVANÇADAS
+# CONFIGURAÇÕES AVANÇADAS (simplificadas, mas funcionais)
 # =============================================================================
 advanced_settings() {
     while true; do
@@ -974,7 +891,7 @@ stop_temp_monitor() {
 }
 
 # =============================================================================
-# MENU PRINCIPAL
+# MENU PRINCIPAL (com todas as opções)
 # =============================================================================
 main_menu() {
     while true; do
@@ -993,8 +910,8 @@ main_menu() {
         echo ""
         echo -e "${WHITE}OPÇÕES:${NC}"
         echo ""
-        echo "  [1] 🚀 INICIAR MINERAÇÃO RANDOMX (AUTO POOL - MELHOR LATÊNCIA)"
-        echo "  [2] 🌐 TESTAR POOLS (COM LATÊNCIA)"
+        echo "  [1] 🚀 INICIAR MINERAÇÃO RANDOMX (AUTO POOL - PRIMEIRA QUE RESPONDER)"
+        echo "  [2] 🌐 TESTAR POOLS"
         echo "  [3] 📊 VER ESTIMATIVAS DE GANHOS"
         echo "  [4] 📋 VER RELATÓRIO ACUMULADO"
         echo "  [5] 📦 INSTALAR/REINSTALAR MINERADOR"
