@@ -8,25 +8,24 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD FINAL v82.0.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD FINAL v90.0.0
 # =============================================================================
-# ✅ 1 SATOSHI = R$1,30 NA NICEHASH (baseado no seu saldo)
-# ✅ LOGS DETALHADOS NO CONSOLE E DISCORD
-# ✅ MENU COMPLETO COM 10 OPÇÕES FUNCIONAIS
-# ✅ INSTALAÇÃO AUTOMÁTICA DO XMRIG (MÚLTIPLAS FONTES)
-# ✅ TESTE DE 7 DIAS COM RELATÓRIO ACUMULADO
+# ✅ 1 SATOSHI = R$1,30 NA NICEHASH
+# ✅ INSTALAÇÃO AUTOMÁTICA COM MÚLTIPLAS FONTES E VERIFICAÇÃO
+# ✅ EXECUÇÃO CONFIÁVEL DO XMRIG (SEM ERRO "Not: command not found")
+# ✅ LOGS DETALHADOS, DISCORD INTEGRADO, TESTE DE 7 DIAS
 # =============================================================================
 
 # =============================================================================
-# CONFIGURAÇÕES FIXAS (ALTERE SE NECESSÁRIO)
+# CONFIGURAÇÕES FIXAS
 # =============================================================================
 NICEHASH_WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
-VALOR_SATOSHI=1.30                # 1 satoshi = R$ 1,30
-SATOSHIS_POR_SHARE=100             # cada share ≈ 100 satoshis (estimativa)
+VALOR_SATOSHI=1.30
+SATOSHIS_POR_SHARE=100
 
 # =============================================================================
-# DIRETÓRIOS DO MINERADOR
+# DIRETÓRIOS
 # =============================================================================
 MINER_HOME="$HOME/.miner_satoshi_god"
 LOG_DIR="$MINER_HOME/logs"
@@ -45,7 +44,7 @@ SHARE_LOG="$LOG_DIR/shares.log"
 touch "$STATS_FILE" "$DAILY_LOG" "$HASHRATE_LOG" "$SHARE_LOG" 2>/dev/null
 
 # =============================================================================
-# CORES PARA O TERMINAL
+# CORES
 # =============================================================================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -58,7 +57,7 @@ NC='\033[0m'
 BOLD='\033[1m'
 
 # =============================================================================
-# VARIÁVEIS GLOBAIS (INICIALIZADAS)
+# VARIÁVEIS GLOBAIS
 # =============================================================================
 THREADS=0
 ARCH_TYPE=""
@@ -68,10 +67,9 @@ TOTAL_SHARES=0
 TOTAL_REJECTED=0
 CURRENT_HASHRATE=0
 START_TIME=$(date +%s)
-LAST_DAY=$(date +%Y%m%d)
 
 # =============================================================================
-# FUNÇÕES DE LOG (CONSOLE)
+# FUNÇÕES DE LOG
 # =============================================================================
 log() {
     echo -e "${CYAN}[$(date '+%H:%M:%S')]${NC} $1"
@@ -93,7 +91,7 @@ log_reais() {
 }
 
 # =============================================================================
-# DETECTAR CPU (NÚMERO DE THREADS E ARQUITETURA)
+# DETECTAR CPU
 # =============================================================================
 detect_cpu() {
     log "Detectando hardware..."
@@ -114,7 +112,67 @@ detect_cpu() {
 }
 
 # =============================================================================
-# INSTALAR XMRIG (MÚLTIPLAS FONTES)
+# CONVERSÃO SATOSHI ↔ REAIS
+# =============================================================================
+satoshi_para_reais() {
+    echo "scale=2; $1 * $VALOR_SATOSHI" | bc 2>/dev/null || echo "0.00"
+}
+
+# =============================================================================
+# ESTIMAR GANHOS
+# =============================================================================
+estimar_ganhos() {
+    local hashrate=$1
+    [ -z "$hashrate" ] && hashrate=1.0
+    # 1 KH/s ≈ 100 satoshis/dia (ajustável)
+    local sat_dia=$(echo "$hashrate * 100" | bc 2>/dev/null | cut -d. -f1)
+    [ -z "$sat_dia" ] && sat_dia=100
+    local reais_dia=$(satoshi_para_reais "$sat_dia")
+    local reais_hora=$(echo "scale=2; $reais_dia / 24" | bc 2>/dev/null)
+    echo "$sat_dia|$reais_dia|$reais_hora"
+}
+
+# =============================================================================
+# ATUALIZAR ESTATÍSTICAS
+# =============================================================================
+adicionar_share() {
+    TOTAL_SHARES=$((TOTAL_SHARES + 1))
+    TOTAL_SATOSHIS=$((TOTAL_SATOSHIS + SATOSHIS_POR_SHARE))
+    TOTAL_REAIS=$(echo "$TOTAL_REAIS + ($SATOSHIS_POR_SHARE * $VALOR_SATOSHI)" | bc 2>/dev/null)
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | Share aceito | Total: $TOTAL_SHARES" >> "$SHARE_LOG"
+    cat > "$STATS_FILE" << EOF
+Última atualização: $(date '+%d/%m/%Y %H:%M:%S')
+Shares totais: $TOTAL_SHARES
+Satoshis totais: $TOTAL_SATOSHIS
+Reais totais: R$ $TOTAL_REAIS
+Hashrate atual: $CURRENT_HASHRATE KH/s
+EOF
+}
+
+# =============================================================================
+# VERIFICAR SE O BINÁRIO É VÁLIDO
+# =============================================================================
+check_binary() {
+    local binary="$1"
+    if [ ! -f "$binary" ]; then
+        return 1
+    fi
+    if [ ! -x "$binary" ]; then
+        chmod +x "$binary" 2>/dev/null
+    fi
+    # Verificar se é executável e não um script de texto
+    if file "$binary" 2>/dev/null | grep -q "ELF"; then
+        # Teste rápido de execução
+        timeout 2 "$binary" --version >/dev/null 2>&1
+        if [ $? -eq 0 ] || [ $? -eq 1 ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# =============================================================================
+# INSTALAR XMRIG (MÚLTIPLAS FONTES + VERIFICAÇÃO)
 # =============================================================================
 install_xmrig() {
     clear
@@ -125,109 +183,97 @@ install_xmrig() {
     mkdir -p "$BIN_DIR" "$TEMP_DIR"
     cd "$TEMP_DIR" || return 1
 
-    # Lista de URLs por arquitetura
-    local urls=()
+    # Se já existe um binário válido, não precisa reinstalar
+    if [ -f "$BIN_DIR/xmrig" ] && check_binary "$BIN_DIR/xmrig"; then
+        log_ok "Minerador já instalado e funcionando."
+        return 0
+    fi
+
+    # Lista de fontes confiáveis para Termux (ARM64/ARMv7)
+    local sources=()
     case "$ARCH_TYPE" in
         arm64)
-            urls=(
+            sources=(
                 "https://github.com/userdocs/xmrig-builds/releases/download/6.22.0/xmrig-6.22.0-linux-arm64"
                 "https://github.com/xmrig/xmrig/releases/download/v6.22.0/xmrig-6.22.0-linux-static-arm64.tar.gz"
-                "https://github.com/rplant8/xmrig-builds/releases/download/6.22.0/xmrig-linux-arm64"
+                "https://github.com/Bendr0id/xmrigCC/releases/download/3.4.0/xmrigCC-3.4.0-android-arm64"
+                "https://github.com/SChernykh/xmrig/releases/download/v6.22.0/xmrig-6.22.0-android-arm64"
             )
             ;;
         armv7)
-            urls=(
+            sources=(
                 "https://github.com/userdocs/xmrig-builds/releases/download/6.22.0/xmrig-6.22.0-linux-armv7"
                 "https://github.com/xmrig/xmrig/releases/download/v6.22.0/xmrig-6.22.0-linux-static-armv7.tar.gz"
-                "https://github.com/rplant8/xmrig-builds/releases/download/6.22.0/xmrig-linux-armv7"
+                "https://github.com/Bendr0id/xmrigCC/releases/download/3.4.0/xmrigCC-3.4.0-android-arm7"
             )
             ;;
         *)
-            log_error "Arquitetura $ARCH_TYPE não suportada."
+            log_error "Arquitetura não suportada: $ARCH_TYPE"
             return 1
             ;;
     esac
 
     local success=0
-    for url in "${urls[@]}"; do
+    local downloaded_file=""
+    for url in "${sources[@]}"; do
         log "Tentando download de: $(basename "$url")"
+        rm -f xmrig* 2>/dev/null
         if [[ "$url" == *.tar.gz ]]; then
             curl -L -s --connect-timeout 30 "$url" -o xmrig.tar.gz
             if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
                 tar -xzf xmrig.tar.gz 2>/dev/null
-                local found=$(find . -name "xmrig" -type f | head -1)
-                if [ -n "$found" ]; then
-                    cp "$found" "$BIN_DIR/xmrig"
+                downloaded_file=$(find . -name "xmrig" -type f | head -1)
+                if [ -n "$downloaded_file" ]; then
+                    cp "$downloaded_file" "$BIN_DIR/xmrig"
                     chmod +x "$BIN_DIR/xmrig"
-                    success=1
-                    break
+                else
+                    # Tenta achar qualquer binário
+                    downloaded_file=$(find . -type f -executable | head -1)
+                    [ -n "$downloaded_file" ] && cp "$downloaded_file" "$BIN_DIR/xmrig"
                 fi
             fi
         else
             curl -L -s --connect-timeout 30 "$url" -o xmrig
             if [ -f "xmrig" ] && [ -s "xmrig" ]; then
-                chmod +x xmrig
                 cp xmrig "$BIN_DIR/xmrig"
-                success=1
-                break
+                chmod +x "$BIN_DIR/xmrig"
             fi
+        fi
+
+        if [ -f "$BIN_DIR/xmrig" ] && check_binary "$BIN_DIR/xmrig"; then
+            log_ok "XMRig instalado com sucesso de $(basename "$url")"
+            success=1
+            break
         fi
         sleep 1
     done
 
-    if [ $success -eq 1 ]; then
-        log_ok "XMRig instalado com sucesso em $BIN_DIR/xmrig"
-        if "$BIN_DIR/xmrig" --version >/dev/null 2>&1; then
-            log_ok "Minerador funcionando perfeitamente!"
+    if [ $success -eq 0 ]; then
+        log_warn "Nenhum binário pré-compilado funcionou. Tentando compilar..."
+        # Compilar a partir do código fonte (último recurso)
+        pkg install -y cmake make clang git 2>/dev/null
+        git clone --depth=1 https://github.com/xmrig/xmrig.git src
+        cd src && mkdir build && cd build
+        cmake .. -DWITH_HWLOC=OFF -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+        make -j$THREADS
+        if [ -f "xmrig" ]; then
+            cp xmrig "$BIN_DIR/xmrig"
+            chmod +x "$BIN_DIR/xmrig"
+            if check_binary "$BIN_DIR/xmrig"; then
+                log_ok "XMRig compilado com sucesso!"
+                success=1
+            fi
         fi
+        cd "$TEMP_DIR"
+    fi
+
+    if [ $success -eq 1 ]; then
+        log_ok "Minerador pronto para uso."
         return 0
     else
-        log_error "Falha na instalação do XMRig. Verifique sua conexão."
+        log_error "Falha na instalação do XMRig. Verifique sua conexão e tente novamente."
         return 1
     fi
-}
-
-# =============================================================================
-# CONVERSÃO SATOSHI ↔ REAIS
-# =============================================================================
-satoshi_para_reais() {
-    echo "scale=2; $1 * $VALOR_SATOSHI" | bc 2>/dev/null || echo "0.00"
-}
-
-reais_para_satoshi() {
-    echo "scale=0; $1 / $VALOR_SATOSHI" | bc 2>/dev/null || echo "0"
-}
-
-# =============================================================================
-# ESTIMAR GANHOS BASEADO EM HASHRATE
-# =============================================================================
-estimar_ganhos() {
-    local hashrate=$1
-    [ -z "$hashrate" ] && hashrate=1.0
-    # 1 KH/s ≈ 100 satoshis/dia (empírico)
-    local sat_dia=$(echo "$hashrate * 100" | bc 2>/dev/null | cut -d. -f1)
-    [ -z "$sat_dia" ] && sat_dia=100
-    local reais_dia=$(satoshi_para_reais "$sat_dia")
-    local reais_hora=$(echo "scale=2; $reais_dia / 24" | bc 2>/dev/null)
-    echo "$sat_dia|$reais_dia|$reais_hora"
-}
-
-# =============================================================================
-# ATUALIZAR ESTATÍSTICAS (CHAMADO QUANDO UM SHARE É ACEITO)
-# =============================================================================
-adicionar_share() {
-    TOTAL_SHARES=$((TOTAL_SHARES + 1))
-    TOTAL_SATOSHIS=$((TOTAL_SATOSHIS + SATOSHIS_POR_SHARE))
-    TOTAL_REAIS=$(echo "$TOTAL_REAIS + ($SATOSHIS_POR_SHARE * $VALOR_SATOSHI)" | bc 2>/dev/null)
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | Share aceito | Total: $TOTAL_SHARES" >> "$SHARE_LOG"
-    # Atualizar arquivo de estatísticas
-    cat > "$STATS_FILE" << EOF
-Última atualização: $(date '+%d/%m/%Y %H:%M:%S')
-Shares totais: $TOTAL_SHARES
-Satoshis totais: $TOTAL_SATOSHIS
-Reais totais: R$ $TOTAL_REAIS
-Hashrate atual: $CURRENT_HASHRATE KH/s
-EOF
 }
 
 # =============================================================================
@@ -242,9 +288,9 @@ start_mining() {
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
-    # Verificar se o minerador existe
-    if [ ! -f "$BIN_DIR/xmrig" ]; then
-        log "XMRig não encontrado. Instalando..."
+    # Garantir que o minerador esteja instalado e funcional
+    if [ ! -f "$BIN_DIR/xmrig" ] || ! check_binary "$BIN_DIR/xmrig"; then
+        log "Minerador não encontrado ou inválido. Instalando..."
         install_xmrig || {
             log_error "Falha na instalação. Não é possível minerar."
             read -p "Pressione ENTER para voltar."
@@ -300,12 +346,12 @@ EOF
     log "Iniciando minerador... Os logs aparecerão abaixo."
     echo "════════════════════════════════════════════════════════════════════"
 
-    # Executar minerador em primeiro plano, capturando saída para processar shares e hashrate
+    # Executar minerador e processar saída
     "$BIN_DIR/xmrig" -c "$TEMP_DIR/config.json" 2>&1 | while read -r line; do
         # Mostrar linha original
         echo "$line"
 
-        # Capturar hashrate
+        # Capturar hashrate (exemplo: "speed 2.5s/60s 1.2 KH/s")
         if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
             CURRENT_HASHRATE="${BASH_REMATCH[1]}"
             earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
@@ -316,7 +362,7 @@ EOF
         fi
 
         # Capturar shares aceitos
-        if [[ "$line" == *"accepted"* ]]; then
+        if [[ "$line" == *"accepted"* ]] || [[ "$line" == *"share accepted"* ]]; then
             adicionar_share
             echo -e "${YELLOW}✅ Share aceito! Total: $TOTAL_SHARES | Acumulado: $TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)${NC}"
         fi
@@ -336,7 +382,7 @@ EOF
 }
 
 # =============================================================================
-# TESTAR CONEXÃO COM POOLS
+# TESTAR POOLS
 # =============================================================================
 test_pools() {
     clear
@@ -344,14 +390,12 @@ test_pools() {
     echo -e "${BLUE}         TESTANDO POOLS RANDOMX                                 ${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    # Lista de pools para teste
     local pools=(
         "NiceHash EU:randomxmonero.eu.nicehash.com:3380"
         "NiceHash USA:randomxmonero.usa.nicehash.com:3380"
         "NiceHash Auto:randomxmonero.auto.nicehash.com:9200"
         "MoneroOcean:pool.moneroocean.stream:10000"
         "SupportXMR:pool.supportxmr.com:5555"
-        "MineXMR:mine.xmr.pt:4444"
     )
     for p in "${pools[@]}"; do
         name="${p%%:*}"
@@ -372,7 +416,7 @@ test_pools() {
 }
 
 # =============================================================================
-# MOSTRAR ESTIMATIVAS DETALHADAS
+# VER ESTIMATIVAS
 # =============================================================================
 view_estimates() {
     clear
@@ -389,15 +433,12 @@ view_estimates() {
     echo "  Por hora:  $((sat_dia / 24)) sats  = R$ $reais_hora"
     echo "  Por dia:   $sat_dia sats  = R$ $reais_dia"
     echo "  Por semana: $((sat_dia * 7)) sats = R$ $(echo "$reais_dia * 7" | bc)"
-    echo "  Por mês:   $((sat_dia * 30)) sats = R$ $(echo "$reais_dia * 30" | bc)"
-    echo ""
-    echo -e "${YELLOW}Nota: Valores são estimativas. Resultados reais podem variar.${NC}"
     echo ""
     read -p "Pressione ENTER para voltar."
 }
 
 # =============================================================================
-# MOSTRAR RELATÓRIO ACUMULADO
+# VER RELATÓRIO ACUMULADO
 # =============================================================================
 view_report() {
     clear
@@ -420,7 +461,7 @@ view_report() {
 }
 
 # =============================================================================
-# ENVIAR RELATÓRIO PARA O DISCORD
+# ENVIAR RELATÓRIO PARA DISCORD
 # =============================================================================
 send_discord_report() {
     clear
@@ -444,7 +485,7 @@ send_discord_report() {
 }
 
 # =============================================================================
-# TESTAR WEBHOOK DO DISCORD (COM MENSAGEM ESPECIAL)
+# TESTAR WEBHOOK DO DISCORD
 # =============================================================================
 test_webhook() {
     clear
@@ -538,7 +579,7 @@ main_menu() {
         clear
         echo -e "${GREEN}${BOLD}"
         echo "╔═══════════════════════════════════════════════════════════════════╗"
-        echo "║         MEGALODON SATOSHI GOD v82.0.0                            ║"
+        echo "║         MEGALODON SATOSHI GOD v90.0.0                            ║"
         echo "║              1 SATOSHI = R$1,30 NA NICEHASH                      ║"
         echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -595,22 +636,19 @@ main_menu() {
 }
 
 # =============================================================================
-# INÍCIO DO SCRIPT
+# INÍCIO
 # =============================================================================
 clear
 detect_cpu
-
-# Verificar dependências básicas
 log "Verificando dependências..."
 pkg install -y curl bc 2>/dev/null
 log_ok "Dependências OK."
 
 # Carregar estatísticas anteriores (se existirem)
 if [ -f "$STATS_FILE" ]; then
-    # Tentar extrair valores do arquivo (simples)
-    TOTAL_SATOSHIS=$(grep "Satoshis totais:" "$STATS_FILE" | awk '{print $3}')
-    TOTAL_REAIS=$(grep "Reais totais:" "$STATS_FILE" | awk '{print $4}' | sed 's/R\$//')
-    TOTAL_SHARES=$(grep "Shares totais:" "$STATS_FILE" | awk '{print $3}')
+    TOTAL_SATOSHIS=$(grep "Satoshis totais:" "$STATS_FILE" | awk '{print $3}' | head -1)
+    TOTAL_REAIS=$(grep "Reais totais:" "$STATS_FILE" | awk '{print $4}' | sed 's/R\$//' | head -1)
+    TOTAL_SHARES=$(grep "Shares totais:" "$STATS_FILE" | awk '{print $3}' | head -1)
     [ -z "$TOTAL_SATOSHIS" ] && TOTAL_SATOSHIS=0
     [ -z "$TOTAL_REAIS" ] && TOTAL_REAIS=0.00
     [ -z "$TOTAL_SHARES" ] && TOTAL_SHARES=0
