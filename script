@@ -8,14 +8,15 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO SHA256 PARA TERMUX - MEGALODON BITCOIN GOD v100.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON RANDOMX GOD v100.0
 # =============================================================================
 # ✅ 1 SATOSHI = R$1,30 NA NICEHASH (ajustável)
 # ✅ LOGS NÍVEL DEUS: tudo registrado no console, arquivos e Discord (embeds)
-# ✅ MINERADOR CPUMINER (SHA256) – comprovadamente funcionando no seu dispositivo
-# ✅ POOLS VIA NICEHASH (SHA256) COM FALLBACK PARA VIABTC
+# ✅ MINERADOR XMRIG (RANDOMX) – MAIS LUCRATIVO PARA CPU
+# ✅ MÚLTIPLAS POOLS RANDOMX COM FALLBACK INTELIGENTE (testa e escolhe a mais rápida)
+# ✅ AUTO POOL SWITCH: troca automaticamente se a pool atual falhar
 # ✅ RELATÓRIOS DIÁRIOS, POR HORA, E ACUMULADOS VIA DISCORD
-# ✅ MONITOR DE TEMPERATURA, WATCHDOG, AUTO POOL SWITCH
+# ✅ MONITOR DE TEMPERATURA, WATCHDOG
 # ✅ MENU COMPLETO COM 14 OPÇÕES
 # ✅ TESTADO E FUNCIONAL NO TERMUX (ARM64/ARMv7)
 # =============================================================================
@@ -29,22 +30,22 @@ VALOR_SATOSHI=1.30                # 1 satoshi = R$ 1,30
 SATOSHIS_POR_SHARE=100             # cada share ≈ 100 satoshis (estimativa)
 
 # =============================================================================
-# POOLS DE MINERAÇÃO SHA256 (em ordem de prioridade)
+# POOLS DE MINERAÇÃO RANDOMX (em ordem de prioridade)
 # =============================================================================
 declare -a POOLS=(
-    "NiceHash SHA256 EU|stratum+tcp://sha256.eu.nicehash.com:3333"
-    "NiceHash SHA256 USA|stratum+tcp://sha256.usa.nicehash.com:3333"
-    "NiceHash SHA256 Auto|stratum+tcp://sha256.auto.nicehash.com:9200"
-    "ViaBTC|stratum+tcp://btc.viabtc.com:3333"
-    "F2Pool|stratum+tcp://btc.f2pool.com:3333"
-    "AntPool|stratum+tcp://pool.antpool.com:3333"
-    "BTC.com|stratum+tcp://pool.btc.com:3333"
+    "NiceHash RandomX Auto|randomxmonero.auto.nicehash.com:9200"
+    "NiceHash RandomX EU|randomxmonero.eu.nicehash.com:3380"
+    "NiceHash RandomX USA|randomxmonero.usa.nicehash.com:3380"
+    "MoneroOcean|pool.moneroocean.stream:10000"
+    "SupportXMR|pool.supportxmr.com:5555"
+    "MineXMR|pool.minexmr.com:4444"
+    "XMRPool.eu|xmrpool.eu:9999"
 )
 
 # =============================================================================
 # DIRETÓRIOS (ESTRUTURA COMPLETA PARA LOGS)
 # =============================================================================
-MINER_HOME="$HOME/.miner_bitcoin_god"
+MINER_HOME="$HOME/.miner_randomx_god"
 LOG_DIR="$MINER_HOME/logs"
 BIN_DIR="$MINER_HOME/bin"
 TEMP_DIR="$MINER_HOME/temp"
@@ -97,6 +98,7 @@ CURRENT_HASHRATE=0
 BEST_HASHRATE=0
 START_TIME=$(date +%s)
 CURRENT_POOL=""
+CURRENT_POOL_URL=""
 LAST_POOL_SWITCH=0
 TESTE_INICIO=$(date +%s)
 TESTE_FIM=$((TESTE_INICIO + 7*24*60*60))
@@ -166,7 +168,7 @@ discord_embed() {
             "color": '"$color"',
             "timestamp": "'$(date -Iseconds)'",
             "footer": {
-                "text": "Megalodon Bitcoin God | 1 SATOSHI = R$1,30"
+                "text": "Megalodon RandomX God | 1 SATOSHI = R$1,30"
             }
         }]
     }'
@@ -213,16 +215,14 @@ satoshi_para_reais() {
 }
 
 # =============================================================================
-# ESTIMAR GANHOS (BASEADO EM HASHRATE) - SHA256
+# ESTIMAR GANHOS (BASEADO EM HASHRATE) - RANDOMX
 # =============================================================================
 estimar_ganhos() {
     local hashrate=$1  # em KH/s
     [ -z "$hashrate" ] && hashrate=1.0
-    # SHA256: 1 MH/s ≈ 0.1 satoshi/dia (valor real ajustado para sua realidade)
-    # Vamos usar uma estimativa baseada nos seus logs anteriores: 8 MH/s ≈ 0.00000001 BTC/dia ≈ 1 satoshi/dia? 
-    # Ajuste fino: 1 MH/s ≈ 0.125 satoshi/dia (para dar ~1 satoshi/dia com 8 MH/s)
-    local sat_dia=$(echo "$hashrate * 0.125" | bc 2>/dev/null | cut -d. -f1)
-    [ -z "$sat_dia" ] && sat_dia=1
+    # RandomX: 1 KH/s ≈ 100 satoshis/dia (valor realista para CPU)
+    local sat_dia=$(echo "$hashrate * 100" | bc 2>/dev/null | cut -d. -f1)
+    [ -z "$sat_dia" ] && sat_dia=100
     local reais_dia=$(satoshi_para_reais "$sat_dia")
     local reais_hora=$(echo "scale=2; $reais_dia / 24" | bc 2>/dev/null)
     echo "$sat_dia|$reais_dia|$reais_hora"
@@ -260,7 +260,7 @@ adicionar_rejeitado() {
 }
 
 # =============================================================================
-# VERIFICAR SE O BINÁRIO É VÁLIDO (PARA CPUMINER)
+# VERIFICAR SE O BINÁRIO É VÁLIDO
 # =============================================================================
 check_binary() {
     local binary="$1"
@@ -293,15 +293,15 @@ check_binary() {
 }
 
 # =============================================================================
-# INSTALAR CPUMINER (MÚLTIPLAS TENTATIVAS + COMPILAÇÃO)
+# INSTALAR XMRIG (MÚLTIPLAS TENTATIVAS + COMPILAÇÃO)
 # =============================================================================
-install_cpuminer() {
-    god_log "INFO" "Install" "Iniciando instalação do cpuminer (SHA256)..."
+install_xmrig() {
+    god_log "INFO" "Install" "Iniciando instalação do XMRig (RandomX)..."
     
     mkdir -p "$BIN_DIR" "$TEMP_DIR"
     cd "$TEMP_DIR" || return 1
 
-    if [ -f "$BIN_DIR/cpuminer" ] && check_binary "$BIN_DIR/cpuminer"; then
+    if [ -f "$BIN_DIR/xmrig" ] && check_binary "$BIN_DIR/xmrig"; then
         god_log "OK" "Install" "Minerador já instalado e funcionando."
         return 0
     fi
@@ -310,23 +310,16 @@ install_cpuminer() {
     case "$ARCH_TYPE" in
         arm64)
             sources=(
-                "https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-aarch64.tar.gz"
-                "https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-arm64.tar.gz"
-                "https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-aarch64"
+                "https://github.com/userdocs/xmrig-builds/releases/download/6.22.0/xmrig-6.22.0-linux-arm64"
+                "https://github.com/xmrig/xmrig/releases/download/v6.22.0/xmrig-6.22.0-linux-static-arm64.tar.gz"
+                "https://github.com/Bendr0id/xmrigCC/releases/download/3.4.0/xmrigCC-3.4.0-android-arm64"
             )
             ;;
         armv7)
             sources=(
-                "https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-armhf.tar.gz"
-                "https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-armhf.tar.gz"
-                "https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-armv7a"
-            )
-            ;;
-        x64)
-            sources=(
-                "https://github.com/rplant8/cpuminer-opt-rplant/releases/download/5.0.29/cpuminer-opt-linux-x86_64.tar.gz"
-                "https://github.com/JayDDee/cpuminer-opt/releases/download/v3.20/cpuminer-opt-3.20-linux-x86_64.tar.gz"
-                "https://github.com/tpruvot/cpuminer-multi/releases/download/v1.0.0-alpha/cpuminer-multi-x86_64"
+                "https://github.com/userdocs/xmrig-builds/releases/download/6.22.0/xmrig-6.22.0-linux-armv7"
+                "https://github.com/xmrig/xmrig/releases/download/v6.22.0/xmrig-6.22.0-linux-static-armv7.tar.gz"
+                "https://github.com/Bendr0id/xmrigCC/releases/download/3.4.0/xmrigCC-3.4.0-android-arm7"
             )
             ;;
         *)
@@ -338,28 +331,28 @@ install_cpuminer() {
     local success=0
     for url in "${sources[@]}"; do
         god_log "INFO" "Install" "Tentando download de: $(basename "$url")"
-        rm -f cpuminer* 2>/dev/null
+        rm -f xmrig* 2>/dev/null
         if [[ "$url" == *.tar.gz ]]; then
-            curl -L -s --connect-timeout 30 "$url" -o cpuminer.tar.gz
-            if [ -f "cpuminer.tar.gz" ] && [ -s "cpuminer.tar.gz" ]; then
-                tar -xzf cpuminer.tar.gz 2>/dev/null
-                local found=$(find . -name "cpuminer-*" -type f | head -1)
+            curl -L -s --connect-timeout 30 "$url" -o xmrig.tar.gz
+            if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+                tar -xzf xmrig.tar.gz 2>/dev/null
+                local found=$(find . -name "xmrig" -type f | head -1)
                 if [ -n "$found" ]; then
-                    cp "$found" "$BIN_DIR/cpuminer"
+                    cp "$found" "$BIN_DIR/xmrig"
                 else
                     found=$(find . -type f -executable | head -1)
-                    [ -n "$found" ] && cp "$found" "$BIN_DIR/cpuminer"
+                    [ -n "$found" ] && cp "$found" "$BIN_DIR/xmrig"
                 fi
             fi
         else
-            curl -L -s --connect-timeout 30 "$url" -o cpuminer
-            if [ -f "cpuminer" ] && [ -s "cpuminer" ]; then
-                cp cpuminer "$BIN_DIR/cpuminer"
+            curl -L -s --connect-timeout 30 "$url" -o xmrig
+            if [ -f "xmrig" ] && [ -s "xmrig" ]; then
+                cp xmrig "$BIN_DIR/xmrig"
             fi
         fi
 
-        if [ -f "$BIN_DIR/cpuminer" ] && check_binary "$BIN_DIR/cpuminer"; then
-            god_log "OK" "Install" "cpuminer instalado com sucesso de $(basename "$url")"
+        if [ -f "$BIN_DIR/xmrig" ] && check_binary "$BIN_DIR/xmrig"; then
+            god_log "OK" "Install" "XMRig instalado com sucesso de $(basename "$url")"
             success=1
             break
         fi
@@ -368,17 +361,16 @@ install_cpuminer() {
 
     if [ $success -eq 0 ]; then
         god_log "WARN" "Install" "Nenhum binário pré-compilado funcionou. Tentando compilar..."
-        pkg install -y automake autoconf libtool make clang git 2>/dev/null
-        git clone --depth=1 https://github.com/pooler/cpuminer.git src
-        cd src
-        ./autogen.sh 2>/dev/null
-        ./configure CFLAGS="-O2" 2>/dev/null
-        make -j$THREADS 2>/dev/null
-        if [ -f "minerd" ]; then
-            cp minerd "$BIN_DIR/cpuminer"
-            chmod +x "$BIN_DIR/cpuminer"
-            if check_binary "$BIN_DIR/cpuminer"; then
-                god_log "OK" "Install" "cpuminer compilado com sucesso!"
+        pkg install -y cmake make clang git 2>/dev/null
+        git clone --depth=1 https://github.com/xmrig/xmrig.git src
+        cd src && mkdir build && cd build
+        cmake .. -DWITH_HWLOC=OFF -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+        make -j$THREADS
+        if [ -f "xmrig" ]; then
+            cp xmrig "$BIN_DIR/xmrig"
+            chmod +x "$BIN_DIR/xmrig"
+            if check_binary "$BIN_DIR/xmrig"; then
+                god_log "OK" "Install" "XMRig compilado com sucesso!"
                 success=1
             fi
         fi
@@ -389,47 +381,73 @@ install_cpuminer() {
         god_log "OK" "Install" "Minerador pronto para uso."
         return 0
     else
-        god_log "ERROR" "Install" "Falha na instalação do cpuminer."
+        god_log "ERROR" "Install" "Falha na instalação do XMRig."
         return 1
     fi
 }
 
 # =============================================================================
-# TESTAR CONEXÃO COM POOL
+# TESTAR CONEXÃO COM POOL (COM LATÊNCIA)
 # =============================================================================
 test_pool_connection() {
     local host="$1"
     local port="$2"
+    local start=$(date +%s%N)
     (echo > "/dev/tcp/$host/$port") 2>/dev/null
-    return $?
+    local result=$?
+    local end=$(date +%s%N)
+    local latency=$(( (end - start) / 1000000 ))
+    if [ $result -eq 0 ]; then
+        echo "$latency"
+        return 0
+    else
+        echo "999999"
+        return 1
+    fi
 }
 
 # =============================================================================
-# ENCONTRAR MELHOR POOL (TESTA APENAS UMA – A PRIMEIRA QUE RESPONDER)
+# ENCONTRAR MELHOR POOL (TESTA TODAS E ESCOLHE A MAIS RÁPIDA)
 # =============================================================================
 find_best_pool() {
-    god_log "POOL" "Scan" "Procurando pool SHA256 funcional..."
+    god_log "POOL" "Scan" "Procurando a melhor pool RandomX (menor latência)..."
+    local best_latency=999999
+    local best_pool=""
+    local best_url=""
+    
     for pool_entry in "${POOLS[@]}"; do
         local name="${pool_entry%%|*}"
-        local url="${pool_entry#*|}"
-        local host=$(echo "$url" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
-        local port=$(echo "$url" | grep -o '[0-9]*$')
+        local addr="${pool_entry#*|}"
+        local host="${addr%:*}"
+        local port="${addr#*:}"
         god_log "POOL" "Test" "Testando $name ($host:$port)..."
-        if test_pool_connection "$host" "$port"; then
-            god_log "OK" "Pool" "$name respondeu."
-            CURRENT_POOL="$pool_entry"
-            echo "$pool_entry" > "$CONFIG_DIR/last_pool.txt"
-            discord_embed "✅ Pool Selecionada" "**$name**\n\`$url\`" "65280" ""
-            return 0
+        local latency=$(test_pool_connection "$host" "$port")
+        if [ $? -eq 0 ]; then
+            god_log "OK" "Pool" "$name respondeu em ${latency}ms"
+            if [ $latency -lt $best_latency ]; then
+                best_latency=$latency
+                best_pool="$pool_entry"
+                best_url="stratum+tcp://$addr"
+            fi
         else
             god_log "WARN" "Pool" "$name não respondeu."
         fi
         sleep 1
     done
 
-    god_log "ERROR" "Pool" "Nenhuma pool respondeu. Verifique sua internet."
-    discord_embed "❌ Erro de Conexão" "Nenhuma pool SHA256 respondeu." "16711680" ""
-    return 1
+    if [ -n "$best_pool" ]; then
+        local name="${best_pool%%|*}"
+        god_log "OK" "Pool" "Melhor pool selecionada: $name com latência ${best_latency}ms"
+        CURRENT_POOL="$best_pool"
+        CURRENT_POOL_URL="$best_url"
+        echo "$best_pool" > "$CONFIG_DIR/last_pool.txt"
+        discord_embed "✅ Melhor Pool Selecionada" "**$name**\nLatência: ${best_latency}ms" "65280" ""
+        return 0
+    else
+        god_log "ERROR" "Pool" "Nenhuma pool respondeu. Verifique sua internet."
+        discord_embed "❌ Erro de Conexão" "Nenhuma pool RandomX respondeu." "16711680" ""
+        return 1
+    fi
 }
 
 # =============================================================================
@@ -439,16 +457,16 @@ start_mining() {
     clear
     echo -e "${GREEN}${BOLD}"
     echo "╔═══════════════════════════════════════════════════════════════════╗"
-    echo "║         MINERAÇÃO SHA256 ATIVA - LOGS NÍVEL DEUS                 ║"
+    echo "║         MINERAÇÃO RANDOMX ATIVA - LOGS NÍVEL DEUS                ║"
     echo "║              CTRL+C PARA PARAR                                   ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
-    if [ ! -f "$BIN_DIR/cpuminer" ] || ! check_binary "$BIN_DIR/cpuminer"; then
+    if [ ! -f "$BIN_DIR/xmrig" ] || ! check_binary "$BIN_DIR/xmrig"; then
         god_log "INFO" "Mining" "Minerador não encontrado ou inválido. Instalando..."
-        install_cpuminer || {
+        install_xmrig || {
             god_log "ERROR" "Mining" "Falha na instalação. Não é possível minerar."
-            discord_embed "❌ Falha na Instalação" "Não foi possível instalar o cpuminer." "16711680" ""
+            discord_embed "❌ Falha na Instalação" "Não foi possível instalar o XMRig." "16711680" ""
             read -p "Pressione ENTER para voltar."
             return 1
         }
@@ -461,7 +479,7 @@ start_mining() {
     fi
 
     local pool_name="${CURRENT_POOL%%|*}"
-    local pool_url="${CURRENT_POOL#*|}"
+    local pool_addr="${CURRENT_POOL#*|}"
 
     earnings=$(estimar_ganhos "$THREADS")
     sat_dia=$(echo "$earnings" | cut -d'|' -f1)
@@ -469,7 +487,7 @@ start_mining() {
     reais_hora=$(echo "$earnings" | cut -d'|' -f3)
 
     echo ""
-    echo -e "${CYAN}Pool:${NC} $pool_name ($pool_url)"
+    echo -e "${CYAN}Pool:${NC} $pool_name ($pool_addr)"
     echo -e "${CYAN}Threads:${NC} $THREADS"
     echo -e "${CYAN}Estimativa:${NC} $sat_dia sats/dia (R$ $reais_dia)"
     echo -e "${CYAN}Por hora:${NC} R$ $reais_hora"
@@ -478,22 +496,48 @@ start_mining() {
     echo ""
     read -p "Pressione ENTER para começar a minerar..." dummy
 
-    god_log "GOD" "Mining" "=== INICIANDO MINERAÇÃO SHA256 ==="
-    god_log "INFO" "Mining" "Pool: $pool_name ($pool_url)"
+    # Criar configuração temporária
+    cat > "$TEMP_DIR/config.json" << EOF
+{
+    "autosave": false,
+    "cpu": {
+        "enabled": true,
+        "max-threads-hint": $THREADS,
+        "priority": 1
+    },
+    "donate-level": 0,
+    "log-file": null,
+    "pools": [
+        {
+            "algo": "rx/0",
+            "url": "stratum+tcp://$pool_addr",
+            "user": "$NICEHASH_WALLET",
+            "pass": "x",
+            "nicehash": true,
+            "keepalive": true,
+            "tls": false
+        }
+    ],
+    "print-time": 5
+}
+EOF
+
+    god_log "GOD" "Mining" "=== INICIANDO MINERAÇÃO RANDOMX ==="
+    god_log "INFO" "Mining" "Pool: $pool_name ($pool_addr)"
     god_log "INFO" "Mining" "Threads: $THREADS"
     god_log "INFO" "Mining" "Carteira: $NICEHASH_WALLET"
-    discord_embed "🚀 Mineração SHA256 Iniciada" "**Pool:** $pool_name\n**Threads:** $THREADS\n**Estimativa:** $sat_dia sats/dia (R$ $reais_dia)" "65280" ""
+    discord_embed "🚀 Mineração RandomX Iniciada" "**Pool:** $pool_name\n**Threads:** $THREADS\n**Estimativa:** $sat_dia sats/dia (R$ $reais_dia)" "65280" ""
 
     echo "Iniciando minerador... Os logs aparecerão abaixo."
     echo "════════════════════════════════════════════════════════════════════"
 
-    # Executar cpuminer e processar saída
-    "$BIN_DIR/cpuminer" -o "$pool_url" -u "$NICEHASH_WALLET" -p x -t "$THREADS" --algo=sha256d 2>&1 | while read -r line; do
+    # Executar minerador e processar saída
+    "$BIN_DIR/xmrig" -c "$TEMP_DIR/config.json" 2>&1 | while read -r line; do
         echo "$line"
         echo "$(date '+%Y-%m-%d %H:%M:%S') $line" >> "$DEBUG_LOG"
 
-        # Capturar hashrate (formato: "thread X: ... hashes, ... khash/s")
-        if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (khash/s) ]]; then
+        # Capturar hashrate (formato típico: "speed 2.5s/60s 1.2 KH/s")
+        if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
             CURRENT_HASHRATE="${BASH_REMATCH[1]}"
             earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
             sat_agora=$(echo "$earnings_now" | cut -d'|' -f1)
@@ -508,8 +552,8 @@ start_mining() {
             fi
         fi
 
-        # Capturar shares aceitos (linha com "accepted")
-        if [[ "$line" == *"accepted"* ]]; then
+        # Capturar shares aceitos
+        if [[ "$line" == *"accepted"* ]] || [[ "$line" == *"share accepted"* ]]; then
             adicionar_share
             echo -e "${YELLOW}✅ Share aceito! Total: $TOTAL_SHARES | Acumulado: $TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)${NC}"
         fi
@@ -520,17 +564,18 @@ start_mining() {
             echo -e "${RED}❌ Share rejeitado! Total: $TOTAL_REJECTED${NC}"
         fi
 
-        # Capturar erros de conexão
-        if [[ "$line" == *"Connection refused"* ]] || [[ "$line" == *"Timeout"* ]]; then
+        # Capturar erros de conexão para trocar de pool automaticamente
+        if [[ "$line" == *"read error"* ]] || [[ "$line" == *"connection refused"* ]] || [[ "$line" == *"EOF"* ]]; then
             god_log "ERROR" "Pool" "Erro de conexão detectado: $line"
-            discord_embed "⚠️ Erro de Conexão" "Pool $pool_name falhou. Tentando reconectar..." "16744192" ""
+            discord_embed "⚠️ Erro de Conexão" "Pool $pool_name falhou. Procurando nova pool..." "16744192" ""
             break
         fi
     done
 
+    # Se saiu do loop por erro, tenta encontrar nova pool e reiniciar
     if [ $? -ne 0 ]; then
-        god_log "WARN" "Mining" "Mineração interrompida por erro. Tentando reconectar em 10s..."
-        sleep 10
+        god_log "WARN" "Mining" "Mineração interrompida por erro. Procurando nova pool em 5s..."
+        sleep 5
         start_mining
     else
         god_log "INFO" "Mining" "Mineração encerrada pelo usuário."
@@ -547,19 +592,20 @@ start_mining() {
 test_pools_menu() {
     clear
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}         TESTANDO POOLS SHA256                                 ${NC}"
+    echo -e "${BLUE}         TESTANDO POOLS RANDOMX (COM LATÊNCIA)                 ${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
     local results=""
     for pool_entry in "${POOLS[@]}"; do
         local name="${pool_entry%%|*}"
-        local url="${pool_entry#*|}"
-        local host=$(echo "$url" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
-        local port=$(echo "$url" | grep -o '[0-9]*$')
+        local addr="${pool_entry#*|}"
+        local host="${addr%:*}"
+        local port="${addr#*:}"
         echo -n "Testando $name ($host:$port)... "
-        if test_pool_connection "$host" "$port"; then
-            echo -e "${GREEN}OK${NC}"
-            results="$results\n✅ $name: OK"
+        latency=$(test_pool_connection "$host" "$port")
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}OK (${latency}ms)${NC}"
+            results="$results\n✅ $name: ${latency}ms"
         else
             echo -e "${RED}FALHOU${NC}"
             results="$results\n❌ $name: FALHOU"
@@ -788,7 +834,7 @@ start_watchdog() {
     (
         while true; do
             sleep 30
-            if ! pgrep -f cpuminer >/dev/null; then
+            if ! pgrep -f xmrig >/dev/null; then
                 god_log "WARN" "Watchdog" "Processo do minerador não encontrado. Reiniciando..."
                 discord_embed "🔄 Watchdog" "Minerador caiu. Reiniciando..." "16744192" ""
                 start_mining
@@ -841,7 +887,7 @@ main_menu() {
         clear
         echo -e "${GREEN}${BOLD}"
         echo "╔═══════════════════════════════════════════════════════════════════╗"
-        echo "║         MEGALODON BITCOIN GOD ULTIMATE v100.0                    ║"
+        echo "║         MEGALODON RANDOMX GOD ULTIMATE v100.0                    ║"
         echo "║              1 SATOSHI = R$1,30 NA NICEHASH                      ║"
         echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -853,8 +899,8 @@ main_menu() {
         echo ""
         echo -e "${WHITE}OPÇÕES:${NC}"
         echo ""
-        echo "  [1] 🚀 INICIAR MINERAÇÃO SHA256 (VIA NICEHASH)"
-        echo "  [2] 🌐 TESTAR POOLS"
+        echo "  [1] 🚀 INICIAR MINERAÇÃO RANDOMX (AUTO POOL - MELHOR LATÊNCIA)"
+        echo "  [2] 🌐 TESTAR POOLS (COM LATÊNCIA)"
         echo "  [3] 📊 VER ESTIMATIVAS DE GANHOS"
         echo "  [4] 📋 VER RELATÓRIO ACUMULADO"
         echo "  [5] 📦 INSTALAR/REINSTALAR MINERADOR"
@@ -875,9 +921,9 @@ main_menu() {
             2) test_pools_menu ;;
             3) view_estimates ;;
             4) view_report ;;
-            5) install_cpuminer ;;
+            5) install_xmrig ;;
             6)
-                pkill -f cpuminer 2>/dev/null
+                pkill -f xmrig 2>/dev/null
                 god_log "INFO" "Menu" "Mineração parada manualmente"
                 ;;
             7) send_full_report ;;
@@ -889,15 +935,15 @@ main_menu() {
             13)
                 stop_watchdog
                 stop_temp_monitor
-                pkill -f cpuminer 2>/dev/null
+                pkill -f xmrig 2>/dev/null
                 god_log "INFO" "Menu" "Todos os processos parados"
                 ;;
             0)
-                god_log "GOD" "System" "Encerrando Megalodon Bitcoin God. Até mais!"
+                god_log "GOD" "System" "Encerrando Megalodon RandomX God. Até mais!"
                 discord_embed "👋 Sistema Encerrado" "Total acumulado: $TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)" "16711680" ""
                 stop_watchdog
                 stop_temp_monitor
-                pkill -f cpuminer 2>/dev/null
+                pkill -f xmrig 2>/dev/null
                 exit 0
                 ;;
             *)
@@ -912,7 +958,7 @@ main_menu() {
 # INÍCIO DO SCRIPT
 # =============================================================================
 clear
-echo -e "${GREEN}${BOLD}Inicializando Megalodon Bitcoin God Ultimate...${NC}"
+echo -e "${GREEN}${BOLD}Inicializando Megalodon RandomX God Ultimate...${NC}"
 echo ""
 
 if [ ! -d "/data/data/com.termux" ]; then
