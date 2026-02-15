@@ -8,21 +8,21 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD ULTIMATE v100.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD v200.0
 # =============================================================================
-# ✅ 1 SATOSHI = R$1,30 NA NICEHASH (ajustável)
-# ✅ LOGS NÍVEL DEUS: tudo registrado no console, arquivos e Discord (embeds)
-# ✅ MINERADOR XMRIG (RANDOMX) – MAIS LUCRATIVO PARA CPU
-# ✅ MÚLTIPLAS POOLS RANDOMX COM FALLBACK INTELIGENTE (testa e escolhe a mais rápida)
-# ✅ AUTO POOL SWITCH: troca automaticamente se a pool atual falhar
+# ✅ 1 SATOSHI = R$1,30 NA NICEHASH
+# ✅ LOGS NÍVEL DEUS: console, arquivos e Discord (embeds)
+# ✅ XMRIG (RANDOMX) – O MAIS LUCRATIVO PARA CPU
+# ✅ MÚLTIPLAS POOLS RANDOMX COM FALLBACK AUTOMÁTICO
+# ✅ AUTO RECONEXÃO EM CASO DE ERRO
 # ✅ RELATÓRIOS DIÁRIOS, POR HORA, E ACUMULADOS VIA DISCORD
-# ✅ MONITOR DE TEMPERATURA, WATCHDOG
-# ✅ MENU COMPLETO COM 14 OPÇÕES
+# ✅ MONITOR DE TEMPERATURA E WATCHDOG
+# ✅ MENU COMPLETO COM 15 OPÇÕES
 # ✅ TESTADO E FUNCIONAL NO TERMUX (ARM64/ARMv7)
 # =============================================================================
 
 # =============================================================================
-# CONFIGURAÇÕES PRINCIPAIS (ALTERE AQUI SE NECESSÁRIO)
+# CONFIGURAÇÕES PRINCIPAIS (ALTERE SE NECESSÁRIO)
 # =============================================================================
 NICEHASH_WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
@@ -33,13 +33,14 @@ SATOSHIS_POR_SHARE=100             # cada share ≈ 100 satoshis (estimativa)
 # POOLS DE MINERAÇÃO RANDOMX (em ordem de prioridade)
 # =============================================================================
 declare -a POOLS=(
-    "NiceHash RandomX Auto|randomxmonero.auto.nicehash.com:9200"
-    "NiceHash RandomX EU|randomxmonero.eu.nicehash.com:3380"
-    "NiceHash RandomX USA|randomxmonero.usa.nicehash.com:3380"
-    "MoneroOcean|pool.moneroocean.stream:10000"
-    "SupportXMR|pool.supportxmr.com:5555"
-    "MineXMR|pool.minexmr.com:4444"
-    "XMRPool.eu|xmrpool.eu:9999"
+    "NiceHash RandomX Auto|stratum+tcp://randomxmonero.auto.nicehash.com:9200"
+    "NiceHash RandomX EU|stratum+tcp://randomxmonero.eu.nicehash.com:3380"
+    "NiceHash RandomX USA|stratum+tcp://randomxmonero.usa.nicehash.com:3380"
+    "MoneroOcean|stratum+tcp://pool.moneroocean.stream:10000"
+    "SupportXMR|stratum+tcp://pool.supportxmr.com:5555"
+    "MineXMR|stratum+tcp://pool.minexmr.com:4444"
+    "XMRPool.eu|stratum+tcp://xmrpool.eu:9999"
+    "Cryptonote|stratum+tcp://pool.cryptonote.net:3333"
 )
 
 # =============================================================================
@@ -407,28 +408,24 @@ test_pool_connection() {
 }
 
 # =============================================================================
-# ENCONTRAR MELHOR POOL (TESTA TODAS E ESCOLHE A MAIS RÁPIDA)
+# ENCONTRAR MELHOR POOL (TESTA TODAS E ESCOLHE A PRIMEIRA QUE RESPONDER)
 # =============================================================================
 find_best_pool() {
-    god_log "POOL" "Scan" "Procurando a melhor pool RandomX (menor latência)..."
-    local best_latency=999999
+    god_log "POOL" "Scan" "Procurando pool RandomX funcional..."
     local best_pool=""
     local best_url=""
     
     for pool_entry in "${POOLS[@]}"; do
         local name="${pool_entry%%|*}"
         local addr="${pool_entry#*|}"
-        local host="${addr%:*}"
-        local port="${addr#*:}"
+        local host=$(echo "$addr" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
+        local port=$(echo "$addr" | grep -o '[0-9]*$')
         god_log "POOL" "Test" "Testando $name ($host:$port)..."
-        local latency=$(test_pool_connection "$host" "$port")
-        if [ $? -eq 0 ]; then
-            god_log "OK" "Pool" "$name respondeu em ${latency}ms"
-            if [ $latency -lt $best_latency ]; then
-                best_latency=$latency
-                best_pool="$pool_entry"
-                best_url="stratum+tcp://$addr"
-            fi
+        if test_pool_connection "$host" "$port" >/dev/null; then
+            god_log "OK" "Pool" "$name respondeu."
+            best_pool="$pool_entry"
+            best_url="$addr"
+            break
         else
             god_log "WARN" "Pool" "$name não respondeu."
         fi
@@ -437,11 +434,11 @@ find_best_pool() {
 
     if [ -n "$best_pool" ]; then
         local name="${best_pool%%|*}"
-        god_log "OK" "Pool" "Melhor pool selecionada: $name com latência ${best_latency}ms"
+        god_log "OK" "Pool" "Pool selecionada: $name"
         CURRENT_POOL="$best_pool"
         CURRENT_POOL_URL="$best_url"
         echo "$best_pool" > "$CONFIG_DIR/last_pool.txt"
-        discord_embed "✅ Melhor Pool Selecionada" "**$name**\nLatência: ${best_latency}ms" "65280" ""
+        discord_embed "✅ Pool Selecionada" "**$name**\n\`$best_url\`" "65280" ""
         return 0
     else
         god_log "ERROR" "Pool" "Nenhuma pool respondeu. Verifique sua internet."
@@ -510,7 +507,7 @@ start_mining() {
     "pools": [
         {
             "algo": "rx/0",
-            "url": "stratum+tcp://$pool_addr",
+            "url": "$pool_addr",
             "user": "$NICEHASH_WALLET",
             "pass": "x",
             "nicehash": true,
@@ -536,7 +533,7 @@ EOF
         echo "$line"
         echo "$(date '+%Y-%m-%d %H:%M:%S') $line" >> "$DEBUG_LOG"
 
-        # Capturar hashrate (formato típico: "speed 2.5s/60s 1.2 KH/s")
+        # Capturar hashrate (formato: "speed 2.5s/60s 1.2 KH/s" ou "1.2 KH/s")
         if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
             CURRENT_HASHRATE="${BASH_REMATCH[1]}"
             earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
@@ -599,8 +596,8 @@ test_pools_menu() {
     for pool_entry in "${POOLS[@]}"; do
         local name="${pool_entry%%|*}"
         local addr="${pool_entry#*|}"
-        local host="${addr%:*}"
-        local port="${addr#*:}"
+        local host=$(echo "$addr" | sed -e 's|^stratum+tcp://||' -e 's|:[0-9]*$||')
+        local port=$(echo "$addr" | grep -o '[0-9]*$')
         echo -n "Testando $name ($host:$port)... "
         latency=$(test_pool_connection "$host" "$port")
         if [ $? -eq 0 ]; then
@@ -703,7 +700,7 @@ view_report() {
 }
 
 # =============================================================================
-# ENVIAR RELATÓRIO PARA DISCORD (igual ao script original, mas usando embed)
+# ENVIAR RELATÓRIO COMPLETO PARA DISCORD
 # =============================================================================
 send_discord() {
     god_log "INFO" "Discord" "Enviando relatório para o Discord..."
@@ -913,7 +910,7 @@ main_menu() {
         clear
         echo -e "${GREEN}${BOLD}"
         echo "╔═══════════════════════════════════════════════════════════════════╗"
-        echo "║         MEGALODON RANDOMX GOD ULTIMATE v100.0                    ║"
+        echo "║         MEGALODON RANDOMX GOD ULTIMATE v200.0                    ║"
         echo "║              1 SATOSHI = R$1,30 NA NICEHASH                      ║"
         echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -1009,7 +1006,7 @@ if [ -f "$STATS_FILE" ]; then
 fi
 
 god_log "OK" "System" "Sistema inicializado. Sessão: $SESSION_ID"
-discord_embed "🚀 Sistema Inicializado" "**Versão:** 100.0\n**CPU:** $THREADS threads\n**Carteira:** ${NICEHASH_WALLET:0:20}..." "65280" ""
+discord_embed "🚀 Sistema Inicializado" "**Versão:** 200.0\n**CPU:** $THREADS threads\n**Carteira:** ${NICEHASH_WALLET:0:20}..." "65280" ""
 
 sleep 1
 main_menu
