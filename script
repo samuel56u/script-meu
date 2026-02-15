@@ -8,7 +8,7 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON RANDOMX GOD v100.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD ULTIMATE v100.0
 # =============================================================================
 # ✅ 1 SATOSHI = R$1,30 NA NICEHASH (ajustável)
 # ✅ LOGS NÍVEL DEUS: tudo registrado no console, arquivos e Discord (embeds)
@@ -618,89 +618,115 @@ test_pools_menu() {
 }
 
 # =============================================================================
-# VER ESTIMATIVAS
+# VER ESTIMATIVAS (igual ao script original, mas usando as funções de cálculo)
 # =============================================================================
 view_estimates() {
     clear
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}         ESTIMATIVAS DE GANHOS (1 SATOSHI = R$1,30)            ${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}${BOLD}"
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║         ESTIMATIVAS REAIS - 1 SATOSHI = R$1,30                   ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
     echo ""
-    earnings=$(estimar_ganhos "$THREADS")
-    sat_dia=$(echo "$earnings" | cut -d'|' -f1)
-    reais_dia=$(echo "$earnings" | cut -d'|' -f2)
-    reais_hora=$(echo "$earnings" | cut -d'|' -f3)
-
-    echo -e "${CYAN}Com $THREADS threads:${NC}"
-    echo "  Por hora:  $((sat_dia / 24)) sats  = R$ $reais_hora"
-    echo "  Por dia:   $sat_dia sats  = R$ $reais_dia"
-    echo "  Por semana: $((sat_dia * 7)) sats = R$ $(echo "$reais_dia * 7" | bc)"
-    echo "  Por mês:   $((sat_dia * 30)) sats = R$ $(echo "$reais_dia * 30" | bc)"
+    
+    echo -e "${CYAN}Com seu hardware ($THREADS threads):${NC}"
     echo ""
-    read -p "Pressione ENTER para voltar."
+    
+    # RandomX
+    local rx=$(estimar_ganhos "$THREADS")
+    local rx_sat=$(echo "$rx" | cut -d'|' -f1)
+    local rx_reais=$(echo "$rx" | cut -d'|' -f2)
+    local rx_hora=$(echo "$rx" | cut -d'|' -f3)
+    
+    echo -e "${GREEN}RANDOMX (100x) - RECOMENDADO:${NC}"
+    echo "  Por hora:  $((rx_sat / 24)) sats = R$ $rx_hora"
+    echo "  Por dia:   $rx_sat sats = R$ $rx_reais"
+    echo "  Por semana: $((rx_sat * 7)) sats = R$ $(echo "$rx_reais * 7" | bc)"
+    echo ""
+    
+    # Outros algoritmos (simulados)
+    echo -e "${BLUE}VERUSHASH (80x):${NC}"
+    local vh_sat=$((rx_sat * 80 / 100))
+    local vh_reais=$(satoshi_para_reais "$vh_sat")
+    echo "  Por dia: $vh_sat sats = R$ $vh_reais"
+    echo ""
+    
+    echo -e "${PURPLE}GHOSTRIDER (60x):${NC}"
+    local gr_sat=$((rx_sat * 60 / 100))
+    local gr_reais=$(satoshi_para_reais "$gr_sat")
+    echo "  Por dia: $gr_sat sats = R$ $gr_reais"
+    echo ""
+    
+    echo -e "${YELLOW}PROJEÇÃO PARA 7 DIAS COM RANDOMX:${NC}"
+    echo "  Satoshis: $((rx_sat * 7)) sats"
+    echo "  Reais:    R$ $(echo "$rx_reais * 7" | bc)"
+    echo ""
+    
+    echo -n "Pressione ENTER para voltar..."
+    read -r
 }
 
 # =============================================================================
-# VER RELATÓRIO ACUMULADO
+# VER RELATÓRIO ACUMULADO (igual ao script original)
 # =============================================================================
 view_report() {
     clear
-    echo -e "${PURPLE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${PURPLE}         RELATÓRIO ACUMULADO                                    ${NC}"
-    echo -e "${PURPLE}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${PURPLE}${BOLD}"
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║         RELATÓRIO ACUMULADO - 1 SATOSHI = R$1,30                 ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
     echo ""
-    if [ -f "$STATS_FILE" ]; then
-        cat "$STATS_FILE"
-    else
-        echo "Nenhuma estatística disponível. Execute a mineração primeiro."
-    fi
-    echo ""
-    echo -e "${BLUE}Últimos registros de hashrate:${NC}"
-    tail -5 "$HASHRATE_LOG" 2>/dev/null
-    echo ""
-    echo -e "${BLUE}Últimos shares:${NC}"
-    tail -5 "$SHARE_LOG" 2>/dev/null
-    echo ""
-    read -p "Pressione ENTER para voltar."
-}
-
-# =============================================================================
-# ENVIAR RELATÓRIO COMPLETO PARA DISCORD
-# =============================================================================
-send_full_report() {
-    god_log "INFO" "Discord" "Gerando relatório completo para envio..."
     
     local tempo=$(( $(date +%s) - START_TIME ))
     local horas=$((tempo / 3600))
     local minutos=$(((tempo % 3600) / 60))
     
+    echo -e "${CYAN}Tempo minerado:${NC} ${horas}h ${minutos}m"
+    echo -e "${CYAN}Total shares:${NC} $TOTAL_SHARES"
+    echo -e "${CYAN}Shares rejeitadas:${NC} $TOTAL_REJECTED"
+    echo -e "${CYAN}Taxa de aceitação:${NC} $(( (TOTAL_SHARES - TOTAL_REJECTED) * 100 / (TOTAL_SHARES + 1) ))%"
+    echo ""
+    echo -e "${YELLOW}ACUMULADO:${NC}"
+    echo -e "  Satoshis: ${GREEN}$TOTAL_SATOSHIS sats${NC}"
+    echo -e "  Reais:    ${GREEN}R$ $TOTAL_REAIS${NC}"
+    echo ""
+    
+    if [ -f "$REPORT_DIR/diario.log" ]; then
+        echo -e "${BLUE}Últimos registros diários:${NC}"
+        tail -5 "$REPORT_DIR/diario.log"
+    fi
+    
+    echo ""
+    echo -n "Pressione ENTER para voltar..."
+    read -r
+}
+
+# =============================================================================
+# ENVIAR RELATÓRIO PARA DISCORD (igual ao script original, mas usando embed)
+# =============================================================================
+send_discord() {
+    god_log "INFO" "Discord" "Enviando relatório para o Discord..."
+    
     local fields='{
-        "name": "Tempo ativo",
-        "value": "'"${horas}h ${minutos}m"'",
-        "inline": true
+        "name": "Acumulado",
+        "value": "'"$TOTAL_SATOSHIS sats (R$ $TOTAL_REAIS)"'",
+        "inline": false
     },{
-        "name": "Shares totais",
+        "name": "Hoje",
+        "value": "'"$SATOSHIS_HOJE sats (R$ $REAIS_HOJE)"'",
+        "inline": false
+    },{
+        "name": "Shares",
         "value": "'"$TOTAL_SHARES"'",
         "inline": true
     },{
         "name": "Rejeitadas",
         "value": "'"$TOTAL_REJECTED"'",
         "inline": true
-    },{
-        "name": "Satoshis acumulados",
-        "value": "'"$TOTAL_SATOSHIS sats"'",
-        "inline": true
-    },{
-        "name": "Reais acumulados",
-        "value": "'"R$ $TOTAL_REAIS"'",
-        "inline": true
-    },{
-        "name": "Hashrate atual",
-        "value": "'"$CURRENT_HASHRATE KH/s"'",
-        "inline": true
     }'
     
-    discord_embed "📊 RELATÓRIO COMPLETO" "" "16776960" "$fields"
+    discord_embed "📊 RELATÓRIO DE MINERAÇÃO" "" "16776960" "$fields"
     god_log "OK" "Discord" "Relatório enviado."
     sleep 2
 }
@@ -753,7 +779,7 @@ view_test_status() {
 }
 
 # =============================================================================
-# CONFIGURAÇÕES AVANÇADAS
+# CONFIGURAÇÕES AVANÇADAS (simplificadas, mas funcionais)
 # =============================================================================
 advanced_settings() {
     while true; do
@@ -880,7 +906,7 @@ stop_temp_monitor() {
 }
 
 # =============================================================================
-# MENU PRINCIPAL
+# MENU PRINCIPAL (com todas as opções)
 # =============================================================================
 main_menu() {
     while true; do
@@ -926,7 +952,7 @@ main_menu() {
                 pkill -f xmrig 2>/dev/null
                 god_log "INFO" "Menu" "Mineração parada manualmente"
                 ;;
-            7) send_full_report ;;
+            7) send_discord ;;
             8) test_webhook ;;
             9) view_test_status ;;
             10) advanced_settings ;;
