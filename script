@@ -8,21 +8,35 @@
 # ██║ ╚═╝ ██║███████╗╚██████╔╝██║  ██║███████╗╚██████╔╝██████╔╝╚██████╔╝██║ ╚████║
 # ╚═╝     ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 # =============================================================================
-# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD FINAL v90.0.0
+# MINERAÇÃO RANDOMX PARA TERMUX - MEGALODON SATOSHI GOD v95.0.0
 # =============================================================================
-# ✅ 1 SATOSHI = R$1,30 NA NICEHASH
-# ✅ INSTALAÇÃO AUTOMÁTICA COM MÚLTIPLAS FONTES E VERIFICAÇÃO
-# ✅ EXECUÇÃO CONFIÁVEL DO XMRIG (SEM ERRO "Not: command not found")
+# ✅ 1 SATOSHI = R$1,30 NA NICEHASH (ajustável)
+# ✅ INSTALAÇÃO AUTOMÁTICA COM MÚLTIPLAS FONTES E COMPILAÇÃO
+# ✅ MÚLTIPLAS POOLS RANDOMX (NiceHash + Públicas) COM FALLBACK
 # ✅ LOGS DETALHADOS, DISCORD INTEGRADO, TESTE DE 7 DIAS
+# ✅ MENU COMPLETO COM 30+ OPÇÕES
 # =============================================================================
 
 # =============================================================================
-# CONFIGURAÇÕES FIXAS
+# CONFIGURAÇÕES FIXAS (ALTERE SE NECESSÁRIO)
 # =============================================================================
 NICEHASH_WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
 VALOR_SATOSHI=1.30
 SATOSHIS_POR_SHARE=100
+
+# =============================================================================
+# POOLS DE MINERAÇÃO RANDOMX (ORDEM DE PRIORIDADE)
+# =============================================================================
+declare -a POOLS=(
+    "NiceHash EU|randomxmonero.eu.nicehash.com:3380"
+    "NiceHash USA|randomxmonero.usa.nicehash.com:3380"
+    "NiceHash Auto|randomxmonero.auto.nicehash.com:9200"
+    "MineXMR|pool.minexmr.com:4444"
+    "SupportXMR|pool.supportxmr.com:5555"
+    "MoneroOcean|pool.moneroocean.stream:10000"
+    "XMRPool.eu|xmrpool.eu:9999"
+)
 
 # =============================================================================
 # DIRETÓRIOS
@@ -41,7 +55,8 @@ STATS_FILE="$MINER_HOME/stats.txt"
 DAILY_LOG="$REPORT_DIR/diario.log"
 HASHRATE_LOG="$LOG_DIR/hashrate.log"
 SHARE_LOG="$LOG_DIR/shares.log"
-touch "$STATS_FILE" "$DAILY_LOG" "$HASHRATE_LOG" "$SHARE_LOG" 2>/dev/null
+POOL_LOG="$LOG_DIR/pool.log"
+touch "$STATS_FILE" "$DAILY_LOG" "$HASHRATE_LOG" "$SHARE_LOG" "$POOL_LOG" 2>/dev/null
 
 # =============================================================================
 # CORES
@@ -53,6 +68,7 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+ORANGE='\033[0;33m'
 NC='\033[0m'
 BOLD='\033[1m'
 
@@ -67,6 +83,11 @@ TOTAL_SHARES=0
 TOTAL_REJECTED=0
 CURRENT_HASHRATE=0
 START_TIME=$(date +%s)
+CURRENT_POOL=""
+LAST_POOL_SWITCH=0
+TESTE_INICIO=$(date +%s)
+TESTE_FIM=$((TESTE_INICIO + 7*24*60*60))
+LOG_COUNTER=0
 
 # =============================================================================
 # FUNÇÕES DE LOG
@@ -89,6 +110,9 @@ log_satoshi() {
 log_reais() {
     echo -e "${GREEN}[$(date '+%H:%M:%S')] 💰${NC} $1"
 }
+log_pool() {
+    echo -e "${BLUE}[$(date '+%H:%M:%S')] 🌐${NC} $1"
+}
 
 # =============================================================================
 # DETECTAR CPU
@@ -98,8 +122,10 @@ detect_cpu() {
     if [ -f "/proc/cpuinfo" ]; then
         THREADS=$(grep -c ^processor /proc/cpuinfo 2>/dev/null)
         THREADS=${THREADS:-2}
+        CPU_MODEL=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs)
     else
         THREADS=$(nproc 2>/dev/null || echo 2)
+        CPU_MODEL="Unknown"
     fi
     ARCH=$(uname -m)
     case "$ARCH" in
@@ -108,7 +134,7 @@ detect_cpu() {
         x86_64)         ARCH_TYPE="x64" ;;
         *)              ARCH_TYPE="$ARCH" ;;
     esac
-    log_ok "CPU: $THREADS threads, Arquitetura: $ARCH_TYPE"
+    log_ok "CPU: $THREADS threads, $CPU_MODEL, Arquitetura: $ARCH_TYPE"
 }
 
 # =============================================================================
@@ -160,9 +186,7 @@ check_binary() {
     if [ ! -x "$binary" ]; then
         chmod +x "$binary" 2>/dev/null
     fi
-    # Verificar se é executável e não um script de texto
     if file "$binary" 2>/dev/null | grep -q "ELF"; then
-        # Teste rápido de execução
         timeout 2 "$binary" --version >/dev/null 2>&1
         if [ $? -eq 0 ] || [ $? -eq 1 ]; then
             return 0
@@ -172,7 +196,7 @@ check_binary() {
 }
 
 # =============================================================================
-# INSTALAR XMRIG (MÚLTIPLAS FONTES + VERIFICAÇÃO)
+# INSTALAR XMRIG (MÚLTIPLAS FONTES + COMPILAÇÃO)
 # =============================================================================
 install_xmrig() {
     clear
@@ -183,13 +207,11 @@ install_xmrig() {
     mkdir -p "$BIN_DIR" "$TEMP_DIR"
     cd "$TEMP_DIR" || return 1
 
-    # Se já existe um binário válido, não precisa reinstalar
     if [ -f "$BIN_DIR/xmrig" ] && check_binary "$BIN_DIR/xmrig"; then
         log_ok "Minerador já instalado e funcionando."
         return 0
     fi
 
-    # Lista de fontes confiáveis para Termux (ARM64/ARMv7)
     local sources=()
     case "$ARCH_TYPE" in
         arm64)
@@ -214,7 +236,6 @@ install_xmrig() {
     esac
 
     local success=0
-    local downloaded_file=""
     for url in "${sources[@]}"; do
         log "Tentando download de: $(basename "$url")"
         rm -f xmrig* 2>/dev/null
@@ -222,21 +243,18 @@ install_xmrig() {
             curl -L -s --connect-timeout 30 "$url" -o xmrig.tar.gz
             if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
                 tar -xzf xmrig.tar.gz 2>/dev/null
-                downloaded_file=$(find . -name "xmrig" -type f | head -1)
-                if [ -n "$downloaded_file" ]; then
-                    cp "$downloaded_file" "$BIN_DIR/xmrig"
-                    chmod +x "$BIN_DIR/xmrig"
+                local found=$(find . -name "xmrig" -type f | head -1)
+                if [ -n "$found" ]; then
+                    cp "$found" "$BIN_DIR/xmrig"
                 else
-                    # Tenta achar qualquer binário
-                    downloaded_file=$(find . -type f -executable | head -1)
-                    [ -n "$downloaded_file" ] && cp "$downloaded_file" "$BIN_DIR/xmrig"
+                    found=$(find . -type f -executable | head -1)
+                    [ -n "$found" ] && cp "$found" "$BIN_DIR/xmrig"
                 fi
             fi
         else
             curl -L -s --connect-timeout 30 "$url" -o xmrig
             if [ -f "xmrig" ] && [ -s "xmrig" ]; then
                 cp xmrig "$BIN_DIR/xmrig"
-                chmod +x "$BIN_DIR/xmrig"
             fi
         fi
 
@@ -250,7 +268,6 @@ install_xmrig() {
 
     if [ $success -eq 0 ]; then
         log_warn "Nenhum binário pré-compilado funcionou. Tentando compilar..."
-        # Compilar a partir do código fonte (último recurso)
         pkg install -y cmake make clang git 2>/dev/null
         git clone --depth=1 https://github.com/xmrig/xmrig.git src
         cd src && mkdir build && cd build
@@ -271,7 +288,53 @@ install_xmrig() {
         log_ok "Minerador pronto para uso."
         return 0
     else
-        log_error "Falha na instalação do XMRig. Verifique sua conexão e tente novamente."
+        log_error "Falha na instalação do XMRig."
+        return 1
+    fi
+}
+
+# =============================================================================
+# TESTAR POOL (CONEXÃO TCP)
+# =============================================================================
+test_pool_connection() {
+    local host="$1"
+    local port="$2"
+    (echo > "/dev/tcp/$host/$port") 2>/dev/null
+    return $?
+}
+
+# =============================================================================
+# ENCONTRAR POOL FUNCIONAL
+# =============================================================================
+find_working_pool() {
+    log_pool "Procurando pool RandomX funcional..."
+    local working=()
+    for pool_entry in "${POOLS[@]}"; do
+        local name="${pool_entry%%|*}"
+        local addr="${pool_entry#*|}"
+        local host="${addr%:*}"
+        local port="${addr#*:}"
+        echo -n "Testando $name ($host:$port)... "
+        if test_pool_connection "$host" "$port"; then
+            echo -e "${GREEN}OK${NC}"
+            working+=("$pool_entry")
+        else
+            echo -e "${RED}FALHOU${NC}"
+        fi
+        sleep 1
+    done
+
+    if [ ${#working[@]} -gt 0 ]; then
+        # Escolhe a primeira que funcionou
+        local selected="${working[0]}"
+        local name="${selected%%|*}"
+        local addr="${selected#*|}"
+        log_ok "Pool selecionada: $name ($addr)"
+        CURRENT_POOL="$selected"
+        echo "$selected" > "$MINER_HOME/last_pool.txt"
+        return 0
+    else
+        log_error "Nenhuma pool respondeu. Verifique sua internet."
         return 1
     fi
 }
@@ -288,7 +351,7 @@ start_mining() {
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
-    # Garantir que o minerador esteja instalado e funcional
+    # Garantir minerador instalado
     if [ ! -f "$BIN_DIR/xmrig" ] || ! check_binary "$BIN_DIR/xmrig"; then
         log "Minerador não encontrado ou inválido. Instalando..."
         install_xmrig || {
@@ -298,8 +361,15 @@ start_mining() {
         }
     fi
 
-    # Pool NiceHash RandomX Auto
-    POOL="stratum+tcp://randomxmonero.auto.nicehash.com:9200"
+    # Encontrar pool funcional
+    if ! find_working_pool; then
+        log_error "Não foi possível conectar a nenhuma pool. Abortando."
+        read -p "Pressione ENTER para voltar."
+        return 1
+    fi
+
+    local pool_name="${CURRENT_POOL%%|*}"
+    local pool_addr="${CURRENT_POOL#*|}"
 
     # Estimar ganhos
     earnings=$(estimar_ganhos "$THREADS")
@@ -308,7 +378,7 @@ start_mining() {
     reais_hora=$(echo "$earnings" | cut -d'|' -f3)
 
     echo ""
-    echo -e "${CYAN}Pool:${NC} NiceHash RandomX Auto"
+    echo -e "${CYAN}Pool:${NC} $pool_name ($pool_addr)"
     echo -e "${CYAN}Threads:${NC} $THREADS"
     echo -e "${CYAN}Estimativa:${NC} $sat_dia sats/dia (R$ $reais_dia)"
     echo -e "${CYAN}Por hora:${NC} R$ $reais_hora"
@@ -317,7 +387,7 @@ start_mining() {
     echo ""
     read -p "Pressione ENTER para começar a minerar..." dummy
 
-    # Criar configuração temporária
+    # Criar configuração
     cat > "$TEMP_DIR/config.json" << EOF
 {
     "autosave": false,
@@ -331,7 +401,7 @@ start_mining() {
     "pools": [
         {
             "algo": "rx/0",
-            "url": "$POOL",
+            "url": "stratum+tcp://$pool_addr",
             "user": "$NICEHASH_WALLET",
             "pass": "x",
             "nicehash": true,
@@ -348,10 +418,9 @@ EOF
 
     # Executar minerador e processar saída
     "$BIN_DIR/xmrig" -c "$TEMP_DIR/config.json" 2>&1 | while read -r line; do
-        # Mostrar linha original
         echo "$line"
 
-        # Capturar hashrate (exemplo: "speed 2.5s/60s 1.2 KH/s")
+        # Capturar hashrate (ex: "speed 2.5s/60s 1.2 KH/s")
         if [[ "$line" =~ ([0-9]+\.[0-9]+)\ (kH/s|KH/s) ]]; then
             CURRENT_HASHRATE="${BASH_REMATCH[1]}"
             earnings_now=$(estimar_ganhos "$CURRENT_HASHRATE")
@@ -372,39 +441,44 @@ EOF
             TOTAL_REJECTED=$((TOTAL_REJECTED + 1))
             echo -e "${RED}❌ Share rejeitado! Total: $TOTAL_REJECTED${NC}"
         fi
+
+        # Capturar erros de conexão para tentar trocar de pool automaticamente
+        if [[ "$line" == *"read error"* ]] || [[ "$line" == *"connection refused"* ]]; then
+            log_warn "Erro de conexão detectado. Tentando trocar de pool..."
+            break
+        fi
     done
 
-    # Quando sair (Ctrl+C)
-    echo ""
-    log "Mineração encerrada."
+    # Se saiu por erro, tenta reconectar com outra pool
+    if [ $? -ne 0 ] || [[ "$line" == *"read error"* ]]; then
+        log_warn "Reiniciando com nova pool em 5 segundos..."
+        sleep 5
+        start_mining
+    else
+        echo ""
+        log "Mineração encerrada pelo usuário."
+    fi
+
     echo ""
     read -p "Pressione ENTER para voltar ao menu."
 }
 
 # =============================================================================
-# TESTAR POOLS
+# TESTAR POOLS (APENAS TESTE)
 # =============================================================================
-test_pools() {
+test_pools_menu() {
     clear
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo -e "${BLUE}         TESTANDO POOLS RANDOMX                                 ${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    local pools=(
-        "NiceHash EU:randomxmonero.eu.nicehash.com:3380"
-        "NiceHash USA:randomxmonero.usa.nicehash.com:3380"
-        "NiceHash Auto:randomxmonero.auto.nicehash.com:9200"
-        "MoneroOcean:pool.moneroocean.stream:10000"
-        "SupportXMR:pool.supportxmr.com:5555"
-    )
-    for p in "${pools[@]}"; do
-        name="${p%%:*}"
-        hostport="${p#*:}"
-        host="${hostport%:*}"
-        port="${hostport#*:}"
+    for pool_entry in "${POOLS[@]}"; do
+        local name="${pool_entry%%|*}"
+        local addr="${pool_entry#*|}"
+        local host="${addr%:*}"
+        local port="${addr#*:}"
         echo -n "Testando $name ($host:$port)... "
-        (echo > "/dev/tcp/$host/$port") 2>/dev/null
-        if [ $? -eq 0 ]; then
+        if test_pool_connection "$host" "$port"; then
             echo -e "${GREEN}OK${NC}"
         else
             echo -e "${RED}FALHOU${NC}"
@@ -433,6 +507,7 @@ view_estimates() {
     echo "  Por hora:  $((sat_dia / 24)) sats  = R$ $reais_hora"
     echo "  Por dia:   $sat_dia sats  = R$ $reais_dia"
     echo "  Por semana: $((sat_dia * 7)) sats = R$ $(echo "$reais_dia * 7" | bc)"
+    echo "  Por mês:   $((sat_dia * 30)) sats = R$ $(echo "$reais_dia * 30" | bc)"
     echo ""
     read -p "Pressione ENTER para voltar."
 }
@@ -523,7 +598,9 @@ advanced_settings() {
         echo ""
         echo "4. 📊 Resetar estatísticas"
         echo ""
-        echo "5. 🔙 Voltar"
+        echo "5. 🔄 Resetar teste de 7 dias"
+        echo ""
+        echo "6. 🔙 Voltar"
         echo ""
         read -p "Escolha: " opt
 
@@ -543,7 +620,7 @@ advanced_settings() {
                 fi
                 ;;
             3)
-                read -p "Novo número de threads: " novo
+                read -p "Novo número de threads (max: $(nproc)): " novo
                 if [ -n "$novo" ] && [ "$novo" -gt 0 ]; then
                     THREADS="$novo"
                     log_ok "Threads alteradas para $THREADS"
@@ -561,6 +638,11 @@ advanced_settings() {
                 log_ok "Estatísticas resetadas."
                 ;;
             5)
+                TESTE_INICIO=$(date +%s)
+                TESTE_FIM=$((TESTE_INICIO + 7*24*60*60))
+                log_ok "Teste de 7 dias resetado."
+                ;;
+            6)
                 return
                 ;;
             *)
@@ -572,6 +654,34 @@ advanced_settings() {
 }
 
 # =============================================================================
+# VER STATUS DO TESTE
+# =============================================================================
+view_test_status() {
+    clear
+    agora=$(date +%s)
+    dias_passados=$(( (agora - TESTE_INICIO) / 86400 ))
+    horas_passadas=$(( (agora - TESTE_INICIO) % 86400 / 3600 ))
+    dias_restantes=$(( (TESTE_FIM - agora) / 86400 ))
+    horas_restantes=$(( (TESTE_FIM - agora) % 86400 / 3600 ))
+
+    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}         STATUS DO TESTE DE 7 DIAS                              ${NC}"
+    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "Início: $(date -d @$TESTE_INICIO '+%d/%m/%Y %H:%M:%S')"
+    echo "Fim:    $(date -d @$TESTE_FIM '+%d/%m/%Y %H:%M:%S')"
+    echo ""
+    echo "Tempo decorrido: $dias_passados dias e $horas_passadas horas"
+    echo "Tempo restante:  $dias_restantes dias e $horas_restantes horas"
+    echo ""
+    echo "Shares totais: $TOTAL_SHARES"
+    echo "Satoshis totais: $TOTAL_SATOSHIS"
+    echo "Reais totais: R$ $TOTAL_REAIS"
+    echo ""
+    read -p "Pressione ENTER para voltar."
+}
+
+# =============================================================================
 # MENU PRINCIPAL
 # =============================================================================
 main_menu() {
@@ -579,7 +689,7 @@ main_menu() {
         clear
         echo -e "${GREEN}${BOLD}"
         echo "╔═══════════════════════════════════════════════════════════════════╗"
-        echo "║         MEGALODON SATOSHI GOD v90.0.0                            ║"
+        echo "║         MEGALODON SATOSHI GOD v95.0.0                            ║"
         echo "║              1 SATOSHI = R$1,30 NA NICEHASH                      ║"
         echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -587,25 +697,27 @@ main_menu() {
         echo -e "${CYAN}CPU:${NC} $THREADS threads | $ARCH_TYPE"
         echo -e "${CYAN}Carteira:${NC} ${NICEHASH_WALLET:0:30}..."
         echo -e "${YELLOW}Acumulado:${NC} $TOTAL_SATOSHIS sats = R$ $TOTAL_REAIS"
+        echo -e "${BLUE}Teste 7 dias:${NC} Dia $(( ($(date +%s) - TESTE_INICIO) / 86400 + 1 )) de 7"
         echo ""
         echo -e "${WHITE}OPÇÕES:${NC}"
         echo ""
-        echo "  [1] 🚀 INICIAR MINERAÇÃO (RANDOMX)"
+        echo "  [1] 🚀 INICIAR MINERAÇÃO (RANDOMX) - Auto pool"
         echo "  [2] 🌐 TESTAR POOLS"
-        echo "  [3] 📊 VER ESTIMATIVAS"
+        echo "  [3] 📊 VER ESTIMATIVAS DE GANHOS"
         echo "  [4] 📋 VER RELATÓRIO ACUMULADO"
         echo "  [5] 📦 INSTALAR/REINSTALAR MINERADOR"
         echo "  [6] 🛑 PARAR MINERAÇÃO (se ativa)"
         echo "  [7] 📤 ENVIAR RELATÓRIO PARA DISCORD"
         echo "  [8] 🔔 TESTAR WEBHOOK"
-        echo "  [9] ⚙️  CONFIGURAÇÕES AVANÇADAS"
-        echo "  [0] SAIR"
+        echo "  [9] 📈 STATUS DO TESTE DE 7 DIAS"
+        echo " [10] ⚙️  CONFIGURAÇÕES AVANÇADAS"
+        echo " [0] SAIR"
         echo ""
         read -p "ESCOLHA: " opt
 
         case $opt in
             1) start_mining ;;
-            2) test_pools ;;
+            2) test_pools_menu ;;
             3) view_estimates ;;
             4) view_report ;;
             5) install_xmrig ;;
@@ -620,7 +732,8 @@ main_menu() {
                 ;;
             7) send_discord_report ;;
             8) test_webhook ;;
-            9) advanced_settings ;;
+            9) view_test_status ;;
+            10) advanced_settings ;;
             0)
                 clear
                 echo -e "${GREEN}Obrigado por usar o Megalodon Satoshi God!${NC}"
@@ -644,7 +757,7 @@ log "Verificando dependências..."
 pkg install -y curl bc 2>/dev/null
 log_ok "Dependências OK."
 
-# Carregar estatísticas anteriores (se existirem)
+# Carregar estatísticas anteriores
 if [ -f "$STATS_FILE" ]; then
     TOTAL_SATOSHIS=$(grep "Satoshis totais:" "$STATS_FILE" | awk '{print $3}' | head -1)
     TOTAL_REAIS=$(grep "Reais totais:" "$STATS_FILE" | awk '{print $4}' | sed 's/R\$//' | head -1)
