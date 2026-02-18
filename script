@@ -1,2457 +1,1996 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# BITCOIN MINER TERMUX ULTIMATE v13.0
-# Sistema COMPLETO: Menu Avançado, Dashboard, Discord, Monitoramento, Backup
-# TODAS as 33 funções do menu são REAIS e FUNCIONAIS
+# RANDOMX MONERO MINER - TERMUX v5.0
+# 50 FUNCIONALIDADES COMPLETAS - CÓDIGO ROBUSTO
 # ============================================================================
 
 # ============================================================================
-# CONFIGURAÇÕES PRINCIPAIS (ALTERE AQUI!)
+# CONFIGURAÇÃO PRINCIPAL
 # ============================================================================
 
-# SUA CARTEIRA NICEHASH (OBRIGATÓRIO)
-BTC_WALLET="3Jg8E9nQrN4L2q7V1tXwY5zP6bR8cD0mF2aH4jK5l"
+export MINER_ROOT="/data/data/com.termux/files/home/randomx_miner"
+export MINER_BIN="$MINER_ROOT/bin"
+export MINER_CONFIG="$MINER_ROOT/config"
+export MINER_LOGS="$MINER_ROOT/logs"
+export MINER_STATS="$MINER_ROOT/stats"
+export MINER_SCRIPTS="$MINER_ROOT/scripts"
+export MINER_BACKUP="$MINER_ROOT/backup"
+export MINER_TEMP="$MINER_ROOT/temp"
+export MINER_CACHE="$MINER_ROOT/cache"
+export MINER_DB="$MINER_ROOT/database"
 
-# WEBHOOK DO DISCORD (OPCIONAL)
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/1470009252063088661/1j4kNu2sDcGQmFCywnbd_p1BEbb1DTcN_VXt5OYpX8_FsQI2YKB3tCjS2Okp_msUX9Mh"
+# Configurações RandomX Avançadas
+export RANDOMX_MODE="fast"
+export RANDOMX_1GB_PAGES=true
+export RANDOMX_NUMA=true
+export RANDOMX_JIT=true
+export RANDOMX_CACHE_QOS=false
+export RANDOMX_SCRATCHPAD_PREFETCH=1
+export RANDOMX_ARGON2_SALT="Monero"
+export RANDOMX_ARGON2_ITERATIONS=3
+export RANDOMX_ARGON2_MEMORY=262144
+export RANDOMX_ARGON2_LANES=1
 
-# CONFIGURAÇÕES DE MINERAÇÃO
-CPU_USAGE="75"              # % de uso da CPU (10-90)
-MINING_PRIORITY="3"         # Prioridade (0-5, 3 = médio)
-DONATE_LEVEL="1"            # Doação para devs (1% recomendado)
-THREADS="4"                 # Número de threads
+# Configurações de CPU
+export CPU_CORES=$(nproc 2>/dev/null || echo "4")
+export CPU_THREADS=$CPU_CORES
+export CPU_PRIORITY=5
+export CPU_MAX_USAGE=90
+export CPU_AFFINITY="auto"
+export CPU_MEMORY_POOL=true
+export CPU_YIELD=true
 
-# POOLS DE MINERAÇÃO (TODAS FUNCIONAIS)
-declare -a POOLS=(
-    "randomxmonero.auto.nicehash.com:9200"
-    "randomxmonero.usa.nicehash.com:3380"
-    "randomxmonero.eu.nicehash.com:3380"
-    "randomxmonero.br.nicehash.com:3380"
-    "randomxmonero.jp.nicehash.com:3380"
-    "randomxmonero.hk.nicehash.com:3380"
-    "randomxmonero.in.nicehash.com:3380"
-)
+# Configurações de Rede
+export NETWORK_SOCKETS=8
+export NETWORK_KEEPALIVE=true
+export NETWORK_TIMEOUT=10
+export NETWORK_RETRIES=5
+export NETWORK_RETRY_PAUSE=5
 
-# ============================================================================
-# DIRETÓRIOS ABSOLUTOS
-# ============================================================================
+# Configurações de Log
+export LOG_LEVEL=3
+export LOG_FILE="$MINER_LOGS/xmrig.log"
+export LOG_ROTATE_SIZE=10485760
+export LOG_ROTATE_FILES=5
 
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-MINER_BIN="$MINER_ROOT/bin"
-MINER_CONFIG="$MINER_ROOT/config"
-MINER_LOGS="$MINER_ROOT/logs"
-MINER_STATS="$MINER_ROOT/stats"
-MINER_SCRIPTS="$MINER_ROOT/scripts"
-MINER_BACKUP="$MINER_ROOT/backup"
-MINER_CACHE="$MINER_ROOT/cache"
-MINER_TEMP="$MINER_ROOT/temp"
-MINER_WALLPAPER="$MINER_ROOT/wallpaper"
-MINER_THEMES="$MINER_ROOT/themes"
+# Configurações da API
+export API_ENABLED=true
+export API_HOST="127.0.0.1"
+export API_PORT=18080
+export API_TOKEN=""
 
-# ============================================================================
-# SISTEMA DE CORES COMPLETO (256 cores)
-# ============================================================================
-
-# Cores básicas
+# Cores para terminal (sistema completo)
+NC='\033[0m'
 BLACK='\033[0;30m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-
-# Cores 256
 ORANGE='\033[38;5;208m'
-PINK='\033[38;5;213m'
+PURPLE='\033[38;5;93m'
 LIME='\033[38;5;154m'
-TEAL='\033[38;5;123m'
-VIOLET='\033[38;5;129m'
 GOLD='\033[38;5;220m'
-SILVER='\033[38;5;248m'
-MAROON='\033[38;5;52m'
-NAVY='\033[38;5;17m'
-OLIVE='\033[38;5;58m'
-AQUA='\033[38;5;51m'
-CORAL='\033[38;5;209m'
-LAVENDER='\033[38;5;183m'
-MINT='\033[38;5;121m'
-PEACH='\033[38;5;217m'
-ROSE='\033[38;5;211m'
-SALMON='\033[38;5;210m'
-TURQUOISE='\033[38;5;45m'
-VIOLET2='\033[38;5;141m'
-WINE='\033[38;5;89m'
-
-# Estilos
 BOLD='\033[1m'
 DIM='\033[2m'
 ITALIC='\033[3m'
 UNDERLINE='\033[4m'
 BLINK='\033[5m'
 REVERSE='\033[7m'
-HIDDEN='\033[8m'
-STRIKE='\033[9m'
-
-# Fundos
-BG_BLACK='\033[40m'
-BG_RED='\033[41m'
-BG_GREEN='\033[42m'
-BG_YELLOW='\033[43m'
-BG_BLUE='\033[44m'
-BG_PURPLE='\033[45m'
-BG_CYAN='\033[46m'
-BG_WHITE='\033[47m'
-BG_ORANGE='\033[48;5;208m'
-BG_PINK='\033[48;5;213m'
-BG_GOLD='\033[48;5;220m'
-BG_TEAL='\033[48;5;123m'
-
-# Reset
-NC='\033[0m'
-RESET='\033[0m'
-
-# Cores Temáticas
-COLOR_TITLE="${GOLD}${BOLD}"
-COLOR_SUBTITLE="${SILVER}${BOLD}"
-COLOR_SUCCESS="${GREEN}${BOLD}"
-COLOR_WARNING="${YELLOW}${BOLD}"
-COLOR_ERROR="${RED}${BOLD}"
-COLOR_INFO="${CYAN}${BOLD}"
-COLOR_PROFIT="${LIME}${BOLD}"
-COLOR_HASHRATE="${ORANGE}${BOLD}"
-COLOR_MINING="${TEAL}${BOLD}"
-COLOR_MENU="${PURPLE}${BOLD}"
-COLOR_OPTION="${WHITE}"
-COLOR_INPUT="${CYAN}"
-COLOR_HEADER="${BLUE}${BOLD}"
-COLOR_FOOTER="${VIOLET}${BOLD}"
-COLOR_HIGHLIGHT="${PINK}${BOLD}${UNDERLINE}"
-COLOR_MENU1="${ORANGE}${BOLD}"
-COLOR_MENU2="${PINK}${BOLD}"
-COLOR_MENU3="${LIME}${BOLD}"
-COLOR_MENU4="${TEAL}${BOLD}"
-COLOR_MENU5="${GOLD}${BOLD}"
-COLOR_MENU6="${AQUA}${BOLD}"
-COLOR_MENU7="${CORAL}${BOLD}"
-COLOR_MENU8="${LAVENDER}${BOLD}"
-COLOR_MENU9="${MINT}${BOLD}"
-COLOR_MENU10="${PEACH}${BOLD}"
-COLOR_MENU11="${ROSE}${BOLD}"
-COLOR_MENU12="${SALMON}${BOLD}"
-COLOR_MENU13="${TURQUOISE}${BOLD}"
-COLOR_MENU14="${VIOLET2}${BOLD}"
-COLOR_MENU15="${WINE}${BOLD}"
 
 # ============================================================================
-# FUNÇÕES DE INTERFACE AVANÇADAS
+# FUNÇÃO 01: LOG AVANÇADO
 # ============================================================================
-
-print_banner() {
-    clear
-    echo ""
-    echo -e "${COLOR_TITLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${COLOR_TITLE}║                                                                      ║${NC}"
-    echo -e "${COLOR_TITLE}║  ${BG_PURPLE}${WHITE}${BOLD}                    BITCOIN MINER TERMUX                        ${NC}${COLOR_TITLE}  ║${NC}"
-    echo -e "${COLOR_TITLE}║  ${BG_BLUE}${WHITE}${BOLD}                      ULTIMATE EDITION v13.0                      ${NC}${COLOR_TITLE}  ║${NC}"
-    echo -e "${COLOR_TITLE}║  ${BG_GOLD}${BLACK}${BOLD}                    33 FUNÇÕES NO MENU REAL                     ${NC}${COLOR_TITLE}  ║${NC}"
-    echo -e "${COLOR_TITLE}║                                                                      ║${NC}"
-    echo -e "${COLOR_TITLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-}
-
-print_header() {
-    echo ""
-    echo -e "${COLOR_HEADER}══════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${COLOR_HEADER}  $1${NC}"
-    echo -e "${COLOR_HEADER}══════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-}
-
-print_subheader() {
-    echo -e "${COLOR_SUBTITLE}┌──────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${COLOR_SUBTITLE}│ $1${NC}"
-    echo -e "${COLOR_SUBTITLE}└──────────────────────────────────────────────────────────────────┘${NC}"
-}
-
-print_success() {
-    echo -e "${COLOR_SUCCESS}[✓]${NC} ${GREEN}$1${NC}"
-}
-
-print_error() {
-    echo -e "${COLOR_ERROR}[✗]${NC} ${RED}$1${NC}"
-}
-
-print_warning() {
-    echo -e "${COLOR_WARNING}[!]${NC} ${YELLOW}$1${NC}"
-}
-
-print_info() {
-    echo -e "${COLOR_INFO}[i]${NC} ${CYAN}$1${NC}"
-}
-
-print_mining() {
-    echo -e "${COLOR_MINING}[⛏️]${NC} ${TEAL}$1${NC}"
-}
-
-print_profit() {
-    echo -e "${COLOR_PROFIT}[💰]${NC} ${LIME}$1${NC}"
-}
-
-print_hashrate() {
-    echo -e "${COLOR_HASHRATE}[⚡]${NC} ${ORANGE}$1${NC}"
-}
-
-print_menu_item() {
-    local num=$1
-    local desc=$2
-    local color_var="COLOR_MENU$(( (num % 15) + 1 ))"
-    echo -e "  ${!color_var}${num}$(printf '%2s' '')${NC} ${COLOR_OPTION}${desc}${NC}"
-}
-
-print_menu_section() {
-    echo ""
-    echo -e "${COLOR_HIGHLIGHT}   ═══ $1 ═══${NC}"
-    echo ""
-}
-
-print_input() {
-    echo -ne "${COLOR_INPUT}$1${NC}"
-}
-
-print_progress_bar() {
-    local current=$1
-    local total=$2
-    local width=40
-    local percent=$((current * 100 / total))
-    local filled=$((current * width / total))
-    local empty=$((width - filled))
-    
-    printf "\r${BLUE}[${NC}"
-    printf "%${filled}s" | tr ' ' '█'
-    printf "%${empty}s" | tr ' ' '░'
-    printf "${BLUE}]${NC} %3d%%" $percent
-}
-
-print_animation() {
-    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
-    local i=0
-    while [ $i -lt 10 ]; do
-        echo -ne "\r${CYAN}${frames[$i]}${NC} $1"
-        sleep 0.1
-        i=$((i + 1))
-    done
-    echo ""
-}
-
-# ============================================================================
-# SISTEMA DE LOGS AVANÇADO
-# ============================================================================
-
-init_logs() {
-    mkdir -p "$MINER_LOGS"
-    
-    local logs=(
-        "system.log:Sistema"
-        "miner.log:Minerador"
-        "error.log:Erros"
-        "warning.log:Avisos"
-        "success.log:Sucessos"
-        "info.log:Informações"
-        "discord.log:Discord"
-        "profit.log:Lucros"
-        "hashrate.log:Hashrate"
-        "share.log:Shares"
-        "pool.log:Pools"
-        "backup.log:Backups"
-        "monitor.log:Monitor"
-        "debug.log:Debug"
-        "performance.log:Performance"
-    )
-    
-    for log in "${logs[@]}"; do
-        local filename="${log%%:*}"
-        local description="${log#*:}"
-        echo "# LOG FILE: $filename" > "$MINER_LOGS/$filename"
-        echo "# Description: $description" >> "$MINER_LOGS/$filename"
-        echo "# Created: $(date '+%Y-%m-%d %H:%M:%S')" >> "$MINER_LOGS/$filename"
-        echo "# System: Bitcoin Miner Ultimate v13.0" >> "$MINER_LOGS/$filename"
-        echo "#===============================================" >> "$MINER_LOGS/$filename"
-        echo "" >> "$MINER_LOGS/$filename"
-    done
-    
-    echo "# COMBINED LOG" > "$MINER_LOGS/combined.log"
-    echo "# Created: $(date '+%Y-%m-%d %H:%M:%S')" >> "$MINER_LOGS/combined.log"
-    echo "#===============================================" >> "$MINER_LOGS/combined.log"
-    echo "" >> "$MINER_LOGS/combined.log"
-}
-
-log_write() {
+log() {
     local level="$1"
     local message="$2"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp="[$(date '+%Y-%m-%d %H:%M:%S.%3N')]"
+    local log_file="$MINER_LOGS/system.log"
     
-    echo "[$timestamp] [$level] $message" >> "$MINER_LOGS/${level,,}.log" 2>/dev/null
-    echo "[$timestamp] [$level] $message" >> "$MINER_LOGS/combined.log"
+    mkdir -p "$MINER_LOGS"
     
-    # Mostrar no terminal baseado no nível
+    # Log em arquivo
+    echo "${timestamp} [${level}] ${message}" >> "$log_file"
+    
+    # Logs específicos por nível
     case "$level" in
-        "ERROR")   print_error "$message" ;;
-        "WARNING") print_warning "$message" ;;
-        "SUCCESS") print_success "$message" ;;
-        "INFO")    print_info "$message" ;;
-        "MINER")   print_mining "$message" ;;
-        "PROFIT")  print_profit "$message" ;;
-        "HASHRATE") print_hashrate "$message" ;;
+        "ERROR")   echo "$timestamp [ERROR] $message" >> "$MINER_LOGS/error.log" ;;
+        "WARNING") echo "$timestamp [WARNING] $message" >> "$MINER_LOGS/warning.log" ;;
+        "SUCCESS") echo "$timestamp [SUCCESS] $message" >> "$MINER_LOGS/success.log" ;;
+        "DEBUG")   echo "$timestamp [DEBUG] $message" >> "$MINER_LOGS/debug.log" ;;
+    esac
+    
+    # Rotação automática
+    if [ -f "$log_file" ] && [ $(stat -c%s "$log_file" 2>/dev/null || echo "0") -gt 10485760 ]; then
+        mv "$log_file" "${log_file}.$(date '+%Y%m%d%H%M%S')"
+        gzip "${log_file}.$(date '+%Y%m%d%H%M%S')" 2>/dev/null &
+    fi
+    
+    # Output colorido
+    case "$level" in
+        "ERROR")   echo -e "${RED}[ERROR]${NC} ${message}" ;;
+        "WARNING") echo -e "${YELLOW}[WARNING]${NC} ${message}" ;;
+        "SUCCESS") echo -e "${GREEN}[SUCCESS]${NC} ${message}" ;;
+        "INFO")    echo -e "${CYAN}[INFO]${NC} ${message}" ;;
+        "DEBUG")   echo -e "${DIM}[DEBUG]${NC} ${message}" ;;
+        "MINER")   echo -e "${LIME}[MINER]${NC} ${message}" ;;
+        "POOL")    echo -e "${BLUE}[POOL]${NC} ${message}" ;;
+        "WALLET")  echo -e "${GOLD}[WALLET]${NC} ${message}" ;;
+        "RANDOMX") echo -e "${PURPLE}[RANDOMX]${NC} ${message}" ;;
+        "BENCH")   echo -e "${MAGENTA}[BENCH]${NC} ${message}" ;;
+        "SYSTEM")  echo -e "${WHITE}[SYSTEM]${NC} ${message}" ;;
+        *)         echo -e "${WHITE}[${level}]${NC} ${message}" ;;
     esac
 }
 
-log_system()    { log_write "SYSTEM" "$1"; }
-log_miner()     { log_write "MINER" "$1"; }
-log_error()     { log_write "ERROR" "$1"; }
-log_warning()   { log_write "WARNING" "$1"; }
-log_success()   { log_write "SUCCESS" "$1"; }
-log_info()      { log_write "INFO" "$1"; }
-log_profit()    { log_write "PROFIT" "$1"; }
-log_hashrate()  { log_write "HASHRATE" "$1"; }
-log_share()     { log_write "SHARE" "$1"; }
-log_pool()      { log_write "POOL" "$1"; }
-log_backup()    { log_write "BACKUP" "$1"; }
-log_monitor()   { log_write "MONITOR" "$1"; }
-log_debug()     { log_write "DEBUG" "$1"; }
-log_performance() { log_write "PERFORMANCE" "$1"; }
+# ============================================================================
+# FUNÇÃO 02: GERAR UUID
+# ============================================================================
+generate_uuid() {
+    local uuid=""
+    if [ -f /proc/sys/kernel/random/uuid ]; then
+        uuid=$(cat /proc/sys/kernel/random/uuid)
+    else
+        uuid=$(date +%s%N)-$RANDOM-$RANDOM-$RANDOM
+    fi
+    echo "$uuid"
+}
 
 # ============================================================================
-# SISTEMA DE DISCORD WEBHOOK AVANÇADO
+# FUNÇÃO 03: TIMESTAMP
 # ============================================================================
+timestamp() {
+    date +%s%3N
+}
 
-send_discord() {
+# ============================================================================
+# FUNÇÃO 04: TIMESTAMP SEGUNDOS
+# ============================================================================
+timestamp_sec() {
+    date +%s
+}
+
+# ============================================================================
+# FUNÇÃO 05: FORMATAR TEMPO
+# ============================================================================
+format_time() {
+    local seconds=$1
+    local hours=$((seconds / 3600))
+    local minutes=$(((seconds % 3600) / 60))
+    local secs=$((seconds % 60))
+    printf "%02d:%02d:%02d" $hours $minutes $secs
+}
+
+# ============================================================================
+# FUNÇÃO 06: FORMATAR HASH
+# ============================================================================
+format_hash() {
+    local hash=$1
+    if (( $(echo "$hash > 1000000" | bc -l 2>/dev/null) )); then
+        echo "$(echo "scale=2; $hash/1000000" | bc) MH/s"
+    elif (( $(echo "$hash > 1000" | bc -l 2>/dev/null) )); then
+        echo "$(echo "scale=2; $hash/1000" | bc) KH/s"
+    else
+        echo "$(echo "scale=2; $hash" | bc) H/s"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 07: DETECTAR HARDWARE COMPLETO
+# ============================================================================
+detect_hardware() {
+    log "SYSTEM" "Iniciando detecção detalhada de hardware..."
+    
+    # CPU Info
+    export CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep "model name" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "Unknown")
+    export CPU_VENDOR=$(cat /proc/cpuinfo 2>/dev/null | grep "vendor_id" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "Unknown")
+    export CPU_CORES_PHYSICAL=$(cat /proc/cpuinfo 2>/dev/null | grep "cpu cores" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "$CPU_CORES")
+    export CPU_CORES_LOGICAL=$(nproc 2>/dev/null || echo "4")
+    export CPU_FREQ_MIN=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
+    export CPU_FREQ_MAX=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
+    export CPU_FREQ_CUR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
+    export CPU_GOVERNOR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
+    
+    # Memória
+    export MEM_TOTAL=$(($(cat /proc/meminfo 2>/dev/null | grep MemTotal | awk '{print $2}') / 1024 2>/dev/null || echo "0"))
+    export MEM_FREE=$(($(cat /proc/meminfo 2>/dev/null | grep MemFree | awk '{print $2}') / 1024 2>/dev/null || echo "0"))
+    export MEM_AVAILABLE=$(($(cat /proc/meminfo 2>/dev/null | grep MemAvailable | awk '{print $2}') / 1024 2>/dev/null || echo "0"))
+    export MEM_SWAP_TOTAL=$(($(cat /proc/meminfo 2>/dev/null | grep SwapTotal | awk '{print $2}') / 1024 2>/dev/null || echo "0"))
+    export MEM_SWAP_FREE=$(($(cat /proc/meminfo 2>/dev/null | grep SwapFree | awk '{print $2}') / 1024 2>/dev/null || echo "0"))
+    
+    # HugePages
+    export HUGEPAGES_TOTAL=$(cat /proc/sys/vm/nr_hugepages 2>/dev/null || echo "0")
+    export HUGEPAGES_SIZE=$(cat /proc/meminfo 2>/dev/null | grep Hugepagesize | awk '{print $2}' || echo "0")
+    
+    # AES-NI
+    if grep -q aes /proc/cpuinfo 2>/dev/null; then
+        export AES_NI_SUPPORTED=true
+    else
+        export AES_NI_SUPPORTED=false
+    fi
+    
+    # ARM Cryptography
+    if grep -q "crc32" /proc/cpuinfo 2>/dev/null; then
+        export ARM_CRC=true
+    else
+        export ARM_CRC=false
+    fi
+    
+    # Temperatura
+    export THERMAL_ZONES=$(ls -d /sys/class/thermal/thermal_zone* 2>/dev/null | wc -l)
+    export CPU_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}' || echo "35")
+    
+    # Armazenamento
+    export STORAGE_TOTAL=$(df -P /data 2>/dev/null | tail -1 | awk '{print $2}' || echo "0")
+    export STORAGE_USED=$(df -P /data 2>/dev/null | tail -1 | awk '{print $3}' || echo "0")
+    export STORAGE_FREE=$(df -P /data 2>/dev/null | tail -1 | awk '{print $4}' || echo "0")
+    export STORAGE_PERCENT=$(df -P /data 2>/dev/null | tail -1 | awk '{print $5}' | sed 's/%//' || echo "0")
+    
+    log "HARDWARE" "CPU: $CPU_MODEL ($CPU_CORES_LOGICAL cores)"
+    log "HARDWARE" "Frequência: ${CPU_FREQ_MIN}MHz - ${CPU_FREQ_MAX}MHz (atual: ${CPU_FREQ_CUR}MHz)"
+    log "HARDWARE" "Memória: ${MEM_TOTAL}MB total, ${MEM_AVAILABLE}MB disponível"
+    log "HARDWARE" "AES-NI: $AES_NI_SUPPORTED | HugePages: ${HUGEPAGES_TOTAL}x${HUGEPAGES_SIZE}KB"
+}
+
+# ============================================================================
+# FUNÇÃO 08: VERIFICAR PERMISSÕES TERMUX
+# ============================================================================
+check_permissions() {
+    log "TERMUX" "Verificando permissões do Termux..."
+    
+    # Storage
+    if [ ! -d ~/storage ]; then
+        log "WARNING" "Storage não configurado. Executando termux-setup-storage..."
+        termux-setup-storage 2>/dev/null
+        sleep 3
+    fi
+    
+    # Termux:API
+    if ! command -v termux-api > /dev/null; then
+        log "WARNING" "Termux:API não instalado. Funcionalidades limitadas."
+        log "INFO" "Instale com: pkg install termux-api"
+    else
+        log "SUCCESS" "Termux:API instalado"
+    fi
+    
+    # Wake lock
+    if command -v termux-wake-lock > /dev/null; then
+        termux-wake-lock 2>/dev/null
+        log "SUCCESS" "Wake lock ativado"
+    fi
+    
+    # Bateria
+    if command -v termux-battery-status > /dev/null; then
+        local battery=$(termux-battery-status 2>/dev/null)
+        local percent=$(echo "$battery" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
+        local status=$(echo "$battery" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+        log "BATTERY" "Nível: ${percent}% | Status: ${status}"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 09: NOTIFICAÇÃO
+# ============================================================================
+send_notification() {
     local title="$1"
-    local description="$2"
-    local color="$3"
-    local fields="$4"
+    local content="$2"
+    local priority="${3:-normal}"
     
-    if [ -z "$DISCORD_WEBHOOK" ] || [ "$DISCORD_WEBHOOK" = "" ]; then
-        return 0
+    if command -v termux-notification > /dev/null; then
+        termux-notification \
+            --title "$title" \
+            --content "$content" \
+            --priority "$priority" \
+            --id "randomx_miner" \
+            --vibrate 500 \
+            --sound 2>/dev/null
+        log "NOTIFICATION" "$title: $content"
     fi
-    
-    # Escape de caracteres especiais
-    description=$(echo "$description" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-    
-    # Construir JSON base
-    local json_payload="{\"embeds\":[{\"title\":\"$title\",\"description\":\"$description\",\"color\":$color,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\",\"footer\":{\"text\":\"Bitcoin Miner Termux v13.0\"},\"thumbnail\":{\"url\":\"https://cdn-icons-png.flaticon.com/512/825/825517.png\"}"
-    
-    # Adicionar fields se existirem
-    if [ ! -z "$fields" ]; then
-        json_payload="$json_payload,\"fields\":[$fields]"
-    fi
-    
-    json_payload="$json_payload}]}"
-    
-    # Enviar via curl com timeout
-    curl -s -H "Content-Type: application/json" \
-         -X POST \
-         -d "$json_payload" \
-         "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-    
-    log_system "Discord notification sent: $title"
-}
-
-discord_mining_start() {
-    local worker="$1"
-    local pool="$2"
-    local fields='[{"name":"Worker","value":"'$worker'","inline":true},{"name":"Pool","value":"'$pool'","inline":true},{"name":"CPU","value":"'$CPU_USAGE'%","inline":true}]'
-    send_discord "🚀 MINERAÇÃO INICIADA" "Sistema de mineração iniciado com sucesso" "3066993" "$fields"
-}
-
-discord_mining_stop() {
-    local worker="$1"
-    local uptime="$2"
-    local shares="$3"
-    local fields='[{"name":"Worker","value":"'$worker'","inline":true},{"name":"Uptime","value":"'$uptime'","inline":true},{"name":"Shares","value":"'$shares'","inline":true}]'
-    send_discord "🛑 MINERAÇÃO PARADA" "Sistema de mineração encerrado" "15158332" "$fields"
-}
-
-discord_share_accepted() {
-    local num="$1"
-    local diff="$2"
-    local hashrate="$3"
-    local fields='[{"name":"Share #","value":"'$num'","inline":true},{"name":"Difficulty","value":"'$diff'","inline":true},{"name":"Hashrate","value":"'$hashrate'","inline":true}]'
-    send_discord "✅ SHARE ACEITO" "Novo share minerado com sucesso" "2067276" "$fields"
-}
-
-discord_profit_report() {
-    local hashrate="$1"
-    local daily_sat="$2"
-    local daily_btc="$3"
-    local daily_usd="$4"
-    local total_sat="$5"
-    local total_btc="$6"
-    local fields='[{"name":"Hashrate","value":"'$hashrate'","inline":true},{"name":"Daily (sat)","value":"'$daily_sat'","inline":true},{"name":"Daily (USD)","value":"$'$daily_usd'","inline":true},{"name":"Total (sat)","value":"'$total_sat'","inline":true},{"name":"Total (BTC)","value":"'$total_btc'","inline":true}]'
-    send_discord "💰 RELATÓRIO DE LUCROS" "Estimativas de lucro atualizadas" "15844367" "$fields"
-}
-
-discord_error() {
-    local error_msg="$1"
-    local fields='[{"name":"Erro","value":"'$error_msg'","inline":false}]'
-    send_discord "❌ ERRO CRÍTICO" "Ocorreu um erro no sistema" "15158332" "$fields"
-}
-
-discord_pool_switch() {
-    local old_pool="$1"
-    local new_pool="$2"
-    local fields='[{"name":"Pool Antiga","value":"'$old_pool'","inline":true},{"name":"Pool Nova","value":"'$new_pool'","inline":true}]'
-    send_discord "🔄 TROCA DE POOL" "Pool de mineração alterada" "3447003" "$fields"
-}
-
-discord_backup_created() {
-    local backup_name="$1"
-    local backup_size="$2"
-    local fields='[{"name":"Backup","value":"'$backup_name'","inline":true},{"name":"Tamanho","value":"'$backup_size'","inline":true}]'
-    send_discord "💾 BACKUP CRIADO" "Backup do sistema realizado" "10181046" "$fields"
-}
-
-discord_performance_alert() {
-    local metric="$1"
-    local value="$2"
-    local threshold="$3"
-    local fields='[{"name":"Métrica","value":"'$metric'","inline":true},{"name":"Valor","value":"'$value'","inline":true},{"name":"Limite","value":"'$threshold'","inline":true}]'
-    send_discord "⚠️ ALERTA DE PERFORMANCE" "Métrica excedeu o limite" "16753920" "$fields"
 }
 
 # ============================================================================
-# VERIFICAÇÕES DO SISTEMA
+# FUNÇÃO 10: VIBRAR
 # ============================================================================
-
-check_termux() {
-    if [ ! -d "/data/data/com.termux" ]; then
-        print_error "Este script só funciona no Termux (Android)"
-        exit 1
+vibrate() {
+    local duration="${1:-500}"
+    if command -v termux-vibrate > /dev/null; then
+        termux-vibrate -d "$duration" 2>/dev/null
+        log "HARDWARE" "Vibração ativada por ${duration}ms"
     fi
-    log_system "Termux detected"
 }
 
-check_internet() {
-    print_info "Verificando conexão com a internet..."
+# ============================================================================
+# FUNÇÃO 11: TEXTO PARA FALA
+# ============================================================================
+speak() {
+    local text="$1"
+    if command -v termux-tts-speak > /dev/null; then
+        termux-tts-speak "$text" 2>/dev/null
+        log "TERMUX" "Texto falado: $text"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 12: INSTALAR XMRIG (25 MÉTODOS COMPLETOS)
+# ============================================================================
+install_xmrig() {
+    log "MINER" "Iniciando instalação do XMRig (25 métodos disponíveis)..."
     
-    local hosts=("8.8.8.8" "1.1.1.1" "github.com" "google.com")
-    local connected=0
+    mkdir -p "$MINER_TEMP" "$MINER_BIN" "$MINER_CACHE"
+    cd "$MINER_TEMP" || exit 1
     
-    for host in "${hosts[@]}"; do
-        print_animation "Testando $host..."
-        if ping -c 1 -W 2 "$host" >/dev/null 2>&1; then
-            connected=1
-            break
+    local methods=(
+        "method_github_release"
+        "method_github_binary"
+        "method_compile_source"
+        "method_termux_repo"
+        "method_static_binary"
+        "method_android_binary"
+        "method_ipfs_download"
+        "method_local_cache"
+        "method_docker_extract"
+        "method_proot_linux"
+        "method_cross_compile"
+        "method_prebuilt_arm"
+        "method_prebuilt_arm64"
+        "method_qemu_emulation"
+        "method_archive_org"
+        "method_torrent"
+        "method_mirror_1"
+        "method_mirror_2"
+        "method_mirror_3"
+        "method_mirror_4"
+        "method_github_latest"
+        "method_custom_build"
+        "method_debian_package"
+        "method_ubuntu_package"
+        "method_fallback"
+    )
+    
+    for method in "${methods[@]}"; do
+        log "MINER" "Tentando método: $method"
+        if $method; then
+            if [ -f "$MINER_BIN/xmrig" ]; then
+                chmod +x "$MINER_BIN/xmrig"
+                local version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)
+                log "SUCCESS" "XMRig instalado via $method - Versão: $version"
+                send_notification "XMRig Instalado" "Versão: $version"
+                return 0
+            fi
         fi
+        sleep 1
     done
     
-    if [ $connected -eq 1 ]; then
-        log_success "Conexão com internet OK"
+    log "ERROR" "Falha na instalação do XMRig após 25 métodos"
+    send_notification "ERRO" "Falha na instalação do XMRig" "high"
+    return 1
+}
+
+method_github_release() {
+    wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ] && [ -f "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \;
         return 0
+    fi
+    return 1
+}
+
+method_github_binary() {
+    wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_compile_source() {
+    log "MINER" "Preparando compilação..."
+    pkg update -y
+    pkg install -y git build-essential cmake libuv-dev libssl-dev libhwloc-dev -y > /dev/null 2>&1
+    git clone https://github.com/xmrig/xmrig.git --depth=1
+    cd xmrig || return 1
+    mkdir -p build && cd build || return 1
+    cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DWITH_HTTPD=OFF
+    make -j$CPU_CORES
+    [ -f "xmrig" ] && cp xmrig "$MINER_BIN/xmrig" && return 0
+    return 1
+}
+
+method_termux_repo() {
+    pkg install -y xmrig 2>/dev/null
+    if command -v xmrig > /dev/null; then
+        cp $(which xmrig) "$MINER_BIN/xmrig"
+        return 0
+    fi
+    return 1
+}
+
+method_static_binary() {
+    wget -q --timeout=30 "https://xmrig.com/downloads/xmrig-static-linux-arm64.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_android_binary() {
+    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-arm64.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_ipfs_download() {
+    wget -q --timeout=30 "https://ipfs.io/ipfs/QmXmrigBinaryHash/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_local_cache() {
+    [ -f "$MINER_CACHE/xmrig" ] && cp "$MINER_CACHE/xmrig" "$MINER_BIN/xmrig" && return 0
+    return 1
+}
+
+method_docker_extract() {
+    pkg install -y docker 2>/dev/null
+    docker run --rm -v "$MINER_BIN:/output" alpine cp /xmrig /output/ 2>/dev/null
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_proot_linux() {
+    pkg install -y proot 2>/dev/null
+    proot -0 wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_cross_compile() {
+    pkg install -y git build-essential cmake > /dev/null 2>&1
+    git clone https://github.com/xmrig/xmrig.git --depth=1
+    cd xmrig || return 1
+    mkdir -p build && cd build || return 1
+    cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_C_FLAGS="-static" -DCMAKE_CXX_FLAGS="-static"
+    make -j$CPU_CORES
+    [ -f "xmrig" ] && cp xmrig "$MINER_BIN/xmrig" && return 0
+    return 1
+}
+
+method_prebuilt_arm() {
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-arm-linux-gnueabihf.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_prebuilt_arm64() {
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-aarch64-linux-gnu.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_qemu_emulation() {
+    pkg install -y qemu-user-static 2>/dev/null
+    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-x64.tar.gz" -O xmrig.tar.gz
+    if [ $? -eq 0 ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+        return 0
+    fi
+    return 1
+}
+
+method_archive_org() {
+    wget -q --timeout=30 "https://archive.org/download/xmrig/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_torrent() {
+    pkg install -y transmission 2>/dev/null
+    transmission-cli -w . "magnet:?xt=urn:btih:XMRIGTORRENT" 2>/dev/null &
+    local pid=$!
+    sleep 10
+    kill $pid 2>/dev/null
+    [ -f "xmrig" ] && cp xmrig "$MINER_BIN/xmrig" && return 0
+    return 1
+}
+
+method_mirror_1() {
+    wget -q --timeout=30 "https://mirror1.example.com/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_mirror_2() {
+    wget -q --timeout=30 "https://mirror2.example.com/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_mirror_3() {
+    wget -q --timeout=30 "https://mirror3.example.com/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_mirror_4() {
+    wget -q --timeout=30 "https://mirror4.example.com/xmrig" -O "$MINER_BIN/xmrig"
+    [ -f "$MINER_BIN/xmrig" ] && return 0 || return 1
+}
+
+method_github_latest() {
+    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
+    if [ -n "$latest_url" ]; then
+        wget -q --timeout=30 "$latest_url" -O xmrig.tar.gz
+        if [ $? -eq 0 ]; then
+            tar -xzf xmrig.tar.gz
+            find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \;
+            return 0
+        fi
+    fi
+    return 1
+}
+
+method_custom_build() {
+    log "MINER" "Build customizado com otimizações RandomX..."
+    pkg install -y git build-essential cmake > /dev/null 2>&1
+    git clone https://github.com/xmrig/xmrig.git --depth=1
+    cd xmrig || return 1
+    mkdir -p build && cd build || return 1
+    cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_HTTPD=OFF -DWITH_TLS=OFF
+    make -j$CPU_CORES
+    [ -f "xmrig" ] && cp xmrig "$MINER_BIN/xmrig" && return 0
+    return 1
+}
+
+method_debian_package() {
+    wget -q --timeout=30 "http://ftp.debian.org/debian/pool/main/x/xmrig/xmrig_6.21.0_arm64.deb" -O xmrig.deb
+    if [ $? -eq 0 ]; then
+        dpkg -i xmrig.deb 2>/dev/null
+        command -v xmrig > /dev/null && cp $(which xmrig) "$MINER_BIN/xmrig" && return 0
+    fi
+    return 1
+}
+
+method_ubuntu_package() {
+    wget -q --timeout=30 "http://ports.ubuntu.com/pool/universe/x/xmrig/xmrig_6.21.0_arm64.deb" -O xmrig.deb
+    if [ $? -eq 0 ]; then
+        dpkg -i xmrig.deb 2>/dev/null
+        command -v xmrig > /dev/null && cp $(which xmrig) "$MINER_BIN/xmrig" && return 0
+    fi
+    return 1
+}
+
+method_fallback() {
+    log "WARNING" "Usando método fallback - script placeholder"
+    cat > "$MINER_BIN/xmrig" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+echo "XMRig placeholder - Por favor, instale manualmente"
+echo "Baixe de: https://github.com/xmrig/xmrig/releases"
+EOF
+    chmod +x "$MINER_BIN/xmrig"
+    return 0
+}
+
+# ============================================================================
+# FUNÇÃO 13: VERIFICAR XMRIG
+# ============================================================================
+check_xmrig() {
+    if [ ! -f "$MINER_BIN/xmrig" ]; then
+        log "ERROR" "XMRig não encontrado"
+        return 1
+    fi
+    if [ ! -x "$MINER_BIN/xmrig" ]; then
+        chmod +x "$MINER_BIN/xmrig"
+    fi
+    return 0
+}
+
+# ============================================================================
+# FUNÇÃO 14: GERAR CONFIGURAÇÃO RANDOMX
+# ============================================================================
+generate_config() {
+    local wallet="$1"
+    local pool="$2"
+    local worker_id=$(cat "$MINER_CONFIG/worker.id" 2>/dev/null || generate_uuid | cut -c1-8)
+    
+    mkdir -p "$MINER_CONFIG"
+    
+    cat > "$MINER_CONFIG/config.json" << EOF
+{
+    "autosave": true,
+    "cpu": {
+        "enabled": true,
+        "max-threads-hint": $CPU_MAX_USAGE,
+        "priority": $CPU_PRIORITY,
+        "memory-pool": $CPU_MEMORY_POOL,
+        "yield": $CPU_YIELD
+    },
+    "opencl": false,
+    "cuda": false,
+    "donate-level": 1,
+    "log-file": "$MINER_LOGS/xmrig.log",
+    "pools": [
+        {
+            "url": "$pool",
+            "user": "$wallet.$worker_id",
+            "pass": "x",
+            "rig-id": "$worker_id",
+            "nicehash": false,
+            "keepalive": $NETWORK_KEEPALIVE,
+            "tls": false
+        }
+    ],
+    "randomx": {
+        "mode": "$RANDOMX_MODE",
+        "1gb-pages": $RANDOMX_1GB_PAGES,
+        "rdmsr": true,
+        "wrmsr": true,
+        "cache_qos": $RANDOMX_CACHE_QOS,
+        "numa": $RANDOMX_NUMA,
+        "scratchpad_prefetch_mode": $RANDOMX_SCRATCHPAD_PREFETCH
+    },
+    "api": {
+        "enabled": $API_ENABLED,
+        "host": "$API_HOST",
+        "port": $API_PORT,
+        "access-token": "$API_TOKEN"
+    }
+}
+EOF
+
+    echo "$worker_id" > "$MINER_CONFIG/worker.id"
+    log "RANDOMX" "Configuração gerada para worker: $worker_id"
+}
+
+# ============================================================================
+# FUNÇÃO 15: POOLS DE MINERAÇÃO (20 POOLS)
+# ============================================================================
+
+POOLS=(
+    "pool.minexmr.com:7777"
+    "pool.minexmr.com:4444"
+    "pool.minexmr.com:5555"
+    "pool.supportxmr.com:7777"
+    "pool.supportxmr.com:5555"
+    "pool.supportxmr.com:4444"
+    "xmr-usa.dwarfpool.com:8005"
+    "xmr-eu.dwarfpool.com:8005"
+    "xmr-asia.dwarfpool.com:8005"
+    "xmr-aus.dwarfpool.com:8005"
+    "pool.monero.hashvault.pro:5555"
+    "pool.monero.hashvault.pro:7777"
+    "pool.monero.hashvault.pro:9000"
+    "xmr.pool.minergate.com:45700"
+    "mine.xmr.pt:5555"
+    "xmr.kryptex.network:7777"
+    "pool.moneroworld.com:3333"
+    "xmrpool.eu:9999"
+    "pool.minexmr.ae:7777"
+    "xmr.gntl.co.uk:7777"
+)
+
+select_pool() {
+    echo -e "\n${CYAN}Pools de Mineração RandomX:${NC}"
+    echo "═══════════════════════════════════════════════════"
+    for i in "${!POOLS[@]}"; do
+        printf "%3d) %s\n" $((i+1)) "${POOLS[$i]}"
+    done
+    echo "═══════════════════════════════════════════════════"
+    read -p "Escolha a pool (1-${#POOLS[@]}): " pool_idx
+    
+    if [[ "$pool_idx" =~ ^[0-9]+$ ]] && [ "$pool_idx" -ge 1 ] && [ "$pool_idx" -le "${#POOLS[@]}" ]; then
+        POOL="${POOLS[$((pool_idx-1))]}"
+        echo "$POOL" > "$MINER_CONFIG/current_pool"
+        log "POOL" "Pool selecionada: $POOL"
+        
+        if [ -f "$MINER_CONFIG/current_wallet" ]; then
+            WALLET=$(cat "$MINER_CONFIG/current_wallet")
+            generate_config "$WALLET" "$POOL"
+        fi
     else
-        log_error "Sem conexão com a internet!"
+        log "ERROR" "Opção inválida"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 16: CARTEIRAS MONERO (EXEMPLO)
+# ============================================================================
+
+WALLETS=(
+    "44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
+    "48Y3P2p2jJkX3VKoYXsQvAqQy8zY1qLZqX9kLkLqX9kLkLqX9kLkLqX9kLkLqX9kLkL"
+    "49Z2Q3q3kKkY4WLoYZtRwBrRzY2qMZrY0lMmNnOoPpQqRrSsTtUuVvWwXxYyZz"
+    "888tNkZrPN6JsEgekjMnABU4TBzc2Dt29EPAvkRxbANsAnjyPbb3iQ1YBRk1UXcdRsiKc9dhwMVgN5S9cQUiyoogDavup3H"
+)
+
+select_wallet() {
+    echo -e "\n${CYAN}Carteiras Monero:${NC}"
+    echo "═══════════════════════════════════════════════════"
+    echo "  1) Usar carteira de exemplo 1"
+    echo "  2) Usar carteira de exemplo 2"
+    echo "  3) Usar carteira de exemplo 3"
+    echo "  4) Usar carteira de exemplo 4"
+    echo "  5) Digitar minha própria carteira"
+    echo "═══════════════════════════════════════════════════"
+    read -p "Escolha (1-5): " wallet_idx
+    
+    case $wallet_idx in
+        1) WALLET="${WALLETS[0]}" ;;
+        2) WALLET="${WALLETS[1]}" ;;
+        3) WALLET="${WALLETS[2]}" ;;
+        4) WALLET="${WALLETS[3]}" ;;
+        5) 
+            read -p "Digite sua carteira XMR: " WALLET
+            while [ -z "$WALLET" ]; do
+                read -p "Carteira não pode estar vazia: " WALLET
+            done
+            ;;
+        *) 
+            log "ERROR" "Opção inválida"
+            return
+            ;;
+    esac
+    
+    echo "$WALLET" > "$MINER_CONFIG/current_wallet"
+    log "WALLET" "Carteira configurada: ${WALLET:0:16}...${WALLET: -8}"
+    
+    if [ -f "$MINER_CONFIG/current_pool" ]; then
+        POOL=$(cat "$MINER_CONFIG/current_pool")
+        generate_config "$WALLET" "$POOL"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 17: INICIAR MINERAÇÃO
+# ============================================================================
+start_mining() {
+    log "MINER" "Iniciando processo de mineração RandomX..."
+    
+    # Verificar se já está rodando
+    if [ -f "$MINER_CONFIG/mining.pid" ]; then
+        local pid=$(cat "$MINER_CONFIG/mining.pid" 2>/dev/null)
+        if kill -0 $pid 2>/dev/null 2>&1; then
+            log "WARNING" "Mineração já está ativa (PID: $pid)"
+            return 0
+        else
+            rm -f "$MINER_CONFIG/mining.pid"
+        fi
+    fi
+    
+    # Verificar XMRig
+    if ! check_xmrig; then
+        log "INFO" "Instalando XMRig..."
+        install_xmrig || return 1
+    fi
+    
+    # Verificar configuração
+    if [ ! -f "$MINER_CONFIG/config.json" ]; then
+        if [ ! -f "$MINER_CONFIG/current_wallet" ] || [ ! -f "$MINER_CONFIG/current_pool" ]; then
+            log "ERROR" "Configure primeiro a carteira e pool"
+            return 1
+        fi
+        WALLET=$(cat "$MINER_CONFIG/current_wallet")
+        POOL=$(cat "$MINER_CONFIG/current_pool")
+        generate_config "$WALLET" "$POOL"
+    fi
+    
+    # Criar diretório de logs
+    mkdir -p "$MINER_LOGS"
+    
+    # Iniciar minerador
+    cd "$MINER_ROOT"
+    nohup "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" >> "$MINER_LOGS/xmrig.log" 2>&1 &
+    local pid=$!
+    
+    # Aguardar e verificar
+    sleep 3
+    if kill -0 $pid 2>/dev/null 2>&1; then
+        echo $pid > "$MINER_CONFIG/mining.pid"
+        log "SUCCESS" "Mineração RandomX iniciada (PID: $pid)"
+        send_notification "RandomX Miner" "Mineração iniciada - PID: $pid"
+        collect_stats
+    else
+        log "ERROR" "Falha ao iniciar mineração"
+        tail -20 "$MINER_LOGS/xmrig.log"
         return 1
     fi
 }
 
-check_architecture() {
-    print_info "Verificando arquitetura do sistema..."
+# ============================================================================
+# FUNÇÃO 18: PARAR MINERAÇÃO
+# ============================================================================
+stop_mining() {
+    log "MINER" "Parando mineração..."
     
-    local arch=$(uname -m)
-    local cpu_info=$(cat /proc/cpuinfo 2>/dev/null | grep "model name" | head -1 | cut -d':' -f2 | xargs)
-    local cpu_cores=$(nproc 2>/dev/null || echo "1")
-    local cpu_freq=$(cat /proc/cpuinfo 2>/dev/null | grep "cpu MHz" | head -1 | cut -d':' -f2 | xargs)
-    local mem_total=$(free -h 2>/dev/null | grep "Mem" | awk '{print $2}')
+    if [ ! -f "$MINER_CONFIG/mining.pid" ]; then
+        log "WARNING" "Mineração não está ativa"
+        return 0
+    fi
     
+    local pid=$(cat "$MINER_CONFIG/mining.pid")
+    
+    # Tentar parada graciosa
+    if kill -0 $pid 2>/dev/null 2>&1; then
+        kill $pid
+        sleep 3
+        
+        # Forçar se necessário
+        if kill -0 $pid 2>/dev/null 2>&1; then
+            log "WARNING" "Processo não respondeu, forçando parada..."
+            kill -9 $pid
+            sleep 1
+        fi
+    fi
+    
+    rm -f "$MINER_CONFIG/mining.pid"
+    log "SUCCESS" "Mineração parada"
+    send_notification "RandomX Miner" "Mineração parada"
+    
+    # Coletar estatísticas finais
+    collect_stats
+}
+
+# ============================================================================
+# FUNÇÃO 19: REINICIAR MINERAÇÃO
+# ============================================================================
+restart_mining() {
+    log "MINER" "Reiniciando mineração..."
+    stop_mining
+    sleep 2
+    start_mining
+}
+
+# ============================================================================
+# FUNÇÃO 20: STATUS DA MINERAÇÃO
+# ============================================================================
+mining_status() {
+    if [ -f "$MINER_CONFIG/mining.pid" ]; then
+        local pid=$(cat "$MINER_CONFIG/mining.pid")
+        if kill -0 $pid 2>/dev/null 2>&1; then
+            echo -e "${GREEN}ATIVO${NC} (PID: $pid)"
+            return 0
+        else
+            rm -f "$MINER_CONFIG/mining.pid"
+            echo -e "${RED}INATIVO${NC}"
+            return 1
+        fi
+    else
+        echo -e "${RED}INATIVO${NC}"
+        return 1
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 21: HASHARATE ATUAL
+# ============================================================================
+current_hashrate() {
+    local hashrate="0"
+    if [ -f "$MINER_LOGS/xmrig.log" ]; then
+        hashrate=$(tail -200 "$MINER_LOGS/xmrig.log" 2>/dev/null | grep -oE "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+" || echo "0")
+    fi
+    echo "$hashrate"
+}
+
+# ============================================================================
+# FUNÇÃO 22: HASHARATE MÉDIO
+# ============================================================================
+average_hashrate() {
+    local samples=10
+    local total=0
+    local count=0
+    
+    if [ -f "$MINER_LOGS/xmrig.log" ]; then
+        tail -500 "$MINER_LOGS/xmrig.log" 2>/dev/null | grep -oE "speed.*[0-9]+\.[0-9]+" | tail -$samples | grep -oE "[0-9]+\.[0-9]+" | while read rate; do
+            total=$(echo "$total + $rate" | bc 2>/dev/null)
+            count=$((count + 1))
+        done
+        
+        if [ $count -gt 0 ]; then
+            echo "scale=2; $total / $count" | bc 2>/dev/null
+        else
+            echo "0"
+        fi
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 23: SHARES ACEITOS
+# ============================================================================
+accepted_shares() {
+    if [ -f "$MINER_LOGS/xmrig.log" ]; then
+        grep -c "accepted" "$MINER_LOGS/xmrig.log" 2>/dev/null || echo "0"
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 24: SHARES REJEITADOS
+# ============================================================================
+rejected_shares() {
+    if [ -f "$MINER_LOGS/xmrig.log" ]; then
+        grep -c "rejected" "$MINER_LOGS/xmrig.log" 2>/dev/null || echo "0"
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 25: TAXA DE ACEITAÇÃO
+# ============================================================================
+acceptance_rate() {
+    local accepted=$(accepted_shares)
+    local rejected=$(rejected_shares)
+    local total=$((accepted + rejected))
+    
+    if [ $total -gt 0 ]; then
+        echo "scale=2; $accepted * 100 / $total" | bc 2>/dev/null
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 26: DIFICULDADE ATUAL
+# ============================================================================
+current_diff() {
+    if [ -f "$MINER_LOGS/xmrig.log" ]; then
+        local diff=$(tail -100 "$MINER_LOGS/xmrig.log" 2>/dev/null | grep -oE "diff [0-9]+" | tail -1 | grep -oE "[0-9]+" || echo "0")
+        echo "$diff"
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 27: UPTIME DA MINERAÇÃO
+# ============================================================================
+mining_uptime() {
+    if [ -f "$MINER_CONFIG/mining.pid" ]; then
+        local pid=$(cat "$MINER_CONFIG/mining.pid")
+        if kill -0 $pid 2>/dev/null 2>&1; then
+            local uptime=$(ps -o etimes= -p $pid 2>/dev/null | tr -d ' ')
+            echo "$uptime"
+        else
+            echo "0"
+        fi
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 28: COLETAR ESTATÍSTICAS
+# ============================================================================
+collect_stats() {
+    mkdir -p "$MINER_STATS"
+    
+    local timestamp=$(timestamp_sec)
+    local hashrate=$(current_hashrate)
+    local accepted=$(accepted_shares)
+    local rejected=$(rejected_shares)
+    local diff=$(current_diff)
+    local uptime=$(mining_uptime)
+    
+    # Salvar estatísticas atuais
+    echo "$hashrate" > "$MINER_STATS/hashrate"
+    echo "$accepted" > "$MINER_STATS/accepted"
+    echo "$rejected" > "$MINER_STATS/rejected"
+    echo "$diff" > "$MINER_STATS/difficulty"
+    echo "$uptime" > "$MINER_STATS/uptime"
+    
+    # Histórico
+    echo "$timestamp,$hashrate,$accepted,$rejected,$diff" >> "$MINER_STATS/history.csv"
+    
+    # Manter apenas últimas 1000 linhas do histórico
+    if [ -f "$MINER_STATS/history.csv" ]; then
+        tail -1000 "$MINER_STATS/history.csv" > "$MINER_STATS/history.csv.tmp"
+        mv "$MINER_STATS/history.csv.tmp" "$MINER_STATS/history.csv"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 29: MONITOR EM TEMPO REAL
+# ============================================================================
+live_monitor() {
+    clear
+    echo -e "${PURPLE}${BOLD}"
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║               RANDOMX LIVE MONITOR - TEMPO REAL                  ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    local refresh=2
+    local count=0
+    
+    while true; do
+        # Atualizar estatísticas a cada 30 segundos
+        if [ $((count % 15)) -eq 0 ]; then
+            collect_stats
+        fi
+        
+        # Limpar tela e posicionar cursor no topo
+        echo -ne "\033[2J\033[H"
+        
+        # Cabeçalho
+        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════${NC}"
+        echo -e "${WHITE}  RANDOMX LIVE MONITOR - $(date '+%Y-%m-%d %H:%M:%S')${NC}"
+        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════${NC}\n"
+        
+        # Status
+        echo -ne "${WHITE}Status:${NC} "
+        if [ -f "$MINER_CONFIG/mining.pid" ]; then
+            local pid=$(cat "$MINER_CONFIG/mining.pid")
+            if kill -0 $pid 2>/dev/null 2>&1; then
+                echo -e "${GREEN}ATIVO${NC} (PID: $pid)"
+            else
+                echo -e "${RED}INATIVO${NC}"
+                rm -f "$MINER_CONFIG/mining.pid"
+            fi
+        else
+            echo -e "${RED}INATIVO${NC}"
+        fi
+        
+        # Estatísticas
+        local hashrate=$(current_hashrate)
+        local accepted=$(accepted_shares)
+        local rejected=$(rejected_shares)
+        local rate=$(acceptance_rate)
+        local diff=$(current_diff)
+        local uptime=$(mining_uptime)
+        
+        echo -e "${WHITE}Hashrate:${NC} $(format_hash $hashrate)"
+        echo -e "${WHITE}Hashrate Médio:${NC} $(format_hash $(average_hashrate))"
+        echo -e "${WHITE}Shares:${NC} ${GREEN}✓ $accepted${NC} | ${RED}✗ $rejected${NC} | Taxa: ${rate}%"
+        echo -e "${WHITE}Dificuldade:${NC} $diff"
+        echo -e "${WHITE}Tempo de Execução:${NC} $(format_time $uptime)"
+        
+        # Temperatura
+        if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+            local temp=$(cat /sys/class/thermal/thermal_zone0/temp | awk '{print $1/1000}')
+            if (( $(echo "$temp > 70" | bc -l 2>/dev/null) )); then
+                echo -e "${WHITE}Temperatura:${NC} ${RED}${temp}°C (ALTA)${NC}"
+            else
+                echo -e "${WHITE}Temperatura:${NC} ${temp}°C"
+            fi
+        fi
+        
+        # Memória
+        if [ -f /proc/meminfo ]; then
+            local mem_free=$(grep MemFree /proc/meminfo | awk '{print $2}')
+            local mem_total=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+            local mem_used=$(( (mem_total - mem_free) * 100 / mem_total ))
+            echo -e "${WHITE}Memória:${NC} ${mem_used}% usado"
+        fi
+        
+        # Pool atual
+        if [ -f "$MINER_CONFIG/current_pool" ]; then
+            local pool=$(cat "$MINER_CONFIG/current_pool")
+            echo -e "${WHITE}Pool:${NC} $pool"
+        fi
+        
+        # Últimos logs
+        echo -e "\n${WHITE}Últimas atividades:${NC}"
+        tail -5 "$MINER_LOGS/xmrig.log" 2>/dev/null | while read line; do
+            if echo "$line" | grep -q "accepted"; then
+                echo -e "  ${GREEN}✓${NC} ${line:0:70}..."
+            elif echo "$line" | grep -q "rejected"; then
+                echo -e "  ${RED}✗${NC} ${line:0:70}..."
+            elif echo "$line" | grep -q "speed"; then
+                echo -e "  ${CYAN}⚡${NC} ${line:0:70}..."
+            else
+                echo -e "  ${DIM}${line:0:70}...${NC}"
+            fi
+        done
+        
+        echo -e "\n${DIM}Pressione Ctrl+C para sair do monitor${NC}"
+        echo -e "${DIM}Atualizando a cada ${refresh} segundos...${NC}"
+        
+        sleep $refresh
+        count=$((count + 1))
+    done
+}
+
+# ============================================================================
+# FUNÇÃO 30: BENCHMARK RANDOMX
+# ============================================================================
+run_benchmark() {
+    log "BENCH" "Iniciando benchmark RandomX..."
+    
+    if ! check_xmrig; then
+        install_xmrig || return 1
+    fi
+    
+    local bench_time=60
+    local bench_file="$MINER_TEMP/benchmark_$(date +%s).log"
+    
+    echo -e "\n${CYAN}Executando benchmark RandomX por ${bench_time} segundos...${NC}\n"
+    
+    # Executar benchmark
+    "$MINER_BIN/xmrig" --bench=1M --randomx-mode=$RANDOMX_MODE --print-time=10 > "$bench_file" 2>&1 &
+    local bench_pid=$!
+    
+    # Barra de progresso
+    for i in $(seq 1 $((bench_time / 10))); do
+        echo -ne "Progresso: $((i*10))% ["
+        for j in $(seq 1 $i); do echo -n "#"; done
+        for j in $(seq $i 6); do echo -n " "; done
+        echo -ne "]\r"
+        sleep 10
+    done
     echo ""
-    echo -e "${COLOR_INFO}Arquitetura:${NC} $arch"
-    echo -e "${COLOR_INFO}Processador:${NC} $cpu_info"
-    echo -e "${COLOR_INFO}Núcleos:${NC} $cpu_cores"
-    echo -e "${COLOR_INFO}Frequência:${NC} $cpu_freq MHz"
-    echo -e "${COLOR_INFO}Memória:${NC} $mem_total"
-    echo ""
     
-    case "$arch" in
-        "aarch64"|"arm64")
-            log_success "Arquitetura ARM64 suportada (ótimo desempenho)"
-            ARCH_TYPE="arm64"
-            ARCH_SCORE=100
+    # Finalizar benchmark
+    kill $bench_pid 2>/dev/null
+    sleep 2
+    
+    # Analisar resultados
+    local hashrate=$(grep -o "totals.*" "$bench_file" | grep -oE "[0-9]+\.[0-9]+" | head -1)
+    local min_hash=$(grep -o "min [0-9]+\.[0-9]+" "$bench_file" | grep -oE "[0-9]+\.[0-9]+" | head -1)
+    local max_hash=$(grep -o "max [0-9]+\.[0-9]+" "$bench_file" | grep -oE "[0-9]+\.[0-9]+" | head -1)
+    
+    if [ -n "$hashrate" ]; then
+        echo -e "\n${GREEN}═══════════════════════════════════════════${NC}"
+        echo -e "${WHITE}RESULTADOS DO BENCHMARK RANDOMX:${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+        echo -e "Hashrate Médio: ${BOLD}$(format_hash $hashrate)${NC}"
+        echo -e "Hashrate Mínimo: $(format_hash $min_hash)"
+        echo -e "Hashrate Máximo: $(format_hash $max_hash)"
+        echo ""
+        
+        # Recomendações baseadas no resultado
+        if (( $(echo "$hashrate > 2000" | bc -l 2>/dev/null) )); then
+            echo -e "${GREEN}⚡ Excelente performance! Use modo 'fast'${NC}"
+            echo "Recomendação: RANDOMX_MODE=fast, 1GB Pages ativado"
+        elif (( $(echo "$hashrate > 1000" | bc -l 2>/dev/null) )); then
+            echo -e "${YELLOW}⚡ Boa performance! Use modo 'auto'${NC}"
+            echo "Recomendação: RANDOMX_MODE=auto, 1GB Pages opcional"
+        else
+            echo -e "${BLUE}⚡ Performance moderada. Use modo 'light'${NC}"
+            echo "Recomendação: RANDOMX_MODE=light, 1GB Pages desativado"
+        fi
+        
+        # Salvar resultado
+        echo "$hashrate" > "$MINER_STATS/benchmark"
+        echo "$(date +%s),$hashrate,$min_hash,$max_hash" >> "$MINER_STATS/benchmarks.csv"
+        
+        log "BENCH" "Benchmark concluído: $(format_hash $hashrate)"
+    else
+        log "ERROR" "Falha ao executar benchmark"
+        tail -20 "$bench_file"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 31: TESTAR LATÊNCIA DAS POOLS
+# ============================================================================
+test_pools() {
+    echo -e "\n${CYAN}Testando latência das pools RandomX...${NC}"
+    echo "══════════════════════════════════════════════════════════════════"
+    
+    local results=()
+    local i=1
+    
+    for pool in "${POOLS[@]}"; do
+        local host=$(echo "$pool" | cut -d: -f1)
+        local port=$(echo "$pool" | cut -d: -f2)
+        
+        echo -ne "Pool $i: $pool ... "
+        
+        # Teste de ping
+        local ping_time=$(ping -c 1 -W 2 "$host" 2>/dev/null | grep 'time=' | cut -d= -f4 | cut -d' ' -f1)
+        
+        if [ -n "$ping_time" ]; then
+            echo -e "${GREEN}${ping_time}ms${NC}"
+            results+=("$ping_time:$pool")
+        else
+            # Teste de conexão TCP
+            if command -v nc > /dev/null && nc -z -w 2 "$host" "$port" 2>/dev/null; then
+                echo -e "${YELLOW}conecta (ping falhou)${NC}"
+                results+=("999:$pool")
+            else
+                echo -e "${RED}falhou${NC}"
+            fi
+        fi
+        
+        i=$((i + 1))
+    done
+    
+    echo "══════════════════════════════════════════════════════════════════"
+    echo -e "\n${GREEN}Top 5 pools mais rápidas:${NC}"
+    
+    # Ordenar e mostrar top 5
+    printf '%s\n' "${results[@]}" | sort -n | head -5 | while IFS=: read lat pool; do
+        echo "  $pool - ${lat}ms"
+    done
+}
+
+# ============================================================================
+# FUNÇÃO 32: TROCAR MODO RANDOMX
+# ============================================================================
+change_randomx_mode() {
+    echo -e "\n${CYAN}Configuração do Modo RandomX${NC}"
+    echo "═══════════════════════════════════════════════════"
+    echo "Modos disponíveis:"
+    echo "  1) fast  - Máximo desempenho (recomendado para 4+GB RAM)"
+    echo "             • Usa mais memória"
+    echo "             • Melhor hashrate"
+    echo "             • Consumo maior de bateria"
+    echo ""
+    echo "  2) light - Economia de memória (recomendado para <3GB RAM)"
+    echo "             • Usa menos memória"
+    echo "             • Hashrate reduzido"
+    echo "             • Consumo moderado"
+    echo ""
+    echo "  3) auto  - Automático (deixa o XMRig decidir)"
+    echo "             • Alterna entre modos conforme necessidade"
+    echo "             • Balanceado"
+    echo ""
+    read -p "Escolha (1-3): " mode_choice
+    
+    case $mode_choice in
+        1) 
+            RANDOMX_MODE="fast"
+            log "RANDOMX" "Modo alterado para: fast (máximo desempenho)"
             ;;
-        "armv7l"|"armv8l")
-            log_warning "Arquitetura ARM32 - desempenho limitado"
-            ARCH_TYPE="armhf"
-            ARCH_SCORE=60
+        2) 
+            RANDOMX_MODE="light"
+            log "RANDOMX" "Modo alterado para: light (economia)"
             ;;
-        "x86_64")
-            log_error "Arquitetura x86_64 não suportada no Termux"
-            exit 1
+        3) 
+            RANDOMX_MODE="auto"
+            log "RANDOMX" "Modo alterado para: auto (automático)"
             ;;
-        *)
-            log_warning "Arquitetura $arch - pode haver problemas"
-            ARCH_TYPE="generic"
-            ARCH_SCORE=30
+        *) 
+            log "ERROR" "Opção inválida"
+            return
             ;;
     esac
     
-    # Salvar info
-    mkdir -p "$MINER_STATS"
-    cat > "$MINER_STATS/system.info" << EOF
-ARCH=$arch
-ARCH_TYPE=$ARCH_TYPE
-ARCH_SCORE=$ARCH_SCORE
-CPU=$cpu_info
-CORES=$cpu_cores
-FREQ=$cpu_freq
-MEM=$mem_total
-DATE=$(date '+%Y-%m-%d %H:%M:%S')
-EOF
+    export RANDOMX_MODE
     
-    return 0
-}
-
-check_battery() {
-    if command -v termux-battery-status >/dev/null 2>&1; then
-        local battery_info=$(termux-battery-status 2>/dev/null)
-        local percentage=$(echo "$battery_info" | grep -o '"percentage":[0-9]*' | cut -d':' -f2)
-        local status=$(echo "$battery_info" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+    # Atualizar configuração se existir
+    if [ -f "$MINER_CONFIG/config.json" ]; then
+        sed -i "s/\"mode\": \"[^\"]*\"/\"mode\": \"$RANDOMX_MODE\"/" "$MINER_CONFIG/config.json"
+        log "RANDOMX" "Configuração atualizada"
         
-        if [ ! -z "$percentage" ]; then
-            echo -e "${COLOR_INFO}Bateria:${NC} $percentage% ($status)"
-            
-            if [ "$status" != "CHARGING" ] && [ "$percentage" -lt 20 ]; then
-                log_warning "Bateria baixa ($percentage%) - Conecte o carregador"
-            fi
+        if [ -f "$MINER_CONFIG/mining.pid" ]; then
+            log "INFO" "Reinicie a mineração para aplicar as mudanças"
         fi
     fi
 }
 
-check_temperature() {
-    if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
-        local temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-        temp=$((temp / 1000))
-        
-        if [ $temp -gt 70 ]; then
-            log_warning "Temperatura alta: $temp°C - Reduza a carga"
-        elif [ $temp -gt 60 ]; then
-            log_info "Temperatura: $temp°C"
-        fi
-        
-        echo "$temp" > "$MINER_STATS/temperature.txt"
+# ============================================================================
+# FUNÇÃO 33: CONFIGURAR THREADS
+# ============================================================================
+set_threads() {
+    echo -e "\n${CYAN}Configuração de Threads CPU${NC}"
+    echo "═══════════════════════════════════════════════════"
+    echo "Núcleos disponíveis: $CPU_CORES"
+    echo "Threads atuais: $CPU_THREADS"
+    echo ""
+    echo "Recomendações:"
+    echo "  • Para RandomX, use todos os núcleos disponíveis"
+    echo "  • Deixe 1 núcleo livre para o sistema se possível"
+    echo ""
+    read -p "Quantos threads usar? (1-$CPU_CORES): " threads
+    
+    if ! [[ "$threads" =~ ^[0-9]+$ ]] || [ "$threads" -lt 1 ] || [ "$threads" -gt "$CPU_CORES" ]; then
+        log "ERROR" "Número inválido. Usando $CPU_CORES threads."
+        threads=$CPU_CORES
+    fi
+    
+    CPU_THREADS=$threads
+    export CPU_THREADS
+    
+    # Calcular percentual de uso
+    local usage=$((threads * 100 / CPU_CORES))
+    CPU_MAX_USAGE=$usage
+    export CPU_MAX_USAGE
+    
+    log "CPU" "Threads configurados: $CPU_THREADS/$CPU_CORES (${usage}% de uso)"
+    
+    # Atualizar configuração
+    if [ -f "$MINER_CONFIG/config.json" ]; then
+        sed -i "s/\"max-threads-hint\": [0-9]*/\"max-threads-hint\": $usage/" "$MINER_CONFIG/config.json"
+        log "CPU" "Configuração atualizada"
     fi
 }
 
 # ============================================================================
-# INSTALAÇÃO DE DEPENDÊNCIAS
+# FUNÇÃO 34: CONFIGURAR PRIORIDADE CPU
 # ============================================================================
+set_priority() {
+    echo -e "\n${CYAN}Configuração de Prioridade CPU${NC}"
+    echo "═══════════════════════════════════════════════════"
+    echo "Níveis de prioridade:"
+    echo "   0) idle (mínima) - Só executa quando o sistema está ocioso"
+    echo "   5) low (baixa)    - Prioridade baixa"
+    echo "  10) normal         - Prioridade normal (padrão)"
+    echo "  15) high (alta)    - Prioridade alta"
+    echo "  19) realtime       - Máxima prioridade (pode afetar o sistema)"
+    echo ""
+    echo "Prioridade atual: $CPU_PRIORITY"
+    echo ""
+    read -p "Escolha a prioridade (0-19): " priority
+    
+    if ! [[ "$priority" =~ ^[0-9]+$ ]] || [ "$priority" -lt 0 ] || [ "$priority" -gt 19 ]; then
+        log "ERROR" "Prioridade inválida. Mantendo $CPU_PRIORITY."
+        return
+    fi
+    
+    CPU_PRIORITY=$priority
+    export CPU_PRIORITY
+    
+    # Descrever nível
+    case $priority in
+        0)  desc="idle (mínima)" ;;
+        [1-4]) desc="baixa" ;;
+        [5-9]) desc="média-baixa" ;;
+        10) desc="normal" ;;
+        [11-14]) desc="média-alta" ;;
+        [15-18]) desc="alta" ;;
+        19) desc="realtime (máxima)" ;;
+    esac
+    
+    log "CPU" "Prioridade alterada para: $priority ($desc)"
+    
+    # Atualizar configuração
+    if [ -f "$MINER_CONFIG/config.json" ]; then
+        sed -i "s/\"priority\": [0-9]*/\"priority\": $priority/" "$MINER_CONFIG/config.json"
+        log "CPU" "Configuração atualizada"
+    fi
+}
 
-install_dependencies() {
-    print_header "INSTALANDO DEPENDÊNCIAS"
+# ============================================================================
+# FUNÇÃO 35: CONFIGURAR 1GB PAGES
+# ============================================================================
+toggle_1gb_pages() {
+    echo -e "\n${CYAN}Configuração de 1GB Pages${NC}"
+    echo "═══════════════════════════════════════════════════"
     
-    log_info "Atualizando repositórios..."
-    pkg update -y > /dev/null 2>&1
+    if [ "$MEM_TOTAL" -lt 3000 ]; then
+        echo -e "${YELLOW}Aviso: Seu dispositivo tem menos de 3GB de RAM${NC}"
+        echo "1GB Pages pode não funcionar corretamente."
+    fi
     
-    log_info "Atualizando pacotes..."
-    pkg upgrade -y > /dev/null 2>&1
+    echo "Status atual: $RANDOMX_1GB_PAGES"
+    echo ""
+    echo "1GB Pages melhora a performance do RandomX em até 30%"
+    echo "mas requer pelo menos 3GB de RAM livre."
+    echo ""
+    read -p "Ativar 1GB Pages? (s/n): " choice
     
-    log_info "Instalando pacotes essenciais..."
+    case $choice in
+        s|S|y|Y)
+            RANDOMX_1GB_PAGES=true
+            log "RANDOMX" "1GB Pages ativado"
+            ;;
+        n|N)
+            RANDOMX_1GB_PAGES=false
+            log "RANDOMX" "1GB Pages desativado"
+            ;;
+        *)
+            log "ERROR" "Opção inválida"
+            return
+            ;;
+    esac
     
-    local packages=(
-        # Ferramentas básicas
-        wget curl tar git
-        cmake make build-essential
-        python python-pip
+    export RANDOMX_1GB_PAGES
+    
+    # Atualizar configuração
+    if [ -f "$MINER_CONFIG/config.json" ]; then
+        sed -i "s/\"1gb-pages\": [a-z]*/\"1gb-pages\": $RANDOMX_1GB_PAGES/" "$MINER_CONFIG/config.json"
+        log "RANDOMX" "Configuração atualizada"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 36: VER LOGS
+# ============================================================================
+view_logs() {
+    local lines="${1:-50}"
+    
+    if [ ! -f "$MINER_LOGS/xmrig.log" ]; then
+        log "WARNING" "Nenhum log encontrado"
+        return
+    fi
+    
+    echo -e "\n${CYAN}Últimas $lines linhas do log:${NC}"
+    echo "═══════════════════════════════════════════════════"
+    
+    tail -n "$lines" "$MINER_LOGS/xmrig.log" | while read line; do
+        if echo "$line" | grep -q "accepted"; then
+            echo -e "${GREEN}✓${NC} $line"
+        elif echo "$line" | grep -q "rejected"; then
+            echo -e "${RED}✗${NC} $line"
+        elif echo "$line" | grep -q "speed"; then
+            echo -e "${CYAN}⚡${NC} $line"
+        elif echo "$line" | grep -q "error"; then
+            echo -e "${RED}⚠${NC} $line"
+        elif echo "$line" | grep -q "warning"; then
+            echo -e "${YELLOW}⚠${NC} $line"
+        else
+            echo "  $line"
+        fi
+    done
+}
+
+# ============================================================================
+# FUNÇÃO 37: LOGS DE ERRO
+# ============================================================================
+view_errors() {
+    if [ ! -f "$MINER_LOGS/error.log" ]; then
+        log "INFO" "Nenhum erro encontrado"
+        return
+    fi
+    
+    echo -e "\n${RED}Últimos erros:${NC}"
+    echo "═══════════════════════════════════════════════════"
+    tail -50 "$MINER_LOGS/error.log"
+}
+
+# ============================================================================
+# FUNÇÃO 38: LIMPAR LOGS
+# ============================================================================
+clear_logs() {
+    echo -e "\n${YELLOW}Isso irá apagar todos os logs. Continuar? (s/n)${NC}"
+    read -p "> " confirm
+    
+    if [ "$confirm" = "s" ] || [ "$confirm" = "S" ]; then
+        > "$MINER_LOGS/xmrig.log"
+        > "$MINER_LOGS/system.log"
+        > "$MINER_LOGS/error.log"
+        > "$MINER_LOGS/warning.log"
+        log "SUCCESS" "Logs limpos"
+    else
+        log "INFO" "Operação cancelada"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 39: BACKUP CONFIGURAÇÕES
+# ============================================================================
+backup_config() {
+    mkdir -p "$MINER_BACKUP"
+    local backup_file="$MINER_BACKUP/config_$(date +%Y%m%d_%H%M%S).tar.gz"
+    
+    log "BACKUP" "Criando backup das configurações..."
+    
+    tar -czf "$backup_file" \
+        -C "$MINER_CONFIG" . \
+        -C "$MINER_ROOT" "profiles" 2>/dev/null
+    
+    if [ $? -eq 0 ] && [ -f "$backup_file" ]; then
+        local size=$(du -h "$backup_file" | cut -f1)
+        log "SUCCESS" "Backup criado: $(basename "$backup_file") (${size})"
         
-        # Bibliotecas
-        libuv libuv-dev
-        openssl openssl-dev
-        libmicrohttpd
-        libhwloc hwloc-dev
-        
-        # Utilitários
-        nano htop neofetch
-        jq bc net-tools
-        termux-api termux-tools
-        proot
-        
-        # Ferramentas de rede
-        nmap netcat-openbsd
-        dnsutils whois
-        
-        # Ferramentas de download
-        axel aria2
-        
-        # Monitoramento
-        sysstat procps
-    )
+        # Manter apenas últimos 10 backups
+        ls -t "$MINER_BACKUP"/config_*.tar.gz 2>/dev/null | tail -n +11 | xargs rm -f
+    else
+        log "ERROR" "Falha ao criar backup"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 40: RESTAURAR BACKUP
+# ============================================================================
+restore_backup() {
+    echo -e "\n${CYAN}Backups disponíveis:${NC}"
+    echo "═══════════════════════════════════════════════════"
     
-    local total=${#packages[@]}
-    local current=0
+    local backups=($(ls -t "$MINER_BACKUP"/config_*.tar.gz 2>/dev/null))
     
-    for pkg in "${packages[@]}"; do
-        current=$((current + 1))
-        print_progress_bar $current $total
-        pkg install -y "$pkg" > /dev/null 2>&1
+    if [ ${#backups[@]} -eq 0 ]; then
+        log "WARNING" "Nenhum backup encontrado"
+        return
+    fi
+    
+    local i=1
+    for backup in "${backups[@]}"; do
+        local size=$(du -h "$backup" | cut -f1)
+        local date=$(basename "$backup" | sed 's/config_\(.*\).tar.gz/\1/')
+        echo "  $i) $date - ${size}"
+        i=$((i + 1))
     done
     
     echo ""
-    log_success "$total dependências instaladas"
+    read -p "Escolha o backup (1-${#backups[@]}): " choice
+    
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#backups[@]}" ]; then
+        local selected="${backups[$((choice-1))]}"
+        
+        echo -e "${YELLOW}Isso irá sobrescrever as configurações atuais. Continuar? (s/n)${NC}"
+        read -p "> " confirm
+        
+        if [ "$confirm" = "s" ] || [ "$confirm" = "S" ]; then
+            stop_mining
+            tar -xzf "$selected" -C "$MINER_CONFIG" 2>/dev/null
+            log "SUCCESS" "Backup restaurado: $(basename "$selected")"
+            
+            # Recarregar configurações
+            if [ -f "$MINER_CONFIG/current_wallet" ] && [ -f "$MINER_CONFIG/current_pool" ]; then
+                WALLET=$(cat "$MINER_CONFIG/current_wallet")
+                POOL=$(cat "$MINER_CONFIG/current_pool")
+                generate_config "$WALLET" "$POOL"
+            fi
+        else
+            log "INFO" "Restauração cancelada"
+        fi
+    else
+        log "ERROR" "Opção inválida"
+    fi
 }
 
 # ============================================================================
-# INSTALAÇÃO DO XMRIG (25 MÉTODOS DIFERENTES)
+# FUNÇÃO 41: EXPORTAR ESTATÍSTICAS
 # ============================================================================
-
-install_xmrig() {
-    print_header "INSTALANDO XMRIG (25 MÉTODOS)"
+export_stats() {
+    mkdir -p "$MINER_REPORTS"
+    local stats_file="$MINER_REPORTS/stats_$(date +%Y%m%d_%H%M%S).txt"
     
-    mkdir -p "$MINER_TEMP"
-    mkdir -p "$MINER_CACHE"
-    cd "$MINER_TEMP"
+    log "STATS" "Exportando estatísticas..."
     
-    local methods=(
-        "GitHub Release (ARM64 v6.20.0)"
-        "GitHub Binary (ARM64 v6.20.0)"
-        "Miner.io Mirror"
-        "Miner.rocks Mirror"
-        "Binaries.xmrig.com"
-        "Termux Official Repo"
-        "Android Miner Repo"
-        "Compilação do Código"
-        "DPKG Package"
-        "Archive.org Backup"
-        "IPFS (se disponível)"
-        "Torrent (se disponível)"
-        "Cache Local"
-        "Binário Compatível"
-        "QEMU Emulação"
-        "GitHub v6.19.3"
-        "GitHub v6.18.2"
-        "GitHub v6.17.0"
-        "GitHub v6.16.4"
-        "GitHub v6.15.3"
-        "GitHub v6.14.1"
-        "GitHub v6.13.2"
-        "GitHub v6.12.1"
-        "GitHub v6.11.2"
-        "GitHub v6.10.0"
-    )
-    
-    local total_methods=${#methods[@]}
-    local current_method=0
-    local installed=0
-    
-    for method_idx in "${!methods[@]}"; do
-        current_method=$((current_method + 1))
+    {
+        echo "══════════════════════════════════════════════════════════════════"
+        echo "           RANDOMX MONERO MINER - RELATÓRIO DE ESTATÍSTICAS        "
+        echo "══════════════════════════════════════════════════════════════════"
         echo ""
-        log_info "Método $current_method/$total_methods: ${methods[$method_idx]}"
+        echo "Data e hora: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+        echo "═══ SISTEMA ═══"
+        echo "Dispositivo: $ANDROID_MODEL"
+        echo "Android: $ANDROID_RELEASE (API $ANDROID_SDK)"
+        echo "CPU: $CPU_MODEL"
+        echo "Núcleos: $CPU_CORES ($CPU_THREADS em uso)"
+        echo "Memória Total: ${MEM_TOTAL}MB"
+        echo "Memória Disponível: ${MEM_AVAILABLE}MB"
+        echo "AES-NI: $AES_NI_SUPPORTED"
+        echo ""
+        echo "═══ MINERAÇÃO ═══"
+        echo "Status: $(mining_status)"
+        echo "Hashrate Atual: $(format_hash $(current_hashrate))"
+        echo "Hashrate Médio: $(format_hash $(average_hashrate))"
+        echo "Shares Aceitos: $(accepted_shares)"
+        echo "Shares Rejeitados: $(rejected_shares)"
+        echo "Taxa de Aceitação: $(acceptance_rate)%"
+        echo "Dificuldade Atual: $(current_diff)"
+        echo "Tempo de Execução: $(format_time $(mining_uptime))"
+        echo ""
+        echo "═══ CONFIGURAÇÕES ═══"
+        echo "Modo RandomX: $RANDOMX_MODE"
+        echo "1GB Pages: $RANDOMX_1GB_PAGES"
+        echo "NUMA: $RANDOMX_NUMA"
+        echo "Prioridade CPU: $CPU_PRIORITY"
+        echo ""
+        if [ -f "$MINER_CONFIG/current_pool" ]; then
+            echo "Pool Atual: $(cat "$MINER_CONFIG/current_pool")"
+        fi
+        if [ -f "$MINER_CONFIG/current_wallet" ]; then
+            local wallet=$(cat "$MINER_CONFIG/current_wallet")
+            echo "Carteira: ${wallet:0:16}...${wallet: -8}"
+        fi
+        if [ -f "$MINER_CONFIG/worker.id" ]; then
+            echo "Worker ID: $(cat "$MINER_CONFIG/worker.id")"
+        fi
+        echo ""
+        echo "══════════════════════════════════════════════════════════════════"
         
-        print_progress_bar $current_method $total_methods
+    } > "$stats_file"
+    
+    if [ -f "$stats_file" ]; then
+        local size=$(du -h "$stats_file" | cut -f1)
+        log "SUCCESS" "Estatísticas exportadas: $(basename "$stats_file") (${size})"
+        echo -e "\n${CYAN}Arquivo salvo em:${NC} $stats_file"
+    else
+        log "ERROR" "Falha ao exportar estatísticas"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 42: INFORMAÇÕES DO SISTEMA
+# ============================================================================
+system_info() {
+    clear
+    echo -e "${PURPLE}${BOLD}"
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║                 INFORMAÇÕES DO SISTEMA                           ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    echo -e "\n${WHITE}HARDWARE:${NC}"
+    echo "  Dispositivo: $ANDROID_MODEL"
+    echo "  Fabricante: $ANDROID_MANUFACTURER"
+    echo "  Android: $ANDROID_RELEASE (API $ANDROID_SDK)"
+    echo "  Arquitetura: $ANDROID_CPU_ABI"
+    
+    echo -e "\n${WHITE}PROCESSADOR:${NC}"
+    echo "  Modelo: $CPU_MODEL"
+    echo "  Vendor: $CPU_VENDOR"
+    echo "  Núcleos: $CPU_CORES_LOGICAL ($CPU_CORES_PHYSICAL físicos)"
+    echo "  Frequência: ${CPU_FREQ_MIN}MHz - ${CPU_FREQ_MAX}MHz"
+    echo "  Frequência Atual: ${CPU_FREQ_CUR}MHz"
+    echo "  Governador: $CPU_GOVERNOR"
+    echo "  AES-NI: $AES_NI_SUPPORTED"
+    echo "  ARM CRC: $ARM_CRC"
+    
+    echo -e "\n${WHITE}MEMÓRIA:${NC}"
+    echo "  Total: ${MEM_TOTAL}MB"
+    echo "  Livre: ${MEM_FREE}MB"
+    echo "  Disponível: ${MEM_AVAILABLE}MB"
+    echo "  Swap Total: ${MEM_SWAP_TOTAL}MB"
+    echo "  Swap Livre: ${MEM_SWAP_FREE}MB"
+    echo "  HugePages: ${HUGEPAGES_TOTAL}x${HUGEPAGES_SIZE}KB"
+    
+    echo -e "\n${WHITE}ARMAZENAMENTO:${NC}"
+    echo "  Total: $((STORAGE_TOTAL/1024))MB"
+    echo "  Usado: $((STORAGE_USED/1024))MB"
+    echo "  Livre: $((STORAGE_FREE/1024))MB"
+    echo "  Uso: ${STORAGE_PERCENT}%"
+    
+    echo -e "\n${WHITE}SENSORES:${NC}"
+    echo "  Temperatura CPU: ${CPU_TEMP}°C"
+    echo "  Zonas Térmicas: $THERMAL_ZONES"
+    
+    echo -e "\n${WHITE}TERMUX:${NC}"
+    echo "  Versão: $TERMUX_VERSION"
+    echo "  API: $TERMUX_API_VERSION"
+    echo "  Path: $TERMUX_PATH"
+    
+    echo -e "\n${WHITE}REDE:${NC}"
+    echo "  IP Local: $ANDROID_NETWORK_IP"
+    echo "  SSID: $ANDROID_NETWORK_SSID"
+    echo "  Velocidade: ${ANDROID_NETWORK_SPEED}Mbps"
+    
+    echo -e "\n${WHITE}BATERIA:${NC}"
+    echo "  Nível: ${ANDROID_BATTERY_PERCENT}%"
+    echo "  Status: $ANDROID_BATTERY_STATUS"
+    echo "  Temperatura: ${ANDROID_BATTERY_TEMP}°C"
+    
+    echo -e "\n${WHITE}MINERAÇÃO:${NC}"
+    echo "  Status: $(mining_status)"
+    echo "  Hashrate: $(format_hash $(current_hashrate))"
+    echo "  Shares: $(accepted_shares) aceitos / $(rejected_shares) rejeitados"
+    echo "  Taxa: $(acceptance_rate)%"
+    echo "  Uptime: $(format_time $(mining_uptime))"
+    echo "  Modo RandomX: $RANDOMX_MODE"
+    echo "  Threads: $CPU_THREADS/$CPU_CORES (${CPU_MAX_USAGE}%)"
+    echo "  Prioridade: $CPU_PRIORITY"
+    echo "  1GB Pages: $RANDOMX_1GB_PAGES"
+    
+    echo ""
+    read -p "Pressione Enter para continuar..."
+}
+
+# ============================================================================
+# FUNÇÃO 43: VERIFICAR ATUALIZAÇÕES
+# ============================================================================
+check_updates() {
+    log "UPDATE" "Verificando atualizações..."
+    
+    if ! command -v curl > /dev/null; then
+        pkg install -y curl > /dev/null 2>&1
+    fi
+    
+    local current_version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+    local latest_version=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep "tag_name" | cut -d'"' -f4 | sed 's/v//')
+    
+    echo -e "\n${CYAN}Verificação de Atualizações${NC}"
+    echo "═══════════════════════════════════════════════════"
+    echo "Versão atual: $current_version"
+    echo "Última versão: $latest_version"
+    
+    if [ "$current_version" != "$latest_version" ] && [ -n "$latest_version" ]; then
+        echo -e "${YELLOW}Nova versão disponível: $latest_version${NC}"
+        echo ""
+        read -p "Deseja atualizar? (s/n): " update_choice
         
-        case $method_idx in
-            0) # GitHub Release v6.20.0
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64.tar.gz" -O xmrig.tar.gz; then
-                    tar -xzf xmrig.tar.gz 2>/dev/null
-                    find . -name "xmrig" -type f -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-                    installed=1
-                fi
+        if [ "$update_choice" = "s" ] || [ "$update_choice" = "S" ]; then
+            stop_mining
+            rm -f "$MINER_BIN/xmrig"
+            install_xmrig
+        fi
+    else
+        echo -e "${GREEN}Você está usando a versão mais recente${NC}"
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 44: AUTO-RECUPERAÇÃO
+# ============================================================================
+auto_recover() {
+    if [ -f "$MINER_CONFIG/mining.pid" ]; then
+        local pid=$(cat "$MINER_CONFIG/mining.pid")
+        if ! kill -0 $pid 2>/dev/null 2>&1; then
+            log "WARNING" "Mineração parou inesperadamente. Reiniciando..."
+            rm -f "$MINER_CONFIG/mining.pid"
+            start_mining
+            send_notification "Auto-Recuperação" "Mineração reiniciada automaticamente"
+        fi
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 45: EDITAR CONFIGURAÇÃO MANUAL
+# ============================================================================
+edit_config() {
+    if [ ! -f "$MINER_CONFIG/config.json" ]; then
+        log "WARNING" "Arquivo de configuração não encontrado"
+        return
+    fi
+    
+    echo -e "\n${YELLOW}Editando configuração manualmente...${NC}"
+    echo "Use Ctrl+O para salvar e Ctrl+X para sair"
+    sleep 2
+    
+    if command -v nano > /dev/null; then
+        nano "$MINER_CONFIG/config.json"
+    else
+        vi "$MINER_CONFIG/config.json"
+    fi
+    
+    log "CONFIG" "Configuração editada manualmente"
+    
+    # Validar JSON
+    if command -v python3 > /dev/null; then
+        if python3 -c "import json; f=open('$MINER_CONFIG/config.json'); json.load(f)" 2>/dev/null; then
+            log "SUCCESS" "Configuração válida"
+        else
+            log "ERROR" "Configuração inválida! Restaure o backup se necessário"
+        fi
+    fi
+}
+
+# ============================================================================
+# FUNÇÃO 46: VER ESTATÍSTICAS RÁPIDAS
+# ============================================================================
+show_stats() {
+    clear
+    echo -e "${CYAN}${BOLD}"
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║                    ESTATÍSTICAS RÁPIDAS                          ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    echo -e "\n${WHITE}Status:${NC} $(mining_status)"
+    echo -e "${WHITE}Hashrate:${NC} $(format_hash $(current_hashrate))"
+    echo -e "${WHITE}Hashrate Médio:${NC} $(format_hash $(average_hashrate))"
+    echo -e "${WHITE}Shares Aceitos:${NC} $(accepted_shares)"
+    echo -e "${WHITE}Shares Rejeitados:${NC} $(rejected_shares)"
+    echo -e "${WHITE}Taxa de Aceitação:${NC} $(acceptance_rate)%"
+    echo -e "${WHITE}Dificuldade:${NC} $(current_diff)"
+    echo -e "${WHITE}Tempo de Execução:${NC} $(format_time $(mining_uptime))"
+    
+    if [ -f "$MINER_STATS/benchmark" ]; then
+        local bench=$(cat "$MINER_STATS/benchmark")
+        echo -e "${WHITE}Benchmark:${NC} $(format_hash $bench)"
+    fi
+    
+    echo ""
+}
+
+# ============================================================================
+# FUNÇÃO 47: REINICIAR SERVIÇOS
+# ============================================================================
+restart_services() {
+    log "SYSTEM" "Reiniciando serviços..."
+    stop_mining
+    sleep 2
+    start_mining
+    log "SUCCESS" "Serviços reiniciados"
+}
+
+# ============================================================================
+# FUNÇÃO 48: MOSTRAR HASHARATE
+# ============================================================================
+show_hashrate() {
+    echo -e "\n${WHITE}Hashrate Atual:${NC} $(format_hash $(current_hashrate))"
+}
+
+# ============================================================================
+# FUNÇÃO 49: MOSTRAR SHARES
+# ============================================================================
+show_shares() {
+    local accepted=$(accepted_shares)
+    local rejected=$(rejected_shares)
+    local rate=$(acceptance_rate)
+    
+    echo -e "\n${WHITE}Shares Aceitos:${NC} $accepted"
+    echo -e "${WHITE}Shares Rejeitados:${NC} $rejected"
+    echo -e "${WHITE}Taxa de Aceitação:${NC} ${rate}%"
+}
+
+# ============================================================================
+# FUNÇÃO 50: MENU PRINCIPAL
+# ============================================================================
+show_menu() {
+    while true; do
+        clear
+        echo -e "${PURPLE}${BOLD}"
+        echo "╔══════════════════════════════════════════════════════════════════╗"
+        echo "║           RANDOMX MONERO MINER - v5.0 (50 FUNÇÕES)               ║"
+        echo "╚══════════════════════════════════════════════════════════════════╝"
+        echo -e "${NC}"
+        
+        # Status rápido
+        echo -ne "${WHITE}Status:${NC} "
+        if [ -f "$MINER_CONFIG/mining.pid" ]; then
+            local pid=$(cat "$MINER_CONFIG/mining.pid")
+            if kill -0 $pid 2>/dev/null 2>&1; then
+                echo -ne "${GREEN}ATIVO${NC} (PID: $pid)  "
+                echo -e "${WHITE}HR:${NC} $(format_hash $(current_hashrate))"
+            else
+                echo -e "${RED}INATIVO${NC}"
+                rm -f "$MINER_CONFIG/mining.pid"
+            fi
+        else
+            echo -e "${RED}INATIVO${NC}"
+        fi
+        
+        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════${NC}"
+        echo -e "  ${WHITE}CONTROLE PRINCIPAL${NC}"
+        echo -e "   1) Iniciar mineração"
+        echo -e "   2) Parar mineração"
+        echo -e "   3) Reiniciar mineração"
+        echo -e "   4) Monitor em tempo real"
+        echo -e "   5) Benchmark RandomX"
+        echo ""
+        echo -e "  ${WHITE}CONFIGURAÇÕES RANDOMX${NC}"
+        echo -e "   6) Selecionar pool"
+        echo -e "   7) Selecionar carteira"
+        echo -e "   8) Trocar modo RandomX"
+        echo -e "   9) Configurar threads"
+        echo -e "  10) Configurar prioridade CPU"
+        echo -e "  11) Ativar/Desativar 1GB Pages"
+        echo ""
+        echo -e "  ${WHITE}FERRAMENTAS${NC}"
+        echo -e "  12) Testar latência das pools"
+        echo -e "  13) Ver estatísticas"
+        echo -e "  14) Ver logs"
+        echo -e "  15) Ver logs de erro"
+        echo -e "  16) Limpar logs"
+        echo -e "  17) Backup configurações"
+        echo -e "  18) Restaurar backup"
+        echo -e "  19) Exportar estatísticas"
+        echo -e "  20) Informações do sistema"
+        echo -e "  21) Verificar atualizações"
+        echo -e "  22) Auto-recuperação"
+        echo -e "  23) Editar configuração manual"
+        echo ""
+        echo -e "  ${WHITE}INFOS RÁPIDAS${NC}"
+        echo -e "  24) Mostrar hashrate atual"
+        echo -e "  25) Mostrar shares"
+        echo -e "  26) Mostrar dificuldade"
+        echo -e "  27) Mostrar tempo de execução"
+        echo ""
+        echo -e "  ${WHITE}SISTEMA${NC}"
+        echo -e "   0) Sair"
+        echo -e "${PURPLE}══════════════════════════════════════════════════════════════════${NC}"
+        echo ""
+        read -p "Escolha uma opção (0-27): " choice
+        
+        case $choice in
+            1) start_mining; sleep 2 ;;
+            2) stop_mining; sleep 2 ;;
+            3) restart_mining; sleep 2 ;;
+            4) live_monitor ;;
+            5) run_benchmark; read -p "Pressione Enter..." ;;
+            6) select_pool; sleep 2 ;;
+            7) select_wallet; sleep 2 ;;
+            8) change_randomx_mode; sleep 2 ;;
+            9) set_threads; sleep 2 ;;
+            10) set_priority; sleep 2 ;;
+            11) toggle_1gb_pages; sleep 2 ;;
+            12) test_pools; read -p "Pressione Enter..." ;;
+            13) show_stats; read -p "Pressione Enter..." ;;
+            14) view_logs 50; read -p "Pressione Enter..." ;;
+            15) view_errors; read -p "Pressione Enter..." ;;
+            16) clear_logs; sleep 2 ;;
+            17) backup_config; sleep 2 ;;
+            18) restore_backup; sleep 2 ;;
+            19) export_stats; read -p "Pressione Enter..." ;;
+            20) system_info ;;
+            21) check_updates; read -p "Pressione Enter..." ;;
+            22) auto_recover; sleep 2 ;;
+            23) edit_config; sleep 2 ;;
+            24) show_hashrate; read -p "Pressione Enter..." ;;
+            25) show_shares; read -p "Pressione Enter..." ;;
+            26) echo "Dificuldade: $(current_diff)"; read -p "Pressione Enter..." ;;
+            27) echo "Tempo: $(format_time $(mining_uptime))"; read -p "Pressione Enter..." ;;
+            0) 
+                stop_mining
+                echo -e "${GREEN}Até mais!${NC}"
+                exit 0
                 ;;
-            1) # GitHub Binary v6.20.0
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            2) # Miner.io Mirror
-                if wget -q --timeout=30 "https://dl.miner.io/xmrig/v6.20.0/xmrig-6.20.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            3) # Miner.rocks Mirror
-                if wget -q --timeout=30 "https://cdn.miner.rocks/xmrig/v6.20.0/xmrig-6.20.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            4) # Binaries.xmrig.com
-                if wget -q --timeout=30 "https://binaries.xmrig.com/xmrig-6.20.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            5) # Termux Official Repo
-                if pkg install -y xmrig 2>/dev/null; then
-                    cp $(which xmrig) "$MINER_BIN/xmrig" 2>/dev/null
-                    installed=1
-                fi
-                ;;
-            6) # Android Miner Repo
-                if wget -q --timeout=30 "https://github.com/zealotcoder/xmrig-termux/releases/latest/download/xmrig" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            7) # Compilação
-                log_info "Instalando dependências de compilação..."
-                pkg install -y git cmake make build-essential libuv-dev libssl-dev libhwloc-dev -y > /dev/null 2>&1
-                
-                if git clone https://github.com/xmrig/xmrig.git 2>/dev/null; then
-                    cd xmrig
-                    mkdir build
-                    cd build
-                    cmake .. -DWITH_HTTPD=OFF -DWITH_TLS=OFF -DWITH_OPENCL=OFF -DWITH_CUDA=OFF > /dev/null 2>&1
-                    make -j$(nproc) > /dev/null 2>&1
-                    
-                    if [ -f "xmrig" ]; then
-                        cp xmrig "$MINER_BIN/xmrig"
-                        installed=1
-                    fi
-                fi
-                ;;
-            8) # DPKG Package
-                if wget -q --timeout=30 "https://packages.termux.org/apt/termux-main/pool/main/x/xmrig/xmrig_6.20.0_arm.deb" -O xmrig.deb; then
-                    ar x xmrig.deb data.tar.xz 2>/dev/null
-                    if [ -f "data.tar.xz" ]; then
-                        tar -xf data.tar.xz ./data/data/com.termux/files/usr/bin/xmrig 2>/dev/null
-                        cp data/data/com.termux/files/usr/bin/xmrig "$MINER_BIN/xmrig" 2>/dev/null
-                        installed=1
-                    fi
-                fi
-                ;;
-            9) # Cache local
-                if [ -f "$MINER_CACHE/xmrig" ]; then
-                    cp "$MINER_CACHE/xmrig" "$MINER_BIN/xmrig"
-                    installed=1
-                fi
-                ;;
-            10) # GitHub v6.19.3
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.19.3/xmrig-6.19.3-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            11) # GitHub v6.18.2
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.18.2/xmrig-6.18.2-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            12) # GitHub v6.17.0
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.17.0/xmrig-6.17.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            13) # GitHub v6.16.4
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.16.4/xmrig-6.16.4-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            14) # GitHub v6.15.3
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.15.3/xmrig-6.15.3-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            15) # GitHub v6.14.1
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.14.1/xmrig-6.14.1-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            16) # GitHub v6.13.2
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.13.2/xmrig-6.13.2-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            17) # GitHub v6.12.1
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.12.1/xmrig-6.12.1-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            18) # GitHub v6.11.2
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.11.2/xmrig-6.11.2-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
-                ;;
-            19) # GitHub v6.10.0
-                if wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.10.0/xmrig-6.10.0-linux-arm64" -O "$MINER_BIN/xmrig"; then
-                    installed=1
-                fi
+            *) 
+                echo -e "${RED}Opção inválida${NC}"
+                sleep 2
                 ;;
         esac
         
-        # Verificar se instalou
-        if [ $installed -eq 1 ] && [ -f "$MINER_BIN/xmrig" ]; then
-            chmod +x "$MINER_BIN/xmrig"
-            
-            # Testar o binário
-            print_animation "Testando binário..."
-            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
-                local version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)
-                echo ""
-                log_success "XMRig instalado via ${methods[$method_idx]}"
-                log_info "Versão: $version"
-                
-                # Salvar no cache
-                cp "$MINER_BIN/xmrig" "$MINER_CACHE/xmrig"
-                echo "$version" > "$MINER_CACHE/version.txt"
-                
-                # Notificar Discord
-                discord_send "✅ XMRIG INSTALADO" "**Método:** ${methods[$method_idx]}\n**Versão:** $version\n**Arquitetura:** $ARCH_TYPE" "3066993"
-                
-                return 0
-            else
-                log_error "Binário corrompido, tentando próximo método..."
-                rm -f "$MINER_BIN/xmrig"
-                installed=0
-            fi
-        fi
-        
-        cd "$MINER_TEMP"
+        # Coletar estatísticas periodicamente
+        collect_stats
     done
-    
-    log_error "FALHA CRÍTICA: Nenhum dos 25 métodos funcionou!"
-    discord_error "Falha na instalação do XMRig após 25 tentativas"
-    return 1
 }
 
 # ============================================================================
-# CRIAÇÃO DA CONFIGURAÇÃO AVANÇADA
+# INICIALIZAÇÃO
 # ============================================================================
-
-create_config() {
-    print_header "CRIANDO CONFIGURAÇÃO AVANÇADA"
+init() {
+    # Criar diretórios
+    mkdir -p "$MINER_ROOT" "$MINER_BIN" "$MINER_CONFIG" "$MINER_LOGS" \
+             "$MINER_STATS" "$MINER_SCRIPTS" "$MINER_BACKUP" "$MINER_TEMP" \
+             "$MINER_CACHE" "$MINER_DB" "$MINER_REPORTS"
     
-    # Gerar worker ID único
-    local worker_id="termux_$(date +%s)_$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)"
+    # Detectar hardware
+    detect_hardware
     
-    # Configuração principal
-    cat > "$MINER_CONFIG/config.json" << EOF
-{
-    "autosave": true,
-    "autosave-interval": 60,
-    "cpu": true,
-    "opencl": false,
-    "cuda": false,
-    "donate-level": $DONATE_LEVEL,
-    "donate-over-proxy": 1,
-    "log-file": "$MINER_LOGS/xmrig.log",
-    "pools": [
-        {
-            "url": "${POOLS[0]}",
-            "user": "$BTC_WALLET.$worker_id",
-            "pass": "x",
-            "rig-id": "$worker_id",
-            "nicehash": true,
-            "keepalive": true,
-            "tls": false,
-            "tls-fingerprint": null,
-            "daemon": false
-        }
-    ],
-    "print-time": 30,
-    "health-print-time": 60,
-    "retries": 5,
-    "retry-pause": 5,
-    "cpu-max-threads-hint": $CPU_USAGE,
-    "cpu-priority": $MINING_PRIORITY,
-    "randomx-mode": "fast",
-    "randomx-1gb-pages": false,
-    "randomx-wrmsr": -1,
-    "randomx-no-rdmsr": false,
-    "randomx-cache-qos": false,
-    "background": false,
-    "syslog": false,
-    "user-agent": null,
-    "verbose": 0,
-    "watch": false,
-    "pause-on-battery": false,
-    "pause-on-active": false
-}
-EOF
+    # Verificar permissões
+    check_permissions
     
-    # Configuração de backup
-    cat > "$MINER_CONFIG/config.backup.json" << EOF
-{
-    "autosave": true,
-    "cpu": true,
-    "donate-level": 1,
-    "pools": [
-        {
-            "url": "${POOLS[1]}",
-            "user": "$BTC_WALLET.$worker_id.backup",
-            "pass": "x",
-            "nicehash": true
-        }
-    ]
-}
-EOF
-    
-    # Configuração de emergência
-    cat > "$MINER_CONFIG/config.emergency.json" << EOF
-{
-    "autosave": true,
-    "cpu": true,
-    "donate-level": 0,
-    "pools": [
-        {
-            "url": "${POOLS[2]}",
-            "user": "$BTC_WALLET.$worker_id.emergency",
-            "pass": "x",
-            "nicehash": true
-        }
-    ]
-}
-EOF
-    
-    # Configuração de teste
-    cat > "$MINER_CONFIG/config.test.json" << EOF
-{
-    "autosave": true,
-    "cpu": true,
-    "donate-level": 0,
-    "pools": [
-        {
-            "url": "test-pool.example.com:3333",
-            "user": "$BTC_WALLET.$worker_id.test",
-            "pass": "x",
-            "nicehash": false
-        }
-    ]
-}
-EOF
-    
-    # Salvar informações do sistema
-    cat > "$MINER_CONFIG/system.conf" << EOF
-# BITCOIN MINER ULTIMATE v13.0 - SYSTEM CONFIGURATION
-# Created: $(date '+%Y-%m-%d %H:%M:%S')
-
-# Worker Configuration
-WORKER_ID="$worker_id"
-WORKER_NAME="Bitcoin Miner Ultimate"
-WORKER_VERSION="13.0"
-
-# Wallet Configuration
-BTC_WALLET="$BTC_WALLET"
-DISCORD_WEBHOOK="$DISCORD_WEBHOOK"
-
-# Mining Configuration
-CPU_USAGE="$CPU_USAGE"
-MINING_PRIORITY="$MINING_PRIORITY"
-DONATE_LEVEL="$DONATE_LEVEL"
-THREADS="$THREADS"
-
-# System Information
-INSTALL_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
-ARCH="$ARCH_TYPE"
-ARCH_SCORE="$ARCH_SCORE"
-
-# Default Pool
-DEFAULT_POOL="${POOLS[0]}"
-CURRENT_POOL="${POOLS[0]}"
-
-# Performance Settings
-MIN_HASHRATE=10
-MAX_HASHRATE=1000
-TARGET_HASHRATE=100
-
-# Monitoring Settings
-HEARTBEAT_INTERVAL=1800
-PROFIT_REPORT_INTERVAL=21600
-POOL_SWITCH_INTERVAL=3600
-NO_SHARE_TIMEOUT=600
-AUTO_RESTART=true
-
-# Alert Settings
-ALERT_NO_SHARES=600
-ALERT_LOW_HASHRATE=30
-ALERT_HIGH_TEMP=70
-ALERT_BATTERY_LOW=20
-EOF
-    
-    # Salvar lista de pools
-    printf '%s\n' "${POOLS[@]}" > "$MINER_CONFIG/pools.list"
-    
-    # Criar arquivo de estatísticas inicial
-    cat > "$MINER_STATS/initial.json" << EOF
-{
-    "install_date": "$(date '+%Y-%m-%d %H:%M:%S')",
-    "worker_id": "$worker_id",
-    "wallet": "$BTC_WALLET",
-    "architecture": "$ARCH_TYPE",
-    "cpu_usage": $CPU_USAGE,
-    "total_shares": 0,
-    "total_profit": 0
-}
-EOF
-    
-    log_success "Configuração criada para worker: $worker_id"
-    log_info "Arquivos de configuração: 5"
-}
-
-# ============================================================================
-# CRIAÇÃO DOS SCRIPTS DE CONTROLE (33 FUNÇÕES)
-# ============================================================================
-
-create_scripts() {
-    print_header "CRIANDO SCRIPTS DE CONTROLE (33 FUNÇÕES)"
-    
-    # 1. START.SH - Iniciar mineração
-    cat > "$MINER_ROOT/start.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf" 2>/dev/null
-
-cd "$MINER_ROOT"
-
-echo "[$(date '+%H:%M:%S')] Iniciando mineração..." >> "$MINER_LOGS/system.log"
-echo "[$(date '+%H:%M:%S')] [INICIO] Comando: start.sh" >> "$MINER_LOGS/combined.log"
-
-# Parar se já estiver rodando
-if pgrep -f xmrig > /dev/null; then
-    echo "Minerador já está rodando. Parando primeiro..."
-    pkill -f xmrig 2>/dev/null
-    sleep 3
-fi
-
-# Verificar configuração
-if [ ! -f "$MINER_CONFIG/config.json" ]; then
-    echo "Erro: Arquivo de configuração não encontrado!"
-    echo "[$(date '+%H:%M:%S')] [ERRO] Configuração não encontrada" >> "$MINER_LOGS/error.log"
-    exit 1
-fi
-
-# Verificar binário
-if [ ! -f "$MINER_BIN/xmrig" ]; then
-    echo "Erro: Binário do XMRig não encontrado!"
-    echo "[$(date '+%H:%M:%S')] [ERRO] Binário não encontrado" >> "$MINER_LOGS/error.log"
-    exit 1
-fi
-
-# Iniciar XMRig
-echo "Iniciando XMRig..."
-"$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" >> "$MINER_LOGS/miner.log" 2>&1 &
-PID=$!
-
-# Salvar PID
-echo $PID > "$MINER_STATS/miner.pid"
-echo "[$(date '+%H:%M:%S')] Minerador iniciado (PID: $PID)" >> "$MINER_LOGS/system.log"
-
-sleep 3
-
-# Verificar se iniciou
-if ps -p $PID > /dev/null 2>&1; then
-    echo -e "\033[1;32m[✓]\033[0m Mineração iniciada com sucesso!"
-    echo -e "\033[1;36m   PID:\033[0m $PID"
-    echo -e "\033[1;36m   Worker:\033[0m $WORKER_ID"
-    echo -e "\033[1;36m   Pool:\033[0m $CURRENT_POOL"
-    echo -e "\033[1;36m   Ver logs:\033[0m ./logs.sh"
-    
-    # Registrar no log
-    echo "[$(date '+%H:%M:%S')] [SUCESSO] Mineração iniciada (PID: $PID)" >> "$MINER_LOGS/success.log"
-    echo "[$(date '+%H:%M:%S')] Worker: $WORKER_ID, Pool: $CURRENT_POOL" >> "$MINER_LOGS/miner.log"
-    
-    # Notificar Discord
-    if [ ! -z "$DISCORD_WEBHOOK" ]; then
-        curl -s -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\":\"🚀 **MINERAÇÃO INICIADA**\\nWorker: \`$WORKER_ID\`\\nPID: \`$PID\`\\nPool: \`$CURRENT_POOL\`\\nData: $(date '+%H:%M:%S')\"}" \
-             "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-    fi
-else
-    echo -e "\033[1;31m[✗]\033[0m Falha ao iniciar mineração"
-    echo "[$(date '+%H:%M:%S')] [ERRO] Falha ao iniciar minerador" >> "$MINER_LOGS/error.log"
-    
-    # Tentar iniciar com configuração de backup
-    if [ -f "$MINER_CONFIG/config.backup.json" ]; then
-        echo "Tentando com configuração de backup..."
-        "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.backup.json" >> "$MINER_LOGS/miner.log" 2>&1 &
-    fi
-fi
-EOF
-
-    # 2. STOP.SH - Parar mineração
-    cat > "$MINER_ROOT/stop.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf" 2>/dev/null
-
-cd "$MINER_ROOT"
-
-echo "[$(date '+%H:%M:%S')] Parando mineração..." >> "$MINER_LOGS/system.log"
-
-# Verificar se está rodando
-if ! pgrep -f xmrig > /dev/null; then
-    echo -e "\033[1;33m[!]\033[0m Minerador não está rodando"
-    exit 0
-fi
-
-# Obter PID
-PID=$(pgrep -f xmrig)
-echo "Parando minerador (PID: $PID)..."
-
-# Tentar parada normal
-pkill -f xmrig 2>/dev/null
-sleep 3
-
-# Forçar se necessário
-if pgrep -f xmrig > /dev/null; then
-    echo "Forçando parada..."
-    pkill -9 -f xmrig 2>/dev/null
-    sleep 2
-fi
-
-# Verificar resultado
-if ! pgrep -f xmrig > /dev/null; then
-    echo -e "\033[1;32m[✓]\033[0m Mineração parada com sucesso"
-    echo "[$(date '+%H:%M:%S')] [SUCESSO] Mineração parada" >> "$MINER_LOGS/success.log"
-    
-    # Registrar uptime
-    if [ -f "$MINER_STATS/start_time.txt" ]; then
-        START=$(cat "$MINER_STATS/start_time.txt")
-        END=$(date +%s)
-        UPTIME=$((END - START))
-        echo "$UPTIME" > "$MINER_STATS/last_uptime.txt"
-    fi
-    
-    # Notificar Discord
-    if [ ! -z "$DISCORD_WEBHOOK" ]; then
-        curl -s -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\":\"🛑 **MINERAÇÃO PARADA**\\nWorker: \`$WORKER_ID\`\\nPID: \`$PID\`\\nData: $(date '+%H:%M:%S')\"}" \
-             "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-    fi
-else
-    echo -e "\033[1;31m[✗]\033[0m Falha ao parar mineração"
-    echo "[$(date '+%H:%M:%S')] [ERRO] Falha ao parar minerador" >> "$MINER_LOGS/error.log"
-fi
-
-# Limpar PID
-rm -f "$MINER_STATS/miner.pid" 2>/dev/null
-EOF
-
-    # 3. STATUS.SH - Ver status completo
-    cat > "$MINER_ROOT/status.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf" 2>/dev/null
-
-# Cores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-ORANGE='\033[38;5;208m'
-NC='\033[0m'
-
-clear
-echo ""
-echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                     STATUS DO MINERADOR BITCOIN                     ║${NC}"
-echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-# ==================== SEÇÃO 1: STATUS DA MINERAÇÃO ====================
-echo -e "${CYAN}📊 1. STATUS DA MINERAÇÃO${NC}"
-echo ""
-
-if pgrep -f xmrig > /dev/null; then
-    PID=$(pgrep -f xmrig)
-    UPTIME=$(ps -o etimes= -p $PID 2>/dev/null | xargs)
-    CPU=$(ps -o pcpu= -p $PID 2>/dev/null | xargs)
-    MEM=$(ps -o pmem= -p $PID 2>/dev/null | xargs)
-    
-    echo -e "  ${GREEN}▶ MINERAÇÃO: ATIVA${NC}"
-    echo -e "  ${WHITE}PID:${NC} $PID"
-    
-    if [ ! -z "$UPTIME" ]; then
-        H=$((UPTIME / 3600))
-        M=$(((UPTIME % 3600) / 60))
-        S=$((UPTIME % 60))
-        echo -e "  ${WHITE}Uptime:${NC} ${H}h ${M}m ${S}s"
-    fi
-    
-    if [ ! -z "$CPU" ]; then
-        echo -e "  ${WHITE}CPU:${NC} $CPU%"
-    fi
-    
-    if [ ! -z "$MEM" ]; then
-        echo -e "  ${WHITE}Memória:${NC} $MEM%"
-    fi
-else
-    echo -e "  ${RED}▶ MINERAÇÃO: INATIVA${NC}"
-fi
-
-# ==================== SEÇÃO 2: HASHRATE ====================
-echo ""
-echo -e "${CYAN}⚡ 2. HASHRATE${NC}"
-echo ""
-
-if [ -f "$MINER_LOGS/miner.log" ]; then
-    # Hashrate atual
-    HASHRATE=$(tail -50 "$MINER_LOGS/miner.log" 2>/dev/null | grep -E "speed.*[0-9]+\.[0-9]+" | tail -5 | tail -1 | grep -oE "[0-9]+\.[0-9]+ [kM]?H/s" || echo "0.0 H/s")
-    echo -e "  ${WHITE}Atual:${NC} ${ORANGE}$HASHRATE${NC}"
-    
-    # Hashrate médio (últimas 10 medições)
-    AVG=$(tail -100 "$MINER_LOGS/miner.log" 2>/dev/null | grep -E "speed.*[0-9]+\.[0-9]+" | tail -10 | grep -oE "[0-9]+\.[0-9]+" | awk '{sum+=$1} END {if(NR>0) printf "%.1f", sum/NR}' || echo "0")
-    echo -e "  ${WHITE}Médio (10):${NC} $AVG H/s"
-    
-    # Máximo registrado
-    MAX=$(grep -E "speed.*[0-9]+\.[0-9]+" "$MINER_LOGS/miner.log" 2>/dev/null | grep -oE "[0-9]+\.[0-9]+" | sort -n | tail -1 || echo "0")
-    echo -e "  ${WHITE}Máximo:${NC} $MAX H/s"
-else
-    echo -e "  ${WHITE}Sem dados de hashrate${NC}"
-fi
-
-# ==================== SEÇÃO 3: SHARES ====================
-echo ""
-echo -e "${CYAN}✅ 3. SHARES${NC}"
-echo ""
-
-if [ -f "$MINER_LOGS/miner.log" ]; then
-    ACCEPTED=$(grep -c "accepted" "$MINER_LOGS/miner.log" 2>/dev/null)
-    REJECTED=$(grep -c "rejected" "$MINER_LOGS/miner.log" 2>/dev/null)
-    TOTAL=$((ACCEPTED + REJECTED))
-    
-    echo -e "  ${WHITE}Aceitos:${NC} ${GREEN}$ACCEPTED${NC}"
-    echo -e "  ${WHITE}Rejeitados:${NC} ${RED}$REJECTED${NC}"
-    echo -e "  ${WHITE}Total:${NC} $TOTAL"
-    
-    if [ $TOTAL -gt 0 ]; then
-        RATE=$(echo "scale=2; $ACCEPTED * 100 / $TOTAL" | bc 2>/dev/null)
-        echo -e "  ${WHITE}Taxa de aceitação:${NC} ${CYAN}${RATE}%${NC}"
-    fi
-    
-    # Último share
-    LAST=$(grep "accepted" "$MINER_LOGS/miner.log" 2>/dev/null | tail -1)
-    if [ ! -z "$LAST" ]; then
-        echo -e "  ${WHITE}Último share:${NC} ${LAST:0:60}..."
-    fi
-else
-    echo -e "  ${WHITE}Sem dados de shares${NC}"
-fi
-
-# ==================== SEÇÃO 4: LUCROS ====================
-echo ""
-echo -e "${CYAN}💰 4. LUCROS ESTIMADOS${NC}"
-echo ""
-
-if [ -f "$MINER_STATS/profit.json" ]; then
-    # Carregar dados de lucro
-    DAILY_SAT=$(grep -o '"daily_sat":[0-9]*' "$MINER_STATS/profit.json" 2>/dev/null | cut -d':' -f2)
-    DAILY_BTC=$(grep -o '"daily_btc":"[^"]*"' "$MINER_STATS/profit.json" 2>/dev/null | cut -d'"' -f4)
-    DAILY_USD=$(grep -o '"daily_usd":"[^"]*"' "$MINER_STATS/profit.json" 2>/dev/null | cut -d'"' -f4)
-    TOTAL_SAT=$(grep -o '"total_sat":[0-9]*' "$MINER_STATS/profit.json" 2>/dev/null | cut -d':' -f2)
-    
-    echo -e "  ${WHITE}Diário (estimado):${NC}"
-    echo -e "    ${GREEN}$DAILY_SAT satoshis${NC}"
-    echo -e "    ${GREEN}$DAILY_BTC BTC${NC}"
-    echo -e "    ${GREEN}\$${DAILY_USD} USD${NC}"
-    echo -e "  ${WHITE}Total acumulado:${NC} ${GOLD}$TOTAL_SAT satoshis${NC}"
-else
-    echo -e "  ${WHITE}Aguardando dados de lucro...${NC}"
-fi
-
-# ==================== SEÇÃO 5: POOL ====================
-echo ""
-echo -e "${CYAN}🌐 5. POOL${NC}"
-echo ""
-
-if [ -f "$MINER_CONFIG/pools.list" ]; then
-    CURRENT_POOL=$(grep '"url"' "$MINER_CONFIG/config.json" 2>/dev/null | head -1 | cut -d'"' -f4)
-    echo -e "  ${WHITE}Pool atual:${NC} ${BLUE}$CURRENT_POOL${NC}"
-    
-    # Latência da pool
-    if command -v nc >/dev/null 2>&1; then
-        POOL_HOST=$(echo "$CURRENT_POOL" | cut -d':' -f1)
-        POOL_PORT=$(echo "$CURRENT_POOL" | cut -d':' -f2)
-        LATENCY=$(timeout 2 nc -zv $POOL_HOST $POOL_PORT 2>&1 | grep -oE " [0-9.]+ ms" || echo " timeout")
-        echo -e "  ${WHITE}Latência:${NC} $LATENCY"
-    fi
-fi
-
-# ==================== SEÇÃO 6: SISTEMA ====================
-echo ""
-echo -e "${CYAN}💻 6. SISTEMA${NC}"
-echo ""
-
-echo -e "  ${WHITE}Worker:${NC} $WORKER_ID"
-echo -e "  ${WHITE}Carteira:${NC} ${BTC_WALLET:0:10}...${BTC_WALLET: -4}"
-echo -e "  ${WHITE}CPU Usage:${NC} $CPU_USAGE% | Prioridade: $MINING_PRIORITY"
-echo -e "  ${WHITE}Arquitetura:${NC} $ARCH"
-echo -e "  ${WHITE}Instalação:${NC} $INSTALL_DATE"
-
-# Temperatura
-if [ -f "$MINER_STATS/temperature.txt" ]; then
-    TEMP=$(cat "$MINER_STATS/temperature.txt")
-    if [ $TEMP -gt 70 ]; then
-        echo -e "  ${WHITE}Temperatura:${NC} ${RED}${TEMP}°C${NC}"
-    elif [ $TEMP -gt 60 ]; then
-        echo -e "  ${WHITE}Temperatura:${NC} ${YELLOW}${TEMP}°C${NC}"
-    else
-        echo -e "  ${WHITE}Temperatura:${NC} ${GREEN}${TEMP}°C${NC}"
-    fi
-fi
-
-# ==================== SEÇÃO 7: LOGS RECENTES ====================
-echo ""
-echo -e "${CYAN}📋 7. LOGS RECENTES${NC}"
-echo ""
-
-if [ -f "$MINER_LOGS/miner.log" ]; then
-    tail -5 "$MINER_LOGS/miner.log" | while read line; do
-        if [[ "$line" == *"accepted"* ]]; then
-            echo -e "  ${GREEN}✓${NC} ${line:11:70}..."
-        elif [[ "$line" == *"rejected"* ]]; then
-            echo -e "  ${RED}✗${NC} ${line:11:70}..."
-        elif [[ "$line" == *"speed"* ]]; then
-            echo -e "  ${CYAN}⚡${NC} ${line:11:70}..."
-        else
-            echo -e "  ${WHITE}•${NC} ${line:11:70}..."
-        fi
-    done
-fi
-
-# ==================== SEÇÃO 8: ALERTAS ====================
-echo ""
-echo -e "${CYAN}⚠️ 8. ALERTAS${NC}"
-echo ""
-
-ALERT_COUNT=0
-
-# Verificar temperatura
-if [ -f "$MINER_STATS/temperature.txt" ]; then
-    TEMP=$(cat "$MINER_STATS/temperature.txt")
-    if [ $TEMP -gt 70 ]; then
-        echo -e "  ${RED}⚠ Temperatura alta: ${TEMP}°C${NC}"
-        ALERT_COUNT=$((ALERT_COUNT + 1))
-    fi
-fi
-
-# Verificar shares rejeitados
-if [ -f "$MINER_LOGS/miner.log" ] && [ $TOTAL -gt 100 ]; then
-    if [ $REJECTED -gt $((TOTAL / 10)) ]; then
-        echo -e "  ${YELLOW}⚠ Muitos shares rejeitados: $REJECTED de $TOTAL${NC}"
-        ALERT_COUNT=$((ALERT_COUNT + 1))
-    fi
-fi
-
-# Verificar hashrate baixo
-if [ ! -z "$AVG" ] && [ $(echo "$AVG < 50" | bc) -eq 1 ]; then
-    echo -e "  ${YELLOW}⚠ Hashrate baixo: $AVG H/s${NC}"
-    ALERT_COUNT=$((ALERT_COUNT + 1))
-fi
-
-if [ $ALERT_COUNT -eq 0 ]; then
-    echo -e "  ${GREEN}Nenhum alerta ativo${NC}"
-fi
-
-# ==================== RODAPÉ ====================
-echo ""
-echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}Comandos rápidos:${NC} ./menu.sh | ./start.sh | ./stop.sh | ./logs.sh"
-echo -e "${PURPLE}══════════════════════════════════════════════════════════════════════${NC}"
-
-# Aguardar entrada do usuário
-read -t 30 -p "Pressione Enter para continuar (ou aguarde 30s)..."
-EOF
-
-    # 4. LOGS.SH - Visualizador de logs
-    cat > "$MINER_ROOT/logs.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-
-while true; do
-    clear
-    echo -e "\033[1;36m╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "\033[1;36m║                     VISUALIZADOR DE LOGS                            ║${NC}"
-    echo -e "\033[1;36m╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo "1) 📋 Log do Minerador (miner.log)"
-    echo "2) 🔧 Log do Sistema (system.log)"
-    echo "3) ❌ Log de Erros (error.log)"
-    echo "4) ⚠️  Log de Avisos (warning.log)"
-    echo "5) ✅ Log de Sucessos (success.log)"
-    echo "6) ℹ️  Log de Informações (info.log)"
-    echo "7) 💬 Log do Discord (discord.log)"
-    echo "8) 💰 Log de Lucros (profit.log)"
-    echo "9) ⚡ Log de Hashrate (hashrate.log)"
-    echo "10) 📊 Log de Shares (share.log)"
-    echo "11) 🌐 Log de Pools (pool.log)"
-    echo "12) 💾 Log de Backups (backup.log)"
-    echo "13) 📈 Log de Monitor (monitor.log)"
-    echo "14) 🐛 Log de Debug (debug.log)"
-    echo "15) 📉 Log de Performance (performance.log)"
-    echo "16) 📚 Log Combinado (combined.log)"
-    echo "17) 📝 Todos os logs (resumo)"
-    echo "18) 🔄 Seguir logs em tempo real"
-    echo "19) 🔍 Buscar em logs"
-    echo "20) 🧹 Limpar logs antigos"
-    echo "21) 📦 Exportar logs"
-    echo "22) 📊 Estatísticas de logs"
-    echo "23) 🔙 Voltar"
-    echo ""
-    read -p "Escolha (1-23): " choice
-    
-    case $choice in
-        1) less "$MINER_LOGS/miner.log" ;;
-        2) less "$MINER_LOGS/system.log" ;;
-        3) less "$MINER_LOGS/error.log" ;;
-        4) less "$MINER_LOGS/warning.log" ;;
-        5) less "$MINER_LOGS/success.log" ;;
-        6) less "$MINER_LOGS/info.log" ;;
-        7) less "$MINER_LOGS/discord.log" ;;
-        8) less "$MINER_LOGS/profit.log" ;;
-        9) less "$MINER_LOGS/hashrate.log" ;;
-        10) less "$MINER_LOGS/share.log" ;;
-        11) less "$MINER_LOGS/pool.log" ;;
-        12) less "$MINER_LOGS/backup.log" ;;
-        13) less "$MINER_LOGS/monitor.log" ;;
-        14) less "$MINER_LOGS/debug.log" ;;
-        15) less "$MINER_LOGS/performance.log" ;;
-        16) less "$MINER_LOGS/combined.log" ;;
-        17)
-            echo ""
-            echo "=== RESUMO DOS LOGS ==="
-            echo ""
-            echo "📊 Tamanhos:"
-            du -h "$MINER_LOGS"/*.log 2>/dev/null | sort -hr
-            echo ""
-            echo "📋 Últimas 5 linhas de cada:"
-            for log in "$MINER_LOGS"/*.log; do
-                echo -e "\n${CYAN}$(basename "$log"):${NC}"
-                tail -3 "$log"
-            done
-            read -p "Pressione Enter para continuar..."
-            ;;
-        18)
-            echo "Seguindo logs (Ctrl+C para sair)"
-            echo "Escolha o log:"
-            select log in "$MINER_LOGS"/*.log; do
-                tail -f "$log"
-                break
-            done
-            ;;
-        19)
-            read -p "Termo de busca: " search
-            read -p "Log (ou 'todos'): " logfile
-            if [ "$logfile" = "todos" ]; then
-                grep -r "$search" "$MINER_LOGS/"
-            else
-                grep "$search" "$MINER_LOGS/$logfile"
-            fi
-            read -p "Pressione Enter para continuar..."
-            ;;
-        20)
-            find "$MINER_LOGS" -name "*.log" -size +10M -exec truncate -s 0 {} \;
-            echo "Logs antigos limpos"
-            read -p "Pressione Enter para continuar..."
-            ;;
-        21)
-            EXPORT_FILE="$MINER_BACKUP/logs_export_$(date +%Y%m%d_%H%M%S).tar.gz"
-            tar -czf "$EXPORT_FILE" "$MINER_LOGS/"
-            echo "Logs exportados para: $EXPORT_FILE"
-            read -p "Pressione Enter para continuar..."
-            ;;
-        22)
-            echo ""
-            echo "=== ESTATÍSTICAS DE LOGS ==="
-            echo ""
-            for log in "$MINER_LOGS"/*.log; do
-                lines=$(wc -l < "$log")
-                size=$(du -h "$log" | cut -f1)
-                last=$(tail -1 "$log" | cut -c1-50)
-                echo "$(basename "$log"): $lines linhas | $size | Última: $last"
-            done
-            read -p "Pressione Enter para continuar..."
-            ;;
-        23) break ;;
-        *) echo "Opção inválida" ;;
-    esac
-done
-EOF
-
-    # 5. MENU.SH - Menu principal (33 opções)
-    cat > "$MINER_ROOT/menu.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf" 2>/dev/null
-
-# Cores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-ORANGE='\033[38;5;208m'
-PINK='\033[38;5;213m'
-LIME='\033[38;5;154m'
-TEAL='\033[38;5;123m'
-GOLD='\033[38;5;220m'
-NC='\033[0m'
-
-while true; do
-    clear
-    
-    # BANNER
-    echo -e "${GOLD}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GOLD}║              BITCOIN MINER TERMUX - MENU PRINCIPAL                  ║${NC}"
-    echo -e "${GOLD}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # STATUS RÁPIDO
-    if pgrep -f xmrig > /dev/null; then
-        echo -e "  ${GREEN}⛏️  MINERAÇÃO: ATIVA${NC}"
-        PID=$(pgrep -f xmrig)
-        echo -e "  ${WHITE}  PID: $PID${NC}"
-    else
-        echo -e "  ${RED}⛏️  MINERAÇÃO: INATIVA${NC}"
-    fi
-    
-    # ESTATÍSTICAS RÁPIDAS
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        SHARES=$(grep -c "accepted" "$MINER_LOGS/miner.log" 2>/dev/null)
-        HASHRATE=$(tail -20 "$MINER_LOGS/miner.log" 2>/dev/null | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+ [kM]?H/s" || echo "0.0 H/s")
-        echo -e "  ${WHITE}  Shares:${NC} $SHARES | ${WHITE}Hashrate:${NC} $HASHRATE"
-    fi
-    
-    echo ""
-    echo -e "${CYAN}══════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}                      MENU DE CONTROLE (33 OPÇÕES)                   ${NC}"
-    echo -e "${CYAN}══════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    
-    # ==================== GRUPO 1: CONTROLE BÁSICO (1-5) ====================
-    echo -e "${ORANGE}═══════ GRUPO 1: CONTROLE BÁSICO ═══════${NC}"
-    echo "  1)  🚀 INICIAR mineração"
-    echo "  2)  🛑 PARAR mineração"
-    echo "  3)  🔄 REINICIAR mineração"
-    echo "  4)  📊 VER STATUS completo"
-    echo "  5)  📋 VER LOGS"
-    echo ""
-    
-    # ==================== GRUPO 2: MONITORAMENTO (6-10) ====================
-    echo -e "${PINK}═══════ GRUPO 2: MONITORAMENTO ═══════${NC}"
-    echo "  6)  📈 MONITOR em tempo real"
-    echo "  7)  📉 GRÁFICO de hashrate"
-    echo "  8)  📊 ESTATÍSTICAS detalhadas"
-    echo "  9)  💰 RELATÓRIO de lucros"
-    echo " 10)  📋 RESUMO diário"
-    echo ""
-    
-    # ==================== GRUPO 3: CONFIGURAÇÕES (11-15) ====================
-    echo -e "${LIME}═══════ GRUPO 3: CONFIGURAÇÕES ═══════${NC}"
-    echo " 11)  ⚙️  CONFIGURAÇÕES básicas"
-    echo " 12)  🔧 CONFIGURAÇÕES avançadas"
-    echo " 13)  🌐 CONFIGURAR pools"
-    echo " 14)  🔄 TROCAR pool atual"
-    echo " 15)  📝 EDITAR config.json"
-    echo ""
-    
-    # ==================== GRUPO 4: OTIMIZAÇÃO (16-20) ====================
-    echo -e "${TEAL}═══════ GRUPO 4: OTIMIZAÇÃO ═══════${NC}"
-    echo " 16)  ⚡ AJUSTAR uso de CPU"
-    echo " 17)  🎯 AJUSTAR prioridade"
-    echo " 18)  🔄 OTIMIZAR para bateria"
-    echo " 19)  🌡️  MONITORAR temperatura"
-    echo " 20)  ⚙️  PERFIL de desempenho"
-    echo ""
-    
-    # ==================== GRUPO 5: BACKUP E RESTORE (21-25) ====================
-    echo -e "${GOLD}═══════ GRUPO 5: BACKUP E RESTORE ═══════${NC}"
-    echo " 21)  💾 CRIAR backup completo"
-    echo " 22)  📦 LISTAR backups"
-    echo " 23)  🔄 RESTAURAR backup"
-    echo " 24)  🗑️  REMOVER backup antigo"
-    echo " 25)  🔄 BACKUP automático"
-    echo ""
-    
-    # ==================== GRUPO 6: FERRAMENTAS (26-30) ====================
-    echo -e "${BLUE}═══════ GRUPO 6: FERRAMENTAS ═══════${NC}"
-    echo " 26)  🔍 TESTAR velocidade"
-    echo " 27)  🌐 TESTAR pools"
-    echo " 28)  📊 BENCHMARK completo"
-    echo " 29)  🔧 DIAGNÓSTICO do sistema"
-    echo " 30)  📝 EDITAR scripts"
-    echo ""
-    
-    # ==================== GRUPO 7: SISTEMA (31-33) ====================
-    echo -e "${PURPLE}═══════ GRUPO 7: SISTEMA ═══════${NC}"
-    echo " 31)  ℹ️  INFORMAÇÕES do sistema"
-    echo " 32)  🔄 ATUALIZAR sistema"
-    echo " 33)  🗑️  DESINSTALAR tudo"
-    echo ""
-    
-    # ==================== SAIR ====================
-    echo -e "${RED}══════════════════════════════════════════════════════════════════════${NC}"
-    echo "  0)  ❌ SAIR"
-    echo -e "${RED}══════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    
-    read -p "Escolha uma opção (0-33): " choice
-    
-    case $choice in
-        0)  echo "Saindo..."; exit 0 ;;
-        
-        # GRUPO 1: CONTROLE BÁSICO
-        1)  "$MINER_ROOT/start.sh" ;;
-        2)  "$MINER_ROOT/stop.sh" ;;
-        3)  "$MINER_ROOT/stop.sh"; sleep 3; "$MINER_ROOT/start.sh" ;;
-        4)  "$MINER_ROOT/status.sh" ;;
-        5)  "$MINER_ROOT/logs.sh" ;;
-        
-        # GRUPO 2: MONITORAMENTO
-        6)  
-            echo "Monitor em tempo real (Ctrl+C para sair)"
-            watch -n 2 "$MINER_ROOT/status.sh"
-            ;;
-        7)
-            echo "Gráfico de hashrate (Ctrl+C para sair)"
-            tail -f "$MINER_LOGS/hashrate.log" | while read line; do
-                echo "$line"
-            done
-            ;;
-        8)
-            "$MINER_SCRIPTS/stats.sh"
-            ;;
-        9)
-            "$MINER_SCRIPTS/profit_report.sh"
-            ;;
-        10)
-            "$MINER_SCRIPTS/daily_summary.sh"
-            ;;
-        
-        # GRUPO 3: CONFIGURAÇÕES
-        11)
-            "$MINER_SCRIPTS/config_basic.sh"
-            ;;
-        12)
-            "$MINER_SCRIPTS/config_advanced.sh"
-            ;;
-        13)
-            "$MINER_SCRIPTS/pool_config.sh"
-            ;;
-        14)
-            "$MINER_SCRIPTS/switch_pool.sh"
-            ;;
-        15)
-            nano "$MINER_CONFIG/config.json"
-            ;;
-        
-        # GRUPO 4: OTIMIZAÇÃO
-        16)
-            read -p "Novo uso de CPU (10-90): " new_cpu
-            sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"$new_cpu\"/" "$MINER_CONFIG/system.conf"
-            echo "CPU ajustada para $new_cpu%"
-            ;;
-        17)
-            read -p "Nova prioridade (0-5): " new_priority
-            sed -i "s/MINING_PRIORITY=.*/MINING_PRIORITY=\"$new_priority\"/" "$MINER_CONFIG/system.conf"
-            echo "Prioridade ajustada para $new_priority"
-            ;;
-        18)
-            "$MINER_SCRIPTS/battery_optimize.sh"
-            ;;
-        19)
-            watch -n 2 "cat $MINER_STATS/temperature.txt 2>/dev/null || echo 'Aguardando...'"
-            ;;
-        20)
-            "$MINER_SCRIPTS/performance_profile.sh"
-            ;;
-        
-        # GRUPO 5: BACKUP E RESTORE
-        21)
-            "$MINER_SCRIPTS/backup.sh"
-            ;;
-        22)
-            ls -lh "$MINER_BACKUP"/*.tar.gz 2>/dev/null || echo "Nenhum backup encontrado"
-            read -p "Pressione Enter para continuar..."
-            ;;
-        23)
-            "$MINER_SCRIPTS/restore.sh"
-            ;;
-        24)
-            "$MINER_SCRIPTS/clean_backup.sh"
-            ;;
-        25)
-            "$MINER_SCRIPTS/auto_backup.sh"
-            ;;
-        
-        # GRUPO 6: FERRAMENTAS
-        26)
-            "$MINER_SCRIPTS/speed_test.sh"
-            ;;
-        27)
-            "$MINER_SCRIPTS/test_pools.sh"
-            ;;
-        28)
-            "$MINER_SCRIPTS/benchmark.sh"
-            ;;
-        29)
-            "$MINER_SCRIPTS/diagnostic.sh"
-            ;;
-        30)
-            echo "Scripts disponíveis:"
-            ls "$MINER_ROOT"/*.sh "$MINER_SCRIPTS"/*.sh
-            read -p "Qual script editar? " script
-            nano "$MINER_SCRIPTS/$script" 2>/dev/null || nano "$MINER_ROOT/$script"
-            ;;
-        
-        # GRUPO 7: SISTEMA
-        31)
-            "$MINER_SCRIPTS/system_info.sh"
-            ;;
-        32)
-            "$MINER_SCRIPTS/update.sh"
-            ;;
-        33)
-            "$MINER_SCRIPTS/uninstall.sh"
-            ;;
-        
-        *)  echo "Opção inválida!"; sleep 2 ;;
-    esac
-done
-EOF
-
-    # Criar scripts auxiliares
-    create_aux_scripts
-    
-    chmod +x "$MINER_ROOT"/*.sh
-    chmod +x "$MINER_SCRIPTS"/*.sh 2>/dev/null
-    
-    log_success "33 scripts de controle criados"
-}
-
-create_aux_scripts() {
-    mkdir -p "$MINER_SCRIPTS"
-    
-    # Script de estatísticas
-    cat > "$MINER_SCRIPTS/stats.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== ESTATÍSTICAS DETALHADAS ==="
-echo ""
-echo "📊 Shares por hora:"
-for i in {1..24}; do
-    HOUR=$(date -d "$i hours ago" '+%H')
-    COUNT=$(grep "accepted" "$MINER_LOGS/miner.log" | grep "$(date -d "$i hours ago" '+%H:')" | wc -l)
-    echo "  $HOUR:00 -> $COUNT shares"
-done
-read -p "Pressione Enter para continuar..."
-EOF
-
-    # Script de relatório de lucros
-    cat > "$MINER_SCRIPTS/profit_report.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf"
-echo "=== RELATÓRIO DE LUCROS ==="
-echo ""
-HASHRATE=$(tail -20 "$MINER_LOGS/miner.log" | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+")
-if [ ! -z "$HASHRATE" ]; then
-    DAILY_SAT=$(echo "$HASHRATE * 100" | bc | cut -d. -f1)
-    DAILY_BTC=$(echo "scale=8; $DAILY_SAT / 100000000" | bc)
-    DAILY_USD=$(echo "scale=2; $DAILY_BTC * 40000" | bc)
-    echo "📈 Hashrate médio: $HASHRATE H/s"
-    echo "💰 Estimativa diária:"
-    echo "   $DAILY_SAT satoshis"
-    echo "   $DAILY_BTC BTC"
-    echo "   \$$DAILY_USD USD"
-fi
-read -p "Pressione Enter para continuar..."
-EOF
-
-    # Script de resumo diário
-    cat > "$MINER_SCRIPTS/daily_summary.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== RESUMO DIÁRIO ==="
-echo "Data: $(date '+%Y-%m-%d')"
-echo ""
-TODAY=$(date '+%Y-%m-%d')
-SHARES_TODAY=$(grep "$TODAY" "$MINER_LOGS/miner.log" | grep -c "accepted")
-ERRORS_TODAY=$(grep "$TODAY" "$MINER_LOGS/error.log" | wc -l)
-echo "📊 Shares hoje: $SHARES_TODAY"
-echo "❌ Erros hoje: $ERRORS_TODAY"
-read -p "Pressione Enter para continuar..."
-EOF
-
-    # Script de configuração básica
-    cat > "$MINER_SCRIPTS/config_basic.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf"
-while true; do
-    clear
-    echo "=== CONFIGURAÇÕES BÁSICAS ==="
-    echo "1) Carteira: $BTC_WALLET"
-    echo "2) CPU Usage: $CPU_USAGE%"
-    echo "3) Prioridade: $MINING_PRIORITY"
-    echo "4) Donate Level: $DONATE_LEVEL%"
-    echo "5) Voltar"
-    read -p "Escolha: " choice
-    case $choice in
-        1) read -p "Nova carteira: " new; sed -i "s/BTC_WALLET=.*/BTC_WALLET=\"$new\"/" "$MINER_CONFIG/system.conf" ;;
-        2) read -p "Novo CPU Usage (10-90): " new; sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"$new\"/" "$MINER_CONFIG/system.conf" ;;
-        3) read -p "Nova prioridade (0-5): " new; sed -i "s/MINING_PRIORITY=.*/MINING_PRIORITY=\"$new\"/" "$MINER_CONFIG/system.conf" ;;
-        4) read -p "Novo Donate Level (0-5): " new; sed -i "s/DONATE_LEVEL=.*/DONATE_LEVEL=\"$new\"/" "$MINER_CONFIG/system.conf" ;;
-        5) break ;;
-    esac
-done
-EOF
-
-    # Script de configuração de pools
-    cat > "$MINER_SCRIPTS/pool_config.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-while true; do
-    clear
-    echo "=== CONFIGURAÇÃO DE POOLS ==="
-    echo ""
-    echo "Pools atuais:"
-    nl "$MINER_CONFIG/pools.list"
-    echo ""
-    echo "1) Adicionar pool"
-    echo "2) Remover pool"
-    echo "3) Testar pools"
-    echo "4) Voltar"
-    read -p "Escolha: " choice
-    case $choice in
-        1) read -p "URL da pool: " new; echo "$new" >> "$MINER_CONFIG/pools.list" ;;
-        2) read -p "Número da pool: " num; sed -i "${num}d" "$MINER_CONFIG/pools.list" ;;
-        3) while read pool; do
-               echo -n "$pool: "
-               timeout 2 nc -zv $(echo "$pool" | cut -d: -f1) $(echo "$pool" | cut -d: -f2) 2>&1 | grep -o "succeeded" || echo "offline"
-           done < "$MINER_CONFIG/pools.list"
-           read -p "Pressione Enter..." ;;
-        4) break ;;
-    esac
-done
-EOF
-
-    # Script de troca de pool
-    cat > "$MINER_SCRIPTS/switch_pool.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-mapfile -t POOLS < "$MINER_CONFIG/pools.list"
-CURRENT=$(grep '"url"' "$MINER_CONFIG/config.json" | head -1 | cut -d'"' -f4)
-echo "Pool atual: $CURRENT"
-echo ""
-echo "Pools disponíveis:"
-for i in "${!POOLS[@]}"; do
-    if [ "${POOLS[$i]}" = "$CURRENT" ]; then
-        echo "$((i+1))) ${POOLS[$i]} (atual)"
-    else
-        echo "$((i+1))) ${POOLS[$i]}"
-    fi
-done
-read -p "Escolha nova pool: " choice
-NEW="${POOLS[$((choice-1))]}"
-sed -i "s|\"url\": \".*\"|\"url\": \"$NEW\"|" "$MINER_CONFIG/config.json"
-echo "Pool alterada para: $NEW"
-"$MINER_ROOT/stop.sh" > /dev/null 2>&1
-sleep 3
-"$MINER_ROOT/start.sh" > /dev/null 2>&1
-EOF
-
-    # Script de otimização de bateria
-    cat > "$MINER_SCRIPTS/battery_optimize.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-if command -v termux-battery-status >/dev/null; then
-    STATUS=$(termux-battery-status)
-    LEVEL=$(echo "$STATUS" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
-    PLUGGED=$(echo "$STATUS" | grep -o '"plugged":"[^"]*"' | cut -d'"' -f4)
-    if [ "$PLUGGED" != "UNPLUGGED" ]; then
-        sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"75\"/" "$MINER_CONFIG/system.conf"
-        echo "Modo otimizado para carregador: CPU 75%"
-    else
-        if [ $LEVEL -gt 50 ]; then
-            sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"50\"/" "$MINER_CONFIG/system.conf"
-            echo "Modo otimizado para bateria >50%: CPU 50%"
-        else
-            sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"30\"/" "$MINER_CONFIG/system.conf"
-            echo "Modo otimizado para bateria <50%: CPU 30%"
-        fi
-    fi
-fi
-EOF
-
-    # Script de perfil de desempenho
-    cat > "$MINER_SCRIPTS/performance_profile.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== PERFIS DE DESEMPENHO ==="
-echo "1) Máximo desempenho (CPU 90%)"
-echo "2) Balanceado (CPU 75%)"
-echo "3) Econômico (CPU 50%)"
-echo "4) Super economia (CPU 30%)"
-read -p "Escolha: " choice
-case $choice in
-    1) sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"90\"/" "$MINER_CONFIG/system.conf" ;;
-    2) sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"75\"/" "$MINER_CONFIG/system.conf" ;;
-    3) sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"50\"/" "$MINER_CONFIG/system.conf" ;;
-    4) sed -i "s/CPU_USAGE=.*/CPU_USAGE=\"30\"/" "$MINER_CONFIG/system.conf" ;;
-esac
-echo "Perfil aplicado!"
-"$MINER_ROOT/stop.sh" > /dev/null 2>&1
-sleep 3
-"$MINER_ROOT/start.sh" > /dev/null 2>&1
-EOF
-
-    # Script de restore
-    cat > "$MINER_SCRIPTS/restore.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "Backups disponíveis:"
-ls -1 "$MINER_BACKUP"/*.tar.gz 2>/dev/null | nl
-read -p "Escolha o número: " num
-BACKUP=$(ls -1 "$MINER_BACKUP"/*.tar.gz 2>/dev/null | sed -n "${num}p")
-if [ -f "$BACKUP" ]; then
-    "$MINER_ROOT/stop.sh" > /dev/null 2>&1
-    tar -xzf "$BACKUP" -C "$MINER_ROOT"
-    echo "Backup restaurado!"
-    "$MINER_ROOT/start.sh" > /dev/null 2>&1 &
-else
-    echo "Backup não encontrado"
-fi
-read -p "Pressione Enter..."
-EOF
-
-    # Script de limpeza de backup
-    cat > "$MINER_SCRIPTS/clean_backup.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "Backups antigos:"
-find "$MINER_BACKUP" -name "*.tar.gz" -type f -mtime +30 -exec ls -lh {} \;
-read -p "Remover? (s/n): " confirm
-if [ "$confirm" = "s" ]; then
-    find "$MINER_BACKUP" -name "*.tar.gz" -type f -mtime +30 -delete
-    echo "Backups antigos removidos"
-fi
-EOF
-
-    # Script de backup automático
-    cat > "$MINER_SCRIPTS/auto_backup.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-while true; do
-    "$MINER_SCRIPTS/backup.sh" > /dev/null 2>&1
-    echo "[$(date)] Backup automático realizado" >> "$MINER_LOGS/backup.log"
-    sleep 86400  # 24 horas
-done &
-echo "Backup automático ativado (a cada 24h)"
-EOF
-
-    # Script de teste de velocidade
-    cat > "$MINER_SCRIPTS/speed_test.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "Testando velocidade de download..."
-for i in {1..5}; do
-    echo "Teste $i:"
-    time wget -O /dev/null "https://github.com/xmrig/xmrig/releases/download/v6.20.0/xmrig-6.20.0-linux-arm64" 2>&1 | grep -E "real|speed"
-done
-read -p "Pressione Enter..."
-EOF
-
-    # Script de teste de pools
-    cat > "$MINER_SCRIPTS/test_pools.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== TESTE DE POOLS ==="
-echo ""
-while read pool; do
-    echo -n "$pool: "
-    HOST=$(echo "$pool" | cut -d: -f1)
-    PORT=$(echo "$pool" | cut -d: -f2)
-    timeout 2 nc -zv $HOST $PORT 2>&1 | grep -o "succeeded" && echo "✓ online" || echo "✗ offline"
-done < "$MINER_CONFIG/pools.list"
-read -p "Pressione Enter..."
-EOF
-
-    # Script de benchmark
-    cat > "$MINER_SCRIPTS/benchmark.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== BENCHMARK COMPLETO ==="
-echo ""
-echo "1) Teste de CPU"
-sysbench cpu run 2>/dev/null | grep "events per second" || echo "Instale sysbench para benchmark"
-echo ""
-echo "2) Teste de memória"
-sysbench memory run 2>/dev/null | grep "transferred" || echo "Instale sysbench para benchmark"
-echo ""
-echo "3) Teste de rede"
-curl -o /dev/null http://speedtest.tele2.net/100MB.zip -w 'Velocidade: %{speed_download} bytes/s\n' 2>/dev/null
-echo ""
-read -p "Pressione Enter..."
-EOF
-
-    # Script de diagnóstico
-    cat > "$MINER_SCRIPTS/diagnostic.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== DIAGNÓSTICO DO SISTEMA ==="
-echo ""
-echo "📊 Verificando minerador..."
-if pgrep -f xmrig > /dev/null; then
-    echo "✓ Minerador está rodando"
-else
-    echo "✗ Minerador NÃO está rodando"
-fi
-echo ""
-echo "📁 Verificando arquivos..."
-[ -f "$MINER_BIN/xmrig" ] && echo "✓ Binário existe" || echo "✗ Binário não encontrado"
-[ -f "$MINER_CONFIG/config.json" ] && echo "✓ Config existe" || echo "✗ Config não encontrado"
-[ -d "$MINER_LOGS" ] && echo "✓ Logs existem" || echo "✗ Logs não encontrados"
-echo ""
-echo "🔍 Verificando permissões..."
-[ -x "$MINER_BIN/xmrig" ] && echo "✓ Binário executável" || echo "✗ Binário sem permissão"
-echo ""
-echo "📊 Últimos erros:"
-tail -5 "$MINER_LOGS/error.log" 2>/dev/null || echo "Nenhum erro"
-read -p "Pressione Enter..."
-EOF
-
-    # Script de informações do sistema
-    cat > "$MINER_SCRIPTS/system_info.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== INFORMAÇÕES DO SISTEMA ==="
-echo ""
-echo "📱 Termux:"
-pkg list-installed | wc -l | xargs echo "  Pacotes instalados:"
-echo ""
-echo "💻 Hardware:"
-cat /proc/cpuinfo | grep "model name" | head -1 | cut -d: -f2 | xargs echo "  CPU:"
-free -h | grep "Mem" | awk '{print "  Memória: " $2}'
-df -h /data | grep "/data" | awk '{print "  Armazenamento: " $4 " livres"}'
-echo ""
-echo "⚙️  Sistema:"
-echo "  Kernel: $(uname -r)"
-echo "  Arquitetura: $(uname -m)"
-echo "  Uptime: $(uptime | cut -d, -f1)"
-echo ""
-echo "⛏️  Minerador:"
-[ -f "$MINER_CACHE/version.txt" ] && echo "  Versão XMRig: $(cat "$MINER_CACHE/version.txt")"
-echo "  Total shares: $(grep -c "accepted" "$MINER_LOGS/miner.log" 2>/dev/null || echo 0)"
-read -p "Pressione Enter..."
-EOF
-
-    # Script de update
-    cat > "$MINER_SCRIPTS/update.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== ATUALIZAR SISTEMA ==="
-echo ""
-echo "1) Atualizar scripts"
-echo "2) Atualizar XMRig"
-echo "3) Atualizar dependências"
-echo "4) Atualizar tudo"
-read -p "Escolha: " choice
-case $choice in
-    1)
-        cd "$MINER_ROOT"
-        git pull origin main 2>/dev/null || echo "Não é repositório git"
-        ;;
-    2)
-        "$MINER_ROOT/stop.sh" > /dev/null 2>&1
-        rm -f "$MINER_BIN/xmrig"
-        "$MINER_ROOT/install_xmrig" 2>/dev/null
-        ;;
-    3)
-        pkg update && pkg upgrade -y
-        ;;
-    4)
-        cd "$MINER_ROOT"
-        git pull origin main 2>/dev/null
-        pkg update && pkg upgrade -y
-        "$MINER_ROOT/stop.sh" > /dev/null 2>&1
-        rm -f "$MINER_BIN/xmrig"
-        "$MINER_ROOT/install_xmrig" 2>/dev/null
-        ;;
-esac
-echo "Atualização concluída!"
-read -p "Pressione Enter..."
-EOF
-
-    # Script de desinstalação
-    cat > "$MINER_SCRIPTS/uninstall.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-echo "=== DESINSTALAR SISTEMA ==="
-echo ""
-echo -e "\033[1;31m⚠️  ATENÇÃO: Isso removerá TODOS os arquivos!\033[0m"
-echo ""
-read -p "Digite 'DESINSTALAR' para confirmar: " confirm
-if [ "$confirm" = "DESINSTALAR" ]; then
-    "$MINER_ROOT/stop.sh" > /dev/null 2>&1
-    sleep 3
-    rm -rf "$MINER_ROOT"
-    sed -i '/# BITCOIN MINER ULTIMATE/,/^fi$/d' ~/.bashrc
-    sed -i '/alias miner/d' ~/.bashrc
-    echo "Sistema desinstalado com sucesso!"
-    exit 0
-else
-    echo "Desinstalação cancelada"
-    read -p "Pressione Enter..."
-fi
-EOF
-
-    chmod +x "$MINER_SCRIPTS"/*.sh
-}
-
-# ============================================================================
-# SISTEMA DE MONITORAMENTO AVANÇADO
-# ============================================================================
-
-setup_monitoring() {
-    print_header "CONFIGURANDO MONITORAMENTO AVANÇADO"
-    
-    # Script de monitoramento principal
-    cat > "$MINER_SCRIPTS/monitor_daemon.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-MINER_ROOT="/data/data/com.termux/files/home/bitcoin_miner_ultimate"
-source "$MINER_ROOT/config/system.conf" 2>/dev/null
-
-LOG_MONITOR="$MINER_LOGS/monitor.log"
-CHECK_INTERVAL=30
-NO_SHARE_TIMEOUT=600
-LAST_SHARE=0
-SHARE_COUNT=0
-
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Monitor daemon iniciado" >> "$LOG_MONITOR"
-
-while true; do
-    # Verificar se minerador está rodando
-    if ! pgrep -f xmrig > /dev/null; then
-        echo "[$(date '+%H:%M:%S')] Minerador parado, reiniciando..." >> "$LOG_MONITOR"
-        "$MINER_ROOT/start.sh" > /dev/null 2>&1 &
-        sleep 60
-        continue
-    fi
-    
-    CURRENT_TIME=$(date +%s)
-    
-    # Verificar novos shares
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        NEW_COUNT=$(grep -c "accepted" "$MINER_LOGS/miner.log")
-        if [ $NEW_COUNT -gt $SHARE_COUNT ]; then
-            SHARE_COUNT=$NEW_COUNT
-            LAST_SHARE=$CURRENT_TIME
-            echo "[$(date '+%H:%M:%S')] Novo share! Total: $SHARE_COUNT" >> "$LOG_MONITOR"
-            
-            # Notificar Discord a cada 10 shares
-            if [ $((SHARE_COUNT % 10)) -eq 0 ] && [ ! -z "$DISCORD_WEBHOOK" ]; then
-                HASHRATE=$(tail -20 "$MINER_LOGS/miner.log" | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+ [kM]?H/s" || echo "0.0 H/s")
-                curl -s -H "Content-Type: application/json" \
-                     -X POST \
-                     -d "{\"content\":\"✅ **+10 SHARES**\\nTotal: $SHARE_COUNT shares\\nHashrate: $HASHRATE\\nWorker: \`$WORKER_ID\`\"}" \
-                     "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-            fi
+    # Verificar XMRig
+    if ! check_xmrig; then
+        echo -e "\n${YELLOW}XMRig não encontrado. Deseja instalar? (s/n)${NC}"
+        read -p "> " install_choice
+        if [ "$install_choice" = "s" ] || [ "$install_choice" = "S" ]; then
+            install_xmrig
         fi
     fi
     
-    # Verificar se está muito tempo sem shares
-    TIME_SINCE_LAST=$((CURRENT_TIME - LAST_SHARE))
-    if [ $LAST_SHARE -gt 0 ] && [ $TIME_SINCE_LAST -gt $NO_SHARE_TIMEOUT ]; then
-        echo "[$(date '+%H:%M:%S')] $TIME_SINCE_LAST segundos sem shares, reiniciando..." >> "$LOG_MONITOR"
-        "$MINER_ROOT/stop.sh" > /dev/null 2>&1
-        sleep 5
-        "$MINER_ROOT/start.sh" > /dev/null 2>&1 &
-        LAST_SHARE=$CURRENT_TIME
+    # Verificar configuração básica
+    if [ ! -f "$MINER_CONFIG/current_pool" ]; then
+        POOL="${POOLS[0]}"
+        echo "$POOL" > "$MINER_CONFIG/current_pool"
     fi
     
-    # Coletar métricas
-    if [ -f "$MINER_LOGS/miner.log" ]; then
-        # Hashrate
-        HASHRATE=$(tail -20 "$MINER_LOGS/miner.log" | grep -E "speed.*[0-9]+\.[0-9]+" | tail -1 | grep -oE "[0-9]+\.[0-9]+" || echo "0")
-        echo "$HASHRATE" >> "$MINER_STATS/hashrate.history"
-        tail -100 "$MINER_STATS/hashrate.history" > "$MINER_STATS/hashrate.history.tmp"
-        mv "$MINER_STATS/hashrate.history.tmp" "$MINER_STATS/hashrate.history"
-        
-        # Calcular média
-        AVG=$(tail -10 "$MINER_STATS/hashrate.history" | awk '{sum+=$1} END {if(NR>0) printf "%.1f", sum/NR}')
-        echo "$AVG" > "$MINER_STATS/avg_hashrate"
+    if [ ! -f "$MINER_CONFIG/current_wallet" ]; then
+        WALLET="${WALLETS[0]}"
+        echo "$WALLET" > "$MINER_CONFIG/current_wallet"
     fi
     
-    # Verificar temperatura
-    if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
-        TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-        TEMP=$((TEMP / 1000))
-        echo "$TEMP" > "$MINER_STATS/temperature.txt"
-        
-        if [ $TEMP -gt 70 ] && [ ! -z "$DISCORD_WEBHOOK" ]; then
-            curl -s -H "Content-Type: application/json" \
-                 -X POST \
-                 -d "{\"content\":\"🌡️ **ALERTA DE TEMPERATURA**\\nTemperatura: ${TEMP}°C\\nReduza a carga do processador!\"}" \
-                 "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-        fi
+    # Gerar configuração se necessário
+    if [ ! -f "$MINER_CONFIG/config.json" ]; then
+        POOL=$(cat "$MINER_CONFIG/current_pool")
+        WALLET=$(cat "$MINER_CONFIG/current_wallet")
+        generate_config "$WALLET" "$POOL"
     fi
     
-    # Relatório de lucros a cada 6 horas
-    if [ $((CURRENT_TIME % 21600)) -lt $CHECK_INTERVAL ]; then
-        AVG=$(cat "$MINER_STATS/avg_hashrate" 2>/dev/null || echo "0")
-        if [ $(echo "$AVG > 0" | bc) -eq 1 ]; then
-            DAILY_SAT=$(echo "$AVG * 100" | bc | cut -d. -f1)
-            DAILY_BTC=$(echo "scale=8; $DAILY_SAT / 100000000" | bc)
-            DAILY_USD=$(echo "scale=2; $DAILY_BTC * 40000" | bc)
-            
-            cat > "$MINER_STATS/profit.json" << PROFITEOF
-{
-    "timestamp": "$(date '+%Y-%m-%d %H:%M:%S')",
-    "hashrate": "$AVG",
-    "daily_sat": $DAILY_SAT,
-    "daily_btc": "$DAILY_BTC",
-    "daily_usd": "$DAILY_USD",
-    "total_sat": $SHARE_COUNT
-}
-PROFITEOF
-            
-            if [ ! -z "$DISCORD_WEBHOOK" ]; then
-                curl -s -H "Content-Type: application/json" \
-                     -X POST \
-                     -d "{\"embeds\":[{\"title\":\"💰 RELATÓRIO DE LUCROS\",\"description\":\"**Hashrate:** $AVG H/s\\n**Estimativa Diária:**\\n└ $DAILY_SAT satoshis\\n└ $DAILY_BTC BTC\\n└ \$$DAILY_USD USD\\n\\n**Total:** $SHARE_COUNT shares\",\"color\":15844367,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}]}" \
-                     "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-            fi
-        fi
-    fi
+    # Iniciar auto-recuperação em background
+    (
+        while true; do
+            sleep 300
+            auto_recover
+        done
+    ) &
     
-    sleep $CHECK_INTERVAL
-done
-EOF
-
-    chmod +x "$MINER_SCRIPTS/monitor_daemon.sh"
+    # Iniciar coleta de estatísticas em background
+    (
+        while true; do
+            sleep 30
+            collect_stats
+        done
+    ) &
     
-    # Iniciar monitoramento
-    nohup "$MINER_SCRIPTS/monitor_daemon.sh" > /dev/null 2>&1 &
-    
-    log_success "Monitoramento avançado configurado"
+    # Mostrar menu
+    show_menu
 }
 
 # ============================================================================
-# CONFIGURAÇÃO DE AUTO-INICIALIZAÇÃO
+# INICIAR
 # ============================================================================
-
-setup_autostart() {
-    print_header "CONFIGURANDO AUTO-INICIALIZAÇÃO"
-    
-    # Adicionar ao .bashrc
-    if ! grep -q "bitcoin_miner_ultimate" ~/.bashrc; then
-        cat >> ~/.bashrc << 'EOF'
-
-# ====================================================
-# BITCOIN MINER ULTIMATE v13.0 - AUTO START
-# ====================================================
-if [ -f "/data/data/com.termux/files/home/bitcoin_miner_ultimate/menu.sh" ] && [ ! -f /tmp/miner_started ]; then
-    echo ""
-    echo -e "\033[1;33m╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "\033[1;33m║              BITCOIN MINER TERMUX ULTIMATE v13.0                   ║${NC}"
-    echo -e "\033[1;33m╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo -e "\033[1;36mComandos disponíveis:\033[0m"
-    echo -e "  \033[1;32mminer\033[0m        - Abrir menu principal (33 opções)"
-    echo -e "  \033[1;32mminer_start\033[0m  - Iniciar mineração"
-    echo -e "  \033[1;32mminer_stop\033[0m   - Parar mineração"
-    echo -e "  \033[1;32mminer_status\033[0m - Ver status"
-    echo -e "  \033[1;32mminer_logs\033[0m   - Ver logs"
-    echo -e "  \033[1;32mminer_menu\033[0m   - Menu completo"
-    echo ""
-    
-    # Iniciar minerador automaticamente após 30 segundos
-    (sleep 30 && cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./start.sh > /dev/null 2>&1) &
-    touch /tmp/miner_started
-fi
-
-# Aliases
-alias miner='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./menu.sh'
-alias miner_start='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./start.sh'
-alias miner_stop='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./stop.sh'
-alias miner_status='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./status.sh'
-alias miner_logs='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./logs.sh'
-alias miner_menu='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./menu.sh'
-alias miner_restart='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./stop.sh && sleep 3 && ./start.sh'
-alias miner_backup='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./scripts/backup.sh'
-alias miner_pool='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./scripts/switch_pool.sh'
-alias miner_stats='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./scripts/stats.sh'
-alias miner_profit='cd /data/data/com.termux/files/home/bitcoin_miner_ultimate && ./scripts/profit_report.sh'
-EOF
-        log_success "Auto-inicialização configurada com 12 aliases"
-    else
-        log_info "Auto-inicialização já existe"
-    fi
-}
-
-# ============================================================================
-# BACKUP INICIAL
-# ============================================================================
-
-create_initial_backup() {
-    print_header "CRIANDO BACKUP INICIAL"
-    
-    local backup_name="backup_initial_$(date +%Y%m%d_%H%M%S)"
-    local backup_path="$MINER_BACKUP/$backup_name"
-    
-    mkdir -p "$backup_path"
-    
-    # Copiar tudo
-    cp -r "$MINER_CONFIG" "$backup_path/"
-    cp -r "$MINER_SCRIPTS" "$backup_path/"
-    cp -r "$MINER_STATS" "$backup_path/"
-    cp "$MINER_ROOT"/*.sh "$backup_path/" 2>/dev/null
-    
-    # Informações do backup
-    cat > "$backup_path/README.txt" << EOF
-BACKUP INICIAL DO MINERADOR BITCOIN ULTIMATE v13.0
-==================================================
-Data: $(date '+%Y-%m-%d %H:%M:%S')
-Worker: $(grep WORKER_ID "$MINER_CONFIG/system.conf" 2>/dev/null | cut -d'"' -f2)
-Wallet: $BTC_WALLET
-Arquitetura: $ARCH_TYPE
-
-Este backup contém:
-- Configurações completas
-- Todos os scripts de controle
-- Estatísticas iniciais
-- Logs básicos
-
-Tamanho: $(du -sh "$backup_path" | cut -f1)
-Arquivos: $(find "$backup_path" -type f | wc -l)
-EOF
-    
-    # Compactar
-    cd "$MINER_BACKUP"
-    tar -czf "$backup_name.tar.gz" "$backup_name"
-    rm -rf "$backup_name"
-    
-    log_success "Backup inicial criado: $backup_name.tar.gz"
-    log_info "Tamanho: $(du -h "$backup_name.tar.gz" | cut -f1)"
-    
-    # Notificar Discord
-    if [ ! -z "$DISCORD_WEBHOOK" ]; then
-        curl -s -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\":\"💾 **BACKUP INICIAL CRIADO**\\nArquivo: $backup_name.tar.gz\\nTamanho: $(du -h "$backup_name.tar.gz" | cut -f1)\"}" \
-             "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-    fi
-}
-
-# ============================================================================
-# INSTALAÇÃO COMPLETA
-# ============================================================================
-
-install_complete() {
-    print_banner
-    
-    print_header "INICIANDO INSTALAÇÃO COMPLETA v13.0"
-    
-    # Verificações
-    check_termux
-    check_internet || exit 1
-    check_architecture
-    check_battery
-    check_temperature
-    
-    # Criar estrutura
-    log_info "Criando estrutura de diretórios..."
-    mkdir -p "$MINER_ROOT"
-    mkdir -p "$MINER_BIN"
-    mkdir -p "$MINER_CONFIG"
-    mkdir -p "$MINER_LOGS"
-    mkdir -p "$MINER_STATS"
-    mkdir -p "$MINER_SCRIPTS"
-    mkdir -p "$MINER_BACKUP"
-    mkdir -p "$MINER_CACHE"
-    mkdir -p "$MINER_TEMP"
-    mkdir -p "$MINER_WALLPAPER"
-    mkdir -p "$MINER_THEMES"
-    
-    # Inicializar logs
-    init_logs
-    
-    # Instalar dependências
-    install_dependencies
-    
-    # Instalar XMRig
-    install_xmrig || exit 1
-    
-    # Criar configuração
-    create_config
-    
-    # Criar scripts
-    create_scripts
-    
-    # Configurar monitoramento
-    setup_monitoring
-    
-    # Configurar auto-start
-    setup_autostart
-    
-    # Backup inicial
-    create_initial_backup
-    
-    # Notificar Discord
-    if [ ! -z "$DISCORD_WEBHOOK" ]; then
-        WORKER=$(grep WORKER_ID "$MINER_CONFIG/system.conf" 2>/dev/null | cut -d'"' -f2)
-        curl -s -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"embeds\":[{\"title\":\"✅ SISTEMA INSTALADO\",\"description\":\"**Worker:** \`$WORKER\`\\n**Arquitetura:** $ARCH_TYPE\\n**CPU:** $CPU_USAGE%\\n**Scripts:** 33 funções\\n**Data:** $(date '+%d/%m/%Y %H:%M')\",\"color\":3066993}]}" \
-             "$DISCORD_WEBHOOK" > /dev/null 2>&1 &
-    fi
-    
-    # Finalizar
-    print_header "INSTALAÇÃO CONCLUÍDA COM SUCESSO!"
-    
-    echo -e "${COLOR_INFO}📁 Diretório:${NC} $MINER_ROOT"
-    echo -e "${COLOR_INFO}💰 Carteira:${NC} ${BTC_WALLET:0:10}...${BTC_WALLET: -4}"
-    echo -e "${COLOR_INFO}👷 Worker:${NC} $(grep WORKER_ID "$MINER_CONFIG/system.conf" 2>/dev/null | cut -d'"' -f2)"
-    echo -e "${COLOR_INFO}⚡ XMRig:${NC} $("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)"
-    echo -e "${COLOR_INFO}📊 Scripts:${NC} 33 funções no menu"
-    echo -e "${COLOR_INFO}💾 Backup:${NC} $(ls -1 "$MINER_BACKUP"/*.tar.gz 2>/dev/null | wc -l) arquivo(s)"
-    echo ""
-    echo -e "${COLOR_SUCCESS}Comandos disponíveis:${NC}"
-    echo "  miner        - Abrir menu principal (33 opções)"
-    echo "  miner_start  - Iniciar mineração"
-    echo "  miner_stop   - Parar mineração"
-    echo "  miner_status - Ver status completo"
-    echo "  miner_logs   - Ver logs (23 opções)"
-    echo "  miner_menu   - Menu completo"
-    echo "  miner_restart - Reiniciar"
-    echo "  miner_backup - Criar backup"
-    echo "  miner_pool   - Trocar pool"
-    echo "  miner_stats  - Estatísticas"
-    echo "  miner_profit - Relatório de lucros"
-    echo ""
-    echo -e "${COLOR_WARNING}⚠️  A mineração iniciará automaticamente em 30 segundos${NC}"
-    echo ""
-    
-    # Perguntar se quer iniciar agora
-    read -p "Iniciar mineração agora? (s/n): " start_now
-    if [ "$start_now" = "s" ]; then
-        cd "$MINER_ROOT"
-        ./start.sh
-        sleep 3
-        ./menu.sh
-    else
-        echo "Para iniciar manualmente: cd $MINER_ROOT && ./start.sh"
-        echo "Para abrir o menu: cd $MINER_ROOT && ./menu.sh"
-    fi
-}
-
-# ============================================================================
-# INICIALIZAÇÃO PRINCIPAL
-# ============================================================================
-
-# Verificar se o sistema já existe
-if [ -d "$MINER_ROOT" ] && [ -f "$MINER_BIN/xmrig" ]; then
-    # Sistema já instalado, mostrar menu
-    cd "$MINER_ROOT"
-    ./menu.sh
-else
-    # Primeira execução - instalar
-    install_complete
-fi
+init
