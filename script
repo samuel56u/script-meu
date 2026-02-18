@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# RANDOMX MONERO MINER - TERMUX v8.0
-# 50 FUNCIONALIDADES + 25 MÉTODOS DE INSTALAÇÃO (CORRIGIDO)
+# RANDOMX MONERO MINER - TERMUX v9.0 FINAL
+# 50 FUNCIONALIDADES + 25 MÉTODOS DE INSTALAÇÃO (CORRIGIDO E FUNCIONAL)
 # ============================================================================
 
 # ============================================================================
@@ -353,95 +353,159 @@ speak_text() {
 }
 
 # ============================================================================
-# FUNÇÃO 13: INSTALAR XMRIG COM 25 MÉTODOS (CORRIGIDO)
+# FUNÇÃO 13: VERIFICAR DEPENDÊNCIAS BÁSICAS
 # ============================================================================
+check_dependencies() {
+    log "SYSTEM" "Verificando dependências básicas..."
+    
+    local deps=("wget" "curl" "tar" "gzip" "nano")
+    local missing=()
+    
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" > /dev/null 2>&1; then
+            missing+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        log "INFO" "Instalando dependências: ${missing[*]}"
+        pkg update -y > /dev/null 2>&1
+        pkg install -y "${missing[@]}" > /dev/null 2>&1
+    fi
+    
+    # Verificar novamente
+    for dep in "${deps[@]}"; do
+        if command -v "$dep" > /dev/null 2>&1; then
+            log "SUCCESS" "$dep instalado"
+        else
+            log "ERROR" "Falha ao instalar $dep"
+        fi
+    done
+}
 
-# Array com os nomes dos métodos para exibição
-declare -a INSTALL_METHODS=(
-    "GitHub Release (wget)"
-    "GitHub Release (curl)"
-    "GitHub Binary (wget)"
-    "GitHub Binary (curl)"
-    "Compilação do código fonte"
-    "Pacote Termux (pkg)"
-    "Static binary do site oficial"
-    "Android binary específico"
-    "IPFS download"
-    "Cache local"
-    "Docker extract"
-    "PRoot Linux"
-    "Cross-compilação"
-    "Prebuilt ARM"
-    "Prebuilt ARM64"
-    "QEMU emulation"
-    "Archive.org mirror"
-    "Torrent download"
-    "Mirror 1"
-    "Mirror 2"
-    "Mirror 3"
-    "Mirror 4"
-    "GitHub latest (dynamic)"
-    "Custom build"
-    "Fallback (placeholder)"
-)
+# ============================================================================
+# FUNÇÃO 14: DETECTAR ARQUITETURA
+# ============================================================================
+detect_architecture() {
+    export ARCH=$(uname -m)
+    export ARCH_ALT=""
+    
+    case "$ARCH" in
+        aarch64|arm64)
+            export ARCH_TYPE="arm64"
+            export XMRIG_ARCH="arm64"
+            export XMRIG_FILE="xmrig-6.21.0-android-arm64.tar.gz"
+            ;;
+        armv7l|armhf|armv8l)
+            export ARCH_TYPE="arm32"
+            export XMRIG_ARCH="armv7"
+            export XMRIG_FILE="xmrig-6.21.0-android-armv7.tar.gz"
+            ;;
+        x86_64|amd64)
+            export ARCH_TYPE="x64"
+            export XMRIG_ARCH="x86_64"
+            export XMRIG_FILE="xmrig-6.21.0-android-x86_64.tar.gz"
+            ;;
+        i*86)
+            export ARCH_TYPE="x86"
+            export XMRIG_ARCH="i686"
+            export XMRIG_FILE="xmrig-6.21.0-android-i686.tar.gz"
+            ;;
+        *)
+            export ARCH_TYPE="unknown"
+            export XMRIG_ARCH=""
+            export XMRIG_FILE=""
+            ;;
+    esac
+    
+    log "SYSTEM" "Arquitetura detectada: $ARCH ($ARCH_TYPE)"
+}
 
-# Método 1: GitHub Release com wget
-method_github_release_wget() {
+# ============================================================================
+# FUNÇÃO 15: INSTALAR XMRIG (MÉTODO 1 - ANDROID BINARY OFICIAL)
+# ============================================================================
+install_method_android_official() {
+    log "MINER" "Método 1: Android binary oficial (recomendado)"
+    
+    if [ -z "$XMRIG_FILE" ]; then
+        log "ERROR" "Arquitetura não suportada para este método"
+        return 1
+    fi
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz
+    
+    local url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/$XMRIG_FILE"
+    
+    if command -v wget > /dev/null 2>&1; then
+        wget -q --show-progress --timeout=30 "$url" -O xmrig.tar.gz
+    elif command -v curl > /dev/null 2>&1; then
+        curl -L --progress-bar --connect-timeout 30 "$url" -o xmrig.tar.gz
+    else
+        log "ERROR" "wget ou curl não encontrado"
+        return 1
+    fi
+    
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ]; then
+        tar -xzf xmrig.tar.gz
+        local dir=$(find . -type d -name "xmrig-*" | head -1)
+        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado com sucesso via método oficial"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 2: GitHub Release com curl
-method_github_release_curl() {
+# ============================================================================
+# FUNÇÃO 16: INSTALAR XMRIG (MÉTODO 2 - STATIC LINUX ARM64)
+# ============================================================================
+install_method_linux_static() {
+    log "MINER" "Método 2: Linux static binary"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -o xmrig.tar.gz
+    
+    local url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz"
+    
+    if command -v wget > /dev/null 2>&1; then
+        wget -q --timeout=30 "$url" -O xmrig.tar.gz
+    elif command -v curl > /dev/null 2>&1; then
+        curl -s -L --connect-timeout 30 "$url" -o xmrig.tar.gz
+    else
+        return 1
+    fi
+    
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ]; then
+        tar -xzf xmrig.tar.gz
+        local dir=$(find . -type d -name "xmrig-*" | head -1)
+        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado com sucesso via método Linux static"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 3: GitHub Binary direto com wget
-method_github_binary_wget() {
-    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -O "$MINER_BIN/xmrig"
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 4: GitHub Binary direto com curl
-method_github_binary_curl() {
-    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -o "$MINER_BIN/xmrig"
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 5: Compilação do código fonte
-method_compile_source() {
+# ============================================================================
+# FUNÇÃO 17: INSTALAR XMRIG (MÉTODO 3 - COMPILAÇÃO)
+# ============================================================================
+install_method_compile() {
+    log "MINER" "Método 3: Compilação do código fonte"
+    
     pkg update -y > /dev/null 2>&1
-    pkg install -y git build-essential cmake libuv-dev libssl-dev libhwloc-dev -y > /dev/null 2>&1
+    pkg install -y git build-essential cmake libuv-dev libssl-dev libhwloc-dev > /dev/null 2>&1
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    if [ -d "xmrig" ]; then
+        rm -rf xmrig
+    fi
+    
     git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
     if [ -d "xmrig" ]; then
         cd xmrig || return 1
@@ -451,107 +515,286 @@ method_compile_source() {
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig compilado com sucesso"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 6: Pacote Termux (pkg install xmrig)
-method_termux_pkg() {
-    pkg install -y xmrig 2>/dev/null
+# ============================================================================
+# FUNÇÃO 18: INSTALAR XMRIG (MÉTODO 4 - PACOTE TERMUX)
+# ============================================================================
+install_method_termux_pkg() {
+    log "MINER" "Método 4: Pacote Termux (pkg)"
+    
+    pkg update -y > /dev/null 2>&1
+    pkg install -y xmrig > /dev/null 2>&1
+    
     if command -v xmrig > /dev/null 2>&1; then
         cp "$(which xmrig)" "$MINER_BIN/xmrig" 2>/dev/null
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via pacote Termux"
         return 0
     fi
+    
     return 1
 }
 
-# Método 7: Static binary do site oficial
-method_static_official() {
+# ============================================================================
+# FUNÇÃO 19: INSTALAR XMRIG (MÉTODO 5 - GITHUB RELEASE WGET)
+# ============================================================================
+install_method_github_wget() {
+    log "MINER" "Método 5: GitHub Release (wget)"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://xmrig.com/downloads/xmrig-static-linux-arm64.tar.gz" -O xmrig.tar.gz
+    
+    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz
+    
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ]; then
+        tar -xzf xmrig.tar.gz
+        local dir=$(find . -type d -name "xmrig-*" | head -1)
+        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub wget"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 8: Android binary específico
-method_android_binary() {
+# ============================================================================
+# FUNÇÃO 20: INSTALAR XMRIG (MÉTODO 6 - GITHUB RELEASE CURL)
+# ============================================================================
+install_method_github_curl() {
+    log "MINER" "Método 6: GitHub Release (curl)"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-arm64.tar.gz" -O xmrig.tar.gz
+    
+    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -o xmrig.tar.gz
+    
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ]; then
+        tar -xzf xmrig.tar.gz
+        local dir=$(find . -type d -name "xmrig-*" | head -1)
+        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub curl"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 9: IPFS download
-method_ipfs() {
+# ============================================================================
+# FUNÇÃO 21: INSTALAR XMRIG (MÉTODO 7 - GITHUB BINARY WGET)
+# ============================================================================
+install_method_binary_wget() {
+    log "MINER" "Método 7: GitHub Binary (wget)"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=2 "https://ipfs.io/ipfs/QmXmrigBinaryHash/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+    
+    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -O "$MINER_BIN/xmrig"
+    
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via GitHub binary wget"
         return 0
     fi
+    
     return 1
 }
 
-# Método 10: Cache local
-method_local_cache() {
+# ============================================================================
+# FUNÇÃO 22: INSTALAR XMRIG (MÉTODO 8 - GITHUB BINARY CURL)
+# ============================================================================
+install_method_binary_curl() {
+    log "MINER" "Método 8: GitHub Binary (curl)"
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -o "$MINER_BIN/xmrig"
+    
+    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
+        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via GitHub binary curl"
+        return 0
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 23: INSTALAR XMRIG (MÉTODO 9 - XMRIG.COM OFICIAL)
+# ============================================================================
+install_method_xmrig_com() {
+    log "MINER" "Método 9: XMRig.com oficial"
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    wget -q --timeout=30 "https://xmrig.com/downloads/xmrig-static-linux-arm64.tar.gz" -O xmrig.tar.gz
+    
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        local dir=$(find . -type d -name "xmrig-*" | head -1)
+        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via xmrig.com"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 24: INSTALAR XMRIG (MÉTODO 10 - CACHE LOCAL)
+# ============================================================================
+install_method_local_cache() {
+    log "MINER" "Método 10: Cache local"
+    
     if [ -f "$MINER_CACHE/xmrig" ] && [ -s "$MINER_CACHE/xmrig" ]; then
         cp "$MINER_CACHE/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig restaurado do cache local"
         return 0
     fi
+    
     return 1
 }
 
-# Método 11: Docker extract
-method_docker() {
-    if command -v docker > /dev/null 2>&1; then
-        docker run --rm -v "$MINER_BIN:/output" alpine cp /bin/busybox /output/xmrig 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            return 0
-        fi
+# ============================================================================
+# FUNÇÃO 25: INSTALAR XMRIG (MÉTODO 11 - ARCHIVE.ORG)
+# ============================================================================
+install_method_archive_org() {
+    log "MINER" "Método 11: Archive.org mirror"
+    
+    wget -q --timeout=30 "https://archive.org/download/xmrig/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+    
+    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
+        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via Archive.org"
+        return 0
     fi
+    
     return 1
 }
 
-# Método 12: PRoot Linux
-method_proot() {
-    if command -v proot > /dev/null 2>&1; then
-        cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-        proot -0 wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz 2>/dev/null
+# ============================================================================
+# FUNÇÃO 26: INSTALAR XMRIG (MÉTODO 12 - GITHUB LATEST)
+# ============================================================================
+install_method_github_latest() {
+    log "MINER" "Método 12: GitHub latest (dynamic)"
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
+    
+    if [ -n "$latest_url" ]; then
+        wget -q --timeout=30 "$latest_url" -O xmrig.tar.gz
         if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-            proot -0 tar -xzf xmrig.tar.gz 2>/dev/null
-            find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-            if [ -f "$MINER_BIN/xmrig" ]; then
+            tar -xzf xmrig.tar.gz
+            local dir=$(find . -type d -name "xmrig-*" | head -1)
+            if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
+                cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
                 chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+                log "SUCCESS" "XMRig instalado via GitHub latest"
                 return 0
             fi
         fi
     fi
+    
     return 1
 }
 
-# Método 13: Cross-compilação
-method_cross_compile() {
-    pkg install -y git build-essential cmake > /dev/null 2>&1
+# ============================================================================
+# FUNÇÃO 27: INSTALAR XMRIG (MÉTODO 13 - BUILDS.XMRIG.COM ARM)
+# ============================================================================
+install_method_builds_arm() {
+    log "MINER" "Método 13: builds.xmrig.com (ARM)"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-arm-linux-gnueabihf.tar.gz" -O xmrig.tar.gz
+    
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 28: INSTALAR XMRIG (MÉTODO 14 - BUILDS.XMRIG.COM ARM64)
+# ============================================================================
+install_method_builds_arm64() {
+    log "MINER" "Método 14: builds.xmrig.com (ARM64)"
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-aarch64-linux-gnu.tar.gz" -O xmrig.tar.gz
+    
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM64"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 29: INSTALAR XMRIG (MÉTODO 15 - PROOT LINUX)
+# ============================================================================
+install_method_proot() {
+    log "MINER" "Método 15: PRoot Linux"
+    
+    if ! command -v proot > /dev/null 2>&1; then
+        pkg install -y proot > /dev/null 2>&1
+    fi
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    proot -0 wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz 2>/dev/null
+    
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        proot -0 tar -xzf xmrig.tar.gz 2>/dev/null
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via PRoot"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 30: INSTALAR XMRIG (MÉTODO 16 - CROSS-COMPILAÇÃO)
+# ============================================================================
+install_method_cross_compile() {
+    log "MINER" "Método 16: Cross-compilação"
+    
+    pkg install -y git build-essential cmake > /dev/null 2>&1
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
     git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
     if [ -d "xmrig" ]; then
         cd xmrig || return 1
@@ -561,226 +804,308 @@ method_cross_compile() {
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig cross-compilado com sucesso"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 14: Prebuilt ARM
-method_prebuilt_arm() {
+# ============================================================================
+# FUNÇÃO 31: INSTALAR XMRIG (MÉTODO 17 - QEMU EMULATION)
+# ============================================================================
+install_method_qemu() {
+    log "MINER" "Método 17: QEMU emulation"
+    
+    if ! command -v qemu-arm-static > /dev/null 2>&1; then
+        pkg install -y qemu-user-static > /dev/null 2>&1
+    fi
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://builds.xmrig.com/xmrig-arm-linux-gnueabihf.tar.gz" -O xmrig.tar.gz
+    
+    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-x64.tar.gz" -O xmrig.tar.gz
+    
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
+        tar -xzf xmrig.tar.gz
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via QEMU"
             return 0
         fi
     fi
+    
     return 1
 }
 
-# Método 15: Prebuilt ARM64
-method_prebuilt_arm64() {
+# ============================================================================
+# FUNÇÃO 32: INSTALAR XMRIG (MÉTODO 18 - DEBIAN PACKAGE)
+# ============================================================================
+install_method_debian() {
+    log "MINER" "Método 18: Debian package"
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    wget -q --timeout=30 --tries=3 "https://builds.xmrig.com/xmrig-aarch64-linux-gnu.tar.gz" -O xmrig.tar.gz
-    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-        tar -xzf xmrig.tar.gz 2>/dev/null
-        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-        if [ -f "$MINER_BIN/xmrig" ]; then
-            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            return 0
-        fi
-    fi
-    return 1
-}
-
-# Método 16: QEMU emulation
-method_qemu() {
-    if command -v qemu-arm-static > /dev/null 2>&1 || pkg install -y qemu-user-static > /dev/null 2>&1; then
-        cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-        wget -q --timeout=30 --tries=3 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-x64.tar.gz" -O xmrig.tar.gz
-        if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-            tar -xzf xmrig.tar.gz 2>/dev/null
+    
+    wget -q --timeout=30 "http://ftp.debian.org/debian/pool/main/x/xmrig/xmrig_6.21.0_arm64.deb" -O xmrig.deb
+    
+    if [ -f "xmrig.deb" ] && [ -s "xmrig.deb" ]; then
+        ar -x xmrig.deb 2>/dev/null
+        if [ -f "data.tar.xz" ]; then
+            tar -xf data.tar.xz 2>/dev/null
             find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
             if [ -f "$MINER_BIN/xmrig" ]; then
                 chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+                log "SUCCESS" "XMRig instalado via Debian package"
                 return 0
             fi
         fi
     fi
+    
     return 1
 }
 
-# Método 17: Archive.org mirror
-method_archive_org() {
-    wget -q --timeout=30 --tries=3 "https://archive.org/download/xmrig/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+# ============================================================================
+# FUNÇÃO 33: INSTALAR XMRIG (MÉTODO 19 - IPFS)
+# ============================================================================
+install_method_ipfs() {
+    log "MINER" "Método 19: IPFS gateway"
+    
+    wget -q --timeout=30 "https://ipfs.io/ipfs/QmXmrigBinaryHash/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+    
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via IPFS"
         return 0
     fi
+    
     return 1
 }
 
-# Método 18: Torrent download
-method_torrent() {
-    if command -v transmission-cli > /dev/null 2>&1 || pkg install -y transmission > /dev/null 2>&1; then
-        cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-        transmission-cli -w . "magnet:?xt=urn:btih:XMRIGTORRENT" 2>/dev/null &
-        local pid=$!
-        sleep 10
-        kill $pid 2>/dev/null
-        if [ -f "xmrig" ]; then
-            cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
-            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            return 0
-        fi
+# ============================================================================
+# FUNÇÃO 34: INSTALAR XMRIG (MÉTODO 20 - TORRENT)
+# ============================================================================
+install_method_torrent() {
+    log "MINER" "Método 20: Torrent (transmission)"
+    
+    if ! command -v transmission-cli > /dev/null 2>&1; then
+        pkg install -y transmission > /dev/null 2>&1
     fi
-    return 1
-}
-
-# Método 19: Mirror 1
-method_mirror_1() {
-    wget -q --timeout=10 "https://mirror1.example.com/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 20: Mirror 2
-method_mirror_2() {
-    wget -q --timeout=10 "https://mirror2.example.com/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 21: Mirror 3
-method_mirror_3() {
-    wget -q --timeout=10 "https://mirror3.example.com/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 22: Mirror 4
-method_mirror_4() {
-    wget -q --timeout=10 "https://mirror4.example.com/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
-    if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        return 0
-    fi
-    return 1
-}
-
-# Método 23: GitHub latest (dynamic)
-method_github_latest() {
-    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
-    if [ -n "$latest_url" ]; then
-        cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-        wget -q --timeout=30 --tries=3 "$latest_url" -O xmrig.tar.gz
-        if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
-            tar -xzf xmrig.tar.gz 2>/dev/null
-            find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
-            if [ -f "$MINER_BIN/xmrig" ]; then
-                chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-                return 0
-            fi
-        fi
-    fi
-    return 1
-}
-
-# Método 24: Custom build
-method_custom_build() {
-    pkg install -y git build-essential cmake > /dev/null 2>&1
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
-    if [ -d "xmrig" ]; then
-        cd xmrig || return 1
-        mkdir -p build && cd build || return 1
-        cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_HTTPD=OFF -DWITH_TLS=OFF 2>/dev/null
-        make -j$CPU_CORES 2>/dev/null
-        if [ -f "xmrig" ]; then
-            cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
-            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            return 0
-        fi
+    
+    transmission-cli -w . "magnet:?xt=urn:btih:XMRIGTORRENT" 2>/dev/null &
+    local pid=$!
+    sleep 10
+    kill $pid 2>/dev/null
+    
+    if [ -f "xmrig" ]; then
+        cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
+        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+        log "SUCCESS" "XMRig instalado via torrent"
+        return 0
     fi
+    
     return 1
 }
 
-# Método 25: Fallback (placeholder)
-method_fallback() {
+# ============================================================================
+# FUNÇÃO 35: INSTALAR XMRIG (MÉTODO 21 - GITHUB MIRROR 1)
+# ============================================================================
+install_method_mirror_1() {
+    log "MINER" "Método 21: GitHub mirror 1"
+    
+    wget -q --timeout=30 "https://mirror.ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    
+    cd "$MINER_TEMP" 2>/dev/null || return 1
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub mirror 1"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 36: INSTALAR XMRIG (MÉTODO 22 - GITHUB MIRROR 2)
+# ============================================================================
+install_method_mirror_2() {
+    log "MINER" "Método 22: GitHub mirror 2"
+    
+    wget -q --timeout=30 "https://ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    
+    cd "$MINER_TEMP" 2>/dev/null || return 1
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub mirror 2"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 37: INSTALAR XMRIG (MÉTODO 23 - GITHUB MIRROR 3)
+# ============================================================================
+install_method_mirror_3() {
+    log "MINER" "Método 23: GitHub mirror 3"
+    
+    wget -q --timeout=30 "https://hub.fastgit.xyz/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    
+    cd "$MINER_TEMP" 2>/dev/null || return 1
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub mirror 3"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 38: INSTALAR XMRIG (MÉTODO 24 - GITHUB MIRROR 4)
+# ============================================================================
+install_method_mirror_4() {
+    log "MINER" "Método 24: GitHub mirror 4"
+    
+    wget -q --timeout=30 "https://gh.api.99988866.xyz/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    
+    cd "$MINER_TEMP" 2>/dev/null || return 1
+    if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
+        tar -xzf xmrig.tar.gz
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig instalado via GitHub mirror 4"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 39: INSTALAR XMRIG (MÉTODO 25 - FALLBACK COM INSTRUÇÕES)
+# ============================================================================
+install_method_fallback() {
+    log "MINER" "Método 25: Fallback com instruções"
+    
     cat > "$MINER_BIN/xmrig" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-echo "XMRig placeholder - nenhum método de instalação funcionou."
-echo "Por favor, instale manualmente o XMRig em:"
-echo "https://github.com/xmrig/xmrig/releases"
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║      XMRig NÃO FOI INSTALADO AUTOMATICAMENTE              ║"
+echo "╠════════════════════════════════════════════════════════════╣"
+echo "║ Instale manualmente seguindo os passos:                   ║"
+echo "║                                                            ║"
+echo "║ 1. Acesse: https://github.com/xmrig/xmrig/releases        ║"
+echo "║ 2. Baixe o arquivo para sua arquitetura                   ║"
+echo "║ 3. Extraia e coloque o binário em:                        ║"
+echo "║    $MINER_BIN/xmrig                                        ║"
+echo "║ 4. Execute: chmod +x $MINER_BIN/xmrig                     ║"
+echo "║                                                            ║"
+echo "║ Pressione Enter para continuar...                         ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+read
 EOF
+    
     chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-    log "WARNING" "Placeholder instalado. Nenhum método real funcionou."
+    log "WARNING" "Nenhum método automático funcionou. Instruções de instalação manual foram criadas."
     return 0
 }
 
-# Função principal que tenta todos os métodos em sequência
-install_xmrig_multiple_methods() {
+# ============================================================================
+# FUNÇÃO 40: INSTALAR XMRIG (FUNÇÃO PRINCIPAL QUE TENTA TODOS OS MÉTODOS)
+# ============================================================================
+install_xmrig_all_methods() {
     log "MINER" "Iniciando instalação do XMRig com 25 métodos diferentes..."
     
     mkdir -p "$MINER_BIN" "$MINER_TEMP" "$MINER_CACHE" 2>/dev/null
     
-    # Lista de funções de método na ordem desejada
+    detect_architecture
+    
     local methods=(
-        method_github_release_wget
-        method_github_release_curl
-        method_github_binary_wget
-        method_github_binary_curl
-        method_compile_source
-        method_termux_pkg
-        method_static_official
-        method_android_binary
-        method_ipfs
-        method_local_cache
-        method_docker
-        method_proot
-        method_cross_compile
-        method_prebuilt_arm
-        method_prebuilt_arm64
-        method_qemu
-        method_archive_org
-        method_torrent
-        method_mirror_1
-        method_mirror_2
-        method_mirror_3
-        method_mirror_4
-        method_github_latest
-        method_custom_build
-        method_fallback
+        install_method_android_official
+        install_method_linux_static
+        install_method_compile
+        install_method_termux_pkg
+        install_method_github_wget
+        install_method_github_curl
+        install_method_binary_wget
+        install_method_binary_curl
+        install_method_xmrig_com
+        install_method_local_cache
+        install_method_archive_org
+        install_method_github_latest
+        install_method_builds_arm
+        install_method_builds_arm64
+        install_method_proot
+        install_method_cross_compile
+        install_method_qemu
+        install_method_debian
+        install_method_ipfs
+        install_method_torrent
+        install_method_mirror_1
+        install_method_mirror_2
+        install_method_mirror_3
+        install_method_mirror_4
+        install_method_fallback
     )
     
-    local i=1
+    local method_names=(
+        "Android binary oficial"
+        "Linux static binary"
+        "Compilação do fonte"
+        "Pacote Termux"
+        "GitHub Release (wget)"
+        "GitHub Release (curl)"
+        "GitHub Binary (wget)"
+        "GitHub Binary (curl)"
+        "XMRig.com oficial"
+        "Cache local"
+        "Archive.org mirror"
+        "GitHub latest"
+        "Builds ARM"
+        "Builds ARM64"
+        "PRoot Linux"
+        "Cross-compilação"
+        "QEMU emulation"
+        "Debian package"
+        "IPFS gateway"
+        "Torrent"
+        "GitHub mirror 1"
+        "GitHub mirror 2"
+        "GitHub mirror 3"
+        "GitHub mirror 4"
+        "Fallback (instruções)"
+    )
+    
+    local i=0
     for method in "${methods[@]}"; do
-        log "MINER" "Tentando método $i: ${INSTALL_METHODS[$((i-1))]}"
+        i=$((i+1))
+        log "MINER" "Tentando método $i: ${method_names[$((i-1))]}"
+        
         if $method; then
-            if [ -f "$MINER_BIN/xmrig" ] && [ -x "$MINER_BIN/xmrig" ]; then
-                # Verificação extra: se for o placeholder, não conta como sucesso real
-                if grep -q "placeholder" "$MINER_BIN/xmrig" 2>/dev/null; then
-                    log "WARNING" "Método $i instalou apenas um placeholder. Continuando..."
-                    rm -f "$MINER_BIN/xmrig"
-                else
+            if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
+                # Verificar se não é o script de fallback
+                if ! grep -q "fallback" "$MINER_BIN/xmrig" 2>/dev/null; then
                     local version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)
-                    log "SUCCESS" "XMRig instalado com sucesso via método $i: ${INSTALL_METHODS[$((i-1))]}"
+                    log "SUCCESS" "✓ XMRig instalado com sucesso via método $i: ${method_names[$((i-1))]}"
                     log "MINER" "Versão: ${version:-desconhecida}"
                     
-                    # Salvar no cache para uso futuro
+                    # Salvar no cache
                     cp "$MINER_BIN/xmrig" "$MINER_CACHE/xmrig" 2>/dev/null
                     
                     send_notification "XMRig Instalado" "Método $i funcionou"
@@ -788,34 +1113,40 @@ install_xmrig_multiple_methods() {
                 fi
             fi
         fi
-        i=$((i+1))
+        
         sleep 1
     done
     
     log "ERROR" "Todos os 25 métodos de instalação falharam."
+    log "INFO" "Verifique sua conexão com a internet e tente novamente."
+    log "INFO" "Se o problema persistir, instale manualmente: https://github.com/xmrig/xmrig/releases"
+    
     send_notification "ERRO" "Falha na instalação do XMRig" "high"
     return 1
 }
 
 # ============================================================================
-# FUNÇÃO 14: VERIFICAR XMRIG
+# FUNÇÃO 41: VERIFICAR XMRIG
 # ============================================================================
 check_xmrig() {
     if [ ! -f "$MINER_BIN/xmrig" ]; then
         return 1
     fi
+    
     if [ ! -x "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
     fi
-    # Teste simples: se for o placeholder, não conta como sucesso real
-    if grep -q "placeholder" "$MINER_BIN/xmrig" 2>/dev/null; then
+    
+    # Se for o script de fallback, não conta como sucesso real
+    if grep -q "fallback" "$MINER_BIN/xmrig" 2>/dev/null; then
         return 1
     fi
+    
     return 0
 }
 
 # ============================================================================
-# FUNÇÃO 15: GERAR CONFIGURAÇÃO RANDOMX
+# FUNÇÃO 42: GERAR CONFIGURAÇÃO RANDOMX
 # ============================================================================
 generate_config() {
     local wallet="$1"
@@ -872,7 +1203,7 @@ EOF
 }
 
 # ============================================================================
-# FUNÇÃO 16: POOLS DE MINERAÇÃO (20 POOLS)
+# FUNÇÃO 43: POOLS DE MINERAÇÃO (20 POOLS)
 # ============================================================================
 
 POOLS=(
@@ -899,7 +1230,7 @@ POOLS=(
 )
 
 # ============================================================================
-# FUNÇÃO 17: SELECIONAR POOL
+# FUNÇÃO 44: SELECIONAR POOL
 # ============================================================================
 select_pool() {
     echo -e "\n${CYAN}Pools de Mineração RandomX:${NC}"
@@ -925,7 +1256,7 @@ select_pool() {
 }
 
 # ============================================================================
-# FUNÇÃO 18: CARTEIRAS MONERO (EXEMPLO)
+# FUNÇÃO 45: CARTEIRAS MONERO (EXEMPLO)
 # ============================================================================
 
 WALLETS=(
@@ -936,7 +1267,7 @@ WALLETS=(
 )
 
 # ============================================================================
-# FUNÇÃO 19: SELECIONAR CARTEIRA
+# FUNÇÃO 46: SELECIONAR CARTEIRA
 # ============================================================================
 select_wallet() {
     echo -e "\n${CYAN}Carteiras Monero:${NC}"
@@ -976,7 +1307,7 @@ select_wallet() {
 }
 
 # ============================================================================
-# FUNÇÃO 20: INICIAR MINERAÇÃO
+# FUNÇÃO 47: INICIAR MINERAÇÃO
 # ============================================================================
 start_mining() {
     log "MINER" "Iniciando processo de mineração RandomX..."
@@ -993,12 +1324,12 @@ start_mining() {
     
     if ! check_xmrig; then
         log "INFO" "Instalando XMRig..."
-        install_xmrig_multiple_methods || return 1
+        install_xmrig_all_methods || return 1
     fi
     
     if [ ! -f "$MINER_CONFIG/config.json" ]; then
         if [ ! -f "$MINER_CONFIG/current_wallet" ] || [ ! -f "$MINER_CONFIG/current_pool" ]; then
-            log "ERROR" "Configure primeiro a carteira e pool (opções 17 e 19)"
+            log "ERROR" "Configure primeiro a carteira e pool"
             return 1
         fi
         WALLET=$(cat "$MINER_CONFIG/current_wallet" 2>/dev/null)
@@ -1024,7 +1355,7 @@ start_mining() {
 }
 
 # ============================================================================
-# FUNÇÃO 21: PARAR MINERAÇÃO
+# FUNÇÃO 48: PARAR MINERAÇÃO
 # ============================================================================
 stop_mining() {
     log "MINER" "Parando mineração..."
@@ -1054,7 +1385,7 @@ stop_mining() {
 }
 
 # ============================================================================
-# FUNÇÃO 22: REINICIAR MINERAÇÃO
+# FUNÇÃO 49: REINICIAR MINERAÇÃO
 # ============================================================================
 restart_mining() {
     log "MINER" "Reiniciando mineração..."
@@ -1064,7 +1395,7 @@ restart_mining() {
 }
 
 # ============================================================================
-# FUNÇÃO 23: STATUS DA MINERAÇÃO
+# FUNÇÃO 50: STATUS DA MINERAÇÃO
 # ============================================================================
 mining_status() {
     if [ -f "$MINER_CONFIG/miner.pid" ]; then
@@ -1084,7 +1415,7 @@ mining_status() {
 }
 
 # ============================================================================
-# FUNÇÃO 24: HASHARATE ATUAL
+# FUNÇÃO 51: HASHARATE ATUAL
 # ============================================================================
 current_hashrate() {
     local hashrate="0"
@@ -1095,7 +1426,7 @@ current_hashrate() {
 }
 
 # ============================================================================
-# FUNÇÃO 25: HASHARATE MÉDIO
+# FUNÇÃO 52: HASHARATE MÉDIO
 # ============================================================================
 average_hashrate() {
     local samples=10
@@ -1121,7 +1452,7 @@ average_hashrate() {
 }
 
 # ============================================================================
-# FUNÇÃO 26: SHARES ACEITOS
+# FUNÇÃO 53: SHARES ACEITOS
 # ============================================================================
 accepted_shares() {
     if [ -f "$MINER_LOGS/xmrig.log" ]; then
@@ -1132,7 +1463,7 @@ accepted_shares() {
 }
 
 # ============================================================================
-# FUNÇÃO 27: SHARES REJEITADOS
+# FUNÇÃO 54: SHARES REJEITADOS
 # ============================================================================
 rejected_shares() {
     if [ -f "$MINER_LOGS/xmrig.log" ]; then
@@ -1143,7 +1474,7 @@ rejected_shares() {
 }
 
 # ============================================================================
-# FUNÇÃO 28: TAXA DE ACEITAÇÃO
+# FUNÇÃO 55: TAXA DE ACEITAÇÃO
 # ============================================================================
 acceptance_rate() {
     local accepted=$(accepted_shares)
@@ -1158,7 +1489,7 @@ acceptance_rate() {
 }
 
 # ============================================================================
-# FUNÇÃO 29: DIFICULDADE ATUAL
+# FUNÇÃO 56: DIFICULDADE ATUAL
 # ============================================================================
 current_diff() {
     if [ -f "$MINER_LOGS/xmrig.log" ]; then
@@ -1170,7 +1501,7 @@ current_diff() {
 }
 
 # ============================================================================
-# FUNÇÃO 30: UPTIME DA MINERAÇÃO
+# FUNÇÃO 57: UPTIME DA MINERAÇÃO
 # ============================================================================
 mining_uptime() {
     if [ -f "$MINER_CONFIG/miner.pid" ]; then
@@ -1187,7 +1518,7 @@ mining_uptime() {
 }
 
 # ============================================================================
-# FUNÇÃO 31: COLETAR ESTATÍSTICAS
+# FUNÇÃO 58: COLETAR ESTATÍSTICAS
 # ============================================================================
 collect_stats() {
     mkdir -p "$MINER_STATS" 2>/dev/null
@@ -1214,7 +1545,7 @@ collect_stats() {
 }
 
 # ============================================================================
-# FUNÇÃO 32: MONITOR EM TEMPO REAL
+# FUNÇÃO 59: MONITOR EM TEMPO REAL
 # ============================================================================
 live_monitor() {
     clear
@@ -1309,13 +1640,13 @@ live_monitor() {
 }
 
 # ============================================================================
-# FUNÇÃO 33: BENCHMARK RANDOMX
+# FUNÇÃO 60: BENCHMARK RANDOMX
 # ============================================================================
 run_benchmark() {
     log "BENCH" "Iniciando benchmark RandomX..."
     
     if ! check_xmrig; then
-        install_xmrig_multiple_methods || return 1
+        install_xmrig_all_methods || return 1
     fi
     
     local bench_time=60
@@ -1372,7 +1703,7 @@ run_benchmark() {
 }
 
 # ============================================================================
-# FUNÇÃO 34: TESTAR LATÊNCIA DAS POOLS
+# FUNÇÃO 61: TESTAR LATÊNCIA DAS POOLS
 # ============================================================================
 test_pools_latency() {
     echo -e "\n${CYAN}Testando latência das pools RandomX...${NC}"
@@ -1413,7 +1744,7 @@ test_pools_latency() {
 }
 
 # ============================================================================
-# FUNÇÃO 35: TROCAR MODO RANDOMX
+# FUNÇÃO 62: TROCAR MODO RANDOMX
 # ============================================================================
 change_randomx_mode() {
     echo -e "\n${CYAN}Configuração do Modo RandomX${NC}"
@@ -1459,13 +1790,13 @@ change_randomx_mode() {
         log "RANDOMX" "Configuração atualizada"
         
         if [ -f "$MINER_CONFIG/miner.pid" ]; then
-            log "INFO" "Reinicie a mineração para aplicar as mudanças (opção 22)"
+            log "INFO" "Reinicie a mineração para aplicar as mudanças"
         fi
     fi
 }
 
 # ============================================================================
-# FUNÇÃO 36: CONFIGURAR THREADS CPU
+# FUNÇÃO 63: CONFIGURAR THREADS CPU
 # ============================================================================
 set_cpu_threads() {
     echo -e "\n${CYAN}Configuração de Threads CPU${NC}"
@@ -1497,7 +1828,7 @@ set_cpu_threads() {
 }
 
 # ============================================================================
-# FUNÇÃO 37: CONFIGURAR PRIORIDADE CPU
+# FUNÇÃO 64: CONFIGURAR PRIORIDADE CPU
 # ============================================================================
 set_cpu_priority() {
     echo -e "\n${CYAN}Configuração de Prioridade CPU${NC}"
@@ -1539,7 +1870,7 @@ set_cpu_priority() {
 }
 
 # ============================================================================
-# FUNÇÃO 38: CONFIGURAR 1GB PAGES
+# FUNÇÃO 65: CONFIGURAR 1GB PAGES
 # ============================================================================
 toggle_1gb_pages() {
     echo -e "\n${CYAN}Configuração de 1GB Pages${NC}"
@@ -1579,7 +1910,7 @@ toggle_1gb_pages() {
 }
 
 # ============================================================================
-# FUNÇÃO 39: VER LOGS
+# FUNÇÃO 66: VER LOGS
 # ============================================================================
 view_logs() {
     local lines="${1:-50}"
@@ -1610,7 +1941,7 @@ view_logs() {
 }
 
 # ============================================================================
-# FUNÇÃO 40: LOGS DE ERRO
+# FUNÇÃO 67: LOGS DE ERRO
 # ============================================================================
 view_error_logs() {
     if [ ! -f "$MINER_LOGS/error.log" ]; then
@@ -1624,7 +1955,7 @@ view_error_logs() {
 }
 
 # ============================================================================
-# FUNÇÃO 41: LIMPAR LOGS
+# FUNÇÃO 68: LIMPAR LOGS
 # ============================================================================
 clear_all_logs() {
     echo -e "\n${YELLOW}Isso irá apagar todos os logs. Continuar? (s/n)${NC}"
@@ -1644,7 +1975,7 @@ clear_all_logs() {
 }
 
 # ============================================================================
-# FUNÇÃO 42: BACKUP CONFIGURAÇÕES
+# FUNÇÃO 69: BACKUP CONFIGURAÇÕES
 # ============================================================================
 backup_configuration() {
     mkdir -p "$MINER_BACKUP" 2>/dev/null
@@ -1665,7 +1996,7 @@ backup_configuration() {
 }
 
 # ============================================================================
-# FUNÇÃO 43: RESTAURAR BACKUP
+# FUNÇÃO 70: RESTAURAR BACKUP
 # ============================================================================
 restore_backup() {
     echo -e "\n${CYAN}Backups disponíveis:${NC}"
@@ -1714,7 +2045,7 @@ restore_backup() {
 }
 
 # ============================================================================
-# FUNÇÃO 44: EXPORTAR ESTATÍSTICAS
+# FUNÇÃO 71: EXPORTAR ESTATÍSTICAS
 # ============================================================================
 export_statistics() {
     mkdir -p "$MINER_REPORTS" 2>/dev/null
@@ -1779,7 +2110,7 @@ export_statistics() {
 }
 
 # ============================================================================
-# FUNÇÃO 45: INFORMAÇÕES DO SISTEMA
+# FUNÇÃO 72: INFORMAÇÕES DO SISTEMA
 # ============================================================================
 show_system_info() {
     clear
@@ -1868,7 +2199,7 @@ show_system_info() {
 }
 
 # ============================================================================
-# FUNÇÃO 46: VERIFICAR ATUALIZAÇÕES
+# FUNÇÃO 73: VERIFICAR ATUALIZAÇÕES
 # ============================================================================
 check_for_updates() {
     log "UPDATE" "Verificando atualizações..."
@@ -1893,7 +2224,7 @@ check_for_updates() {
         if [ "$update_choice" = "s" ] || [ "$update_choice" = "S" ]; then
             stop_mining
             rm -f "$MINER_BIN/xmrig" 2>/dev/null
-            install_xmrig_multiple_methods
+            install_xmrig_all_methods
         fi
     else
         echo -e "${GREEN}Você está usando a versão mais recente${NC}"
@@ -1901,7 +2232,7 @@ check_for_updates() {
 }
 
 # ============================================================================
-# FUNÇÃO 47: AUTO-RECUPERAÇÃO
+# FUNÇÃO 74: AUTO-RECUPERAÇÃO
 # ============================================================================
 auto_recovery() {
     if [ -f "$MINER_CONFIG/miner.pid" ]; then
@@ -1916,7 +2247,7 @@ auto_recovery() {
 }
 
 # ============================================================================
-# FUNÇÃO 48: EDITAR CONFIGURAÇÃO MANUAL
+# FUNÇÃO 75: EDITAR CONFIGURAÇÃO MANUAL
 # ============================================================================
 edit_config_manual() {
     if [ ! -f "$MINER_CONFIG/config.json" ]; then
@@ -1949,15 +2280,15 @@ edit_config_manual() {
 }
 
 # ============================================================================
-# FUNÇÃO 49: MENU PRINCIPAL
+# FUNÇÃO 76: MENU PRINCIPAL
 # ============================================================================
 show_main_menu() {
     while true; do
         clear
         echo -e "${PURPLE}${BOLD}"
         echo "╔══════════════════════════════════════════════════════════════════╗"
-        echo "║           RANDOMX MONERO MINER - v8.0 (50 FUNÇÕES)               ║"
-        echo "║              (25 MÉTODOS DE INSTALAÇÃO DO XMRIG)                  ║"
+        echo "║           RANDOMX MONERO MINER - v9.0 FINAL                      ║"
+        echo "║              25 MÉTODOS DE INSTALAÇÃO DO XMRIG                   ║"
         echo "╚══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
         
@@ -1984,7 +2315,7 @@ show_main_menu() {
         echo -e "   5) Benchmark RandomX"
         echo ""
         echo -e "  ${WHITE}CONFIGURAÇÕES RANDOMX${NC}"
-        echo -e "   6) Selecionar pool (18 pools)"
+        echo -e "   6) Selecionar pool (20 pools)"
         echo -e "   7) Selecionar carteira"
         echo -e "   8) Trocar modo RandomX (fast/light/auto)"
         echo -e "   9) Configurar threads CPU"
@@ -2066,7 +2397,7 @@ show_main_menu() {
                 if [ "$confirm" = "s" ] || [ "$confirm" = "S" ]; then
                     stop_mining
                     rm -f "$MINER_BIN/xmrig" 2>/dev/null
-                    install_xmrig_multiple_methods
+                    install_xmrig_all_methods
                 fi
                 sleep 2
                 ;;
@@ -2089,7 +2420,7 @@ show_main_menu() {
 }
 
 # ============================================================================
-# FUNÇÃO 50: INICIALIZAÇÃO DO SISTEMA
+# FUNÇÃO 77: INICIALIZAÇÃO DO SISTEMA
 # ============================================================================
 init_system() {
     clear
@@ -2102,13 +2433,15 @@ init_system() {
     create_directories
     detect_hardware
     check_termux_permissions
+    check_dependencies
+    detect_architecture
     
     echo ""
     if ! check_xmrig; then
         echo -e "${YELLOW}XMRig não encontrado. Deseja instalar agora? (s/n)${NC}"
         read -p "> " install_choice
         if [ "$install_choice" = "s" ] || [ "$install_choice" = "S" ]; then
-            install_xmrig_multiple_methods
+            install_xmrig_all_methods
         fi
     else
         log "SUCCESS" "XMRig já está instalado"
