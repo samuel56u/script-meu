@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# RANDOMX MONERO MINER - TERMUX v9.0 FINAL
-# 50 FUNCIONALIDADES + 25 MÉTODOS DE INSTALAÇÃO (CORRIGIDO E FUNCIONAL)
+# RANDOMX MONERO MINER - TERMUX v10.0 FINAL
+# 50 FUNCIONALIDADES + 25 MÉTODOS DE INSTALAÇÃO (MENU CORRIGIDO)
 # ============================================================================
 
 # ============================================================================
@@ -358,7 +358,7 @@ speak_text() {
 check_dependencies() {
     log "SYSTEM" "Verificando dependências básicas..."
     
-    local deps=("wget" "curl" "tar" "gzip" "nano")
+    local deps=("wget" "curl" "tar" "gzip" "nano" "bc")
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -373,7 +373,6 @@ check_dependencies() {
         pkg install -y "${missing[@]}" > /dev/null 2>&1
     fi
     
-    # Verificar novamente
     for dep in "${deps[@]}"; do
         if command -v "$dep" > /dev/null 2>&1; then
             log "SUCCESS" "$dep instalado"
@@ -2280,14 +2279,14 @@ edit_config_manual() {
 }
 
 # ============================================================================
-# FUNÇÃO 76: MENU PRINCIPAL
+# FUNÇÃO 76: MENU PRINCIPAL (CORRIGIDO - SEM LOOP INFINITO)
 # ============================================================================
 show_main_menu() {
     while true; do
         clear
         echo -e "${PURPLE}${BOLD}"
         echo "╔══════════════════════════════════════════════════════════════════╗"
-        echo "║           RANDOMX MONERO MINER - v9.0 FINAL                      ║"
+        echo "║           RANDOMX MONERO MINER - v10.0 FINAL                     ║"
         echo "║              25 MÉTODOS DE INSTALAÇÃO DO XMRIG                   ║"
         echo "╚══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -2410,8 +2409,9 @@ show_main_menu() {
                 exit 0
                 ;;
             *) 
-                echo -e "${RED}Opção inválida${NC}"
+                echo -e "\n${RED}Opção inválida! Digite um número entre 0 e 30.${NC}"
                 sleep 2
+                continue
                 ;;
         esac
         
@@ -2478,6 +2478,17 @@ init_system() {
     ) &
     
     show_main_menu
+}
+
+# ============================================================================
+# FUNÇÃO 78: OBTER IP LOCAL
+# ============================================================================
+get_local_ip() {
+    if command -v ifconfig >/dev/null 2>&1; then
+        ifconfig 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '127.0.0.1' | head -1
+    else
+        echo "127.0.0.1"
+    fi
 }
 
 # ============================================================================
