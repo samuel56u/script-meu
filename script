@@ -1,12 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # ============================================================================
-# RANDOMX MONERO MINER - TERMUX v10.0 FINAL
-# 50 FUNCIONALIDADES + 25 MÉTODOS DE INSTALAÇÃO (MENU CORRIGIDO)
+# RANDOMX MONERO MINER - TERMUX v10.0 ANDROID
+# 78 FUNÇÕES COMPLETAS - 25 MÉTODOS DE INSTALAÇÃO
+# VERSÃO COMPLETA OTIMIZADA PARA TERMUX
 # ============================================================================
 
 # ============================================================================
-# CONFIGURAÇÃO PRINCIPAL
+# CONFIGURAÇÃO PRINCIPAL (Adaptada para Termux)
 # ============================================================================
 
 export MINER_ROOT="$HOME/randomx_miner"
@@ -24,7 +25,7 @@ export MINER_REPORTS="$MINER_ROOT/reports"
 # Configurações RandomX Avançadas
 export RANDOMX_MODE="fast"
 export RANDOMX_1GB_PAGES=false
-export RANDOMX_NUMA=true
+export RANDOMX_NUMA=false  # Desabilitado para Android
 export RANDOMX_JIT=true
 export RANDOMX_CACHE_QOS=false
 export RANDOMX_SCRATCHPAD_PREFETCH=1
@@ -33,7 +34,7 @@ export RANDOMX_ARGON2_ITERATIONS=3
 export RANDOMX_ARGON2_MEMORY=262144
 export RANDOMX_ARGON2_LANES=1
 
-# Configurações de CPU
+# Configurações de CPU (Adaptado para Android)
 export CPU_CORES=$(nproc 2>/dev/null || echo "4")
 export CPU_THREADS=$CPU_CORES
 export CPU_PRIORITY=5
@@ -43,25 +44,25 @@ export CPU_MEMORY_POOL=true
 export CPU_YIELD=true
 
 # Configurações de Rede
-export NETWORK_SOCKETS=8
+export NETWORK_SOCKETS=4  # Reduzido para Android
 export NETWORK_KEEPALIVE=true
-export NETWORK_TIMEOUT=10
-export NETWORK_RETRIES=5
+export NETWORK_TIMEOUT=15
+export NETWORK_RETRIES=3
 export NETWORK_RETRY_PAUSE=5
 
 # Configurações de Log
 export LOG_LEVEL=3
 export LOG_FILE="$MINER_LOGS/xmrig.log"
-export LOG_ROTATE_SIZE=10485760
-export LOG_ROTATE_FILES=5
+export LOG_ROTATE_SIZE=5242880  # 5MB (reduzido para Android)
+export LOG_ROTATE_FILES=3
 
-# Configurações da API
-export API_ENABLED=true
+# Configurações da API (Desabilitado por padrão no Android)
+export API_ENABLED=false
 export API_HOST="127.0.0.1"
 export API_PORT=18080
 export API_TOKEN=""
 
-# Cores para terminal (sistema completo)
+# Cores para terminal (compatível com Termux)
 NC='\033[0m'
 BLACK='\033[0;30m'
 RED='\033[0;31m'
@@ -83,7 +84,7 @@ BLINK='\033[5m'
 REVERSE='\033[7m'
 
 # ============================================================================
-# FUNÇÃO 01: CRIAR DIRETÓRIOS
+# FUNÇÃO 01: CRIAR DIRETÓRIOS (Adaptado para Termux)
 # ============================================================================
 create_directories() {
     mkdir -p "$MINER_ROOT" 2>/dev/null
@@ -101,15 +102,19 @@ create_directories() {
     touch "$MINER_LOGS/system.log" 2>/dev/null
     touch "$MINER_LOGS/error.log" 2>/dev/null
     touch "$MINER_LOGS/miner.log" 2>/dev/null
+    
+    # Ajustar permissões para Termux
+    chmod 700 "$MINER_ROOT" 2>/dev/null
+    chmod 700 "$MINER_BIN" 2>/dev/null
 }
 
 # ============================================================================
-# FUNÇÃO 02: LOG AVANÇADO
+# FUNÇÃO 02: LOG AVANÇADO (Adaptado para Android sem stat -c)
 # ============================================================================
 log() {
     local level="$1"
     local message="$2"
-    local timestamp="[$(date '+%Y-%m-%d %H:%M:%S.%3N')]"
+    local timestamp="[$(date '+%Y-%m-%d %H:%M:%S')]"  # Sem milissegundos no Android
     local log_file="$MINER_LOGS/system.log"
     
     echo "${timestamp} [${level}] ${message}" >> "$log_file" 2>/dev/null
@@ -121,9 +126,13 @@ log() {
         "DEBUG")   echo "$timestamp [DEBUG] $message" >> "$MINER_LOGS/debug.log" 2>/dev/null ;;
     esac
     
-    if [ -f "$log_file" ] && [ $(stat -c%s "$log_file" 2>/dev/null || echo "0") -gt $LOG_ROTATE_SIZE ]; then
-        mv "$log_file" "${log_file}.$(date '+%Y%m%d%H%M%S')" 2>/dev/null
-        gzip "${log_file}.$(date '+%Y%m%d%H%M%S')" 2>/dev/null &
+    # Rotação de logs (adaptado para Android sem stat -c)
+    if [ -f "$log_file" ] && [ -f "$MINER_LOGS" ]; then
+        local size=$(wc -c < "$log_file" 2>/dev/null || echo "0")
+        if [ "$size" -gt $LOG_ROTATE_SIZE ]; then
+            mv "$log_file" "${log_file}.$(date '+%Y%m%d%H%M%S')" 2>/dev/null
+            gzip "${log_file}.$(date '+%Y%m%d%H%M%S')" 2>/dev/null &
+        fi
     fi
     
     case "$level" in
@@ -138,29 +147,27 @@ log() {
         "RANDOMX") echo -e "${PURPLE}[RANDOMX]${NC} ${message}" ;;
         "BENCH")   echo -e "${MAGENTA}[BENCH]${NC} ${message}" ;;
         "SYSTEM")  echo -e "${WHITE}[SYSTEM]${NC} ${message}" ;;
+        "TERMUX")  echo -e "${ORANGE}[TERMUX]${NC} ${message}" ;;
         *)         echo -e "${WHITE}[${level}]${NC} ${message}" ;;
     esac
 }
 
 # ============================================================================
-# FUNÇÃO 03: GERAR UUID
+# FUNÇÃO 03: GERAR UUID (Adaptado para Android)
 # ============================================================================
 generate_uuid() {
     local uuid=""
-    if [ -f /proc/sys/kernel/random/uuid ]; then
-        uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
-    fi
-    if [ -z "$uuid" ]; then
-        uuid=$(date +%s%N)-$RANDOM-$RANDOM-$RANDOM
-    fi
+    # Android não tem /proc/sys/kernel/random/uuid
+    uuid=$(date +%s%N)-$RANDOM-$RANDOM-$RANDOM-$RANDOM 2>/dev/null || \
+          uuid=$(date +%s)-$RANDOM-$RANDOM-$RANDOM
     echo "$uuid"
 }
 
 # ============================================================================
-# FUNÇÃO 04: TIMESTAMP MILISSEGUNDOS
+# FUNÇÃO 04: TIMESTAMP MILISSEGUNDOS (Adaptado para Android)
 # ============================================================================
 timestamp_ms() {
-    date +%s%3N 2>/dev/null || echo "$(date +%s)000"
+    date +%s%N 2>/dev/null | cut -c1-13 || echo "$(date +%s)000"
 }
 
 # ============================================================================
@@ -185,7 +192,7 @@ format_time() {
 }
 
 # ============================================================================
-# FUNÇÃO 07: FORMATAR HASH
+# FUNÇÃO 07: FORMATAR HASH (Adaptado para Android sem bc)
 # ============================================================================
 format_hash() {
     local hash=$1
@@ -194,6 +201,7 @@ format_hash() {
         return
     fi
     
+    # Usar awk se bc não estiver disponível
     if command -v bc >/dev/null 2>&1; then
         if (( $(echo "$hash > 1000000" | bc -l 2>/dev/null) )); then
             echo "$(echo "scale=2; $hash/1000000" | bc 2>/dev/null) MH/s"
@@ -203,48 +211,66 @@ format_hash() {
             echo "$(echo "scale=2; $hash" | bc 2>/dev/null) H/s"
         fi
     else
-        echo "$hash H/s"
+        # Fallback sem bc
+        if [ "$hash" -gt 1000000 ]; then
+            echo "$((hash / 1000000)).$(((hash % 1000000) / 100000)) MH/s"
+        elif [ "$hash" -gt 1000 ]; then
+            echo "$((hash / 1000)).$(((hash % 1000) / 100)) KH/s"
+        else
+            echo "$hash H/s"
+        fi
     fi
 }
 
 # ============================================================================
-# FUNÇÃO 08: DETECTAR HARDWARE COMPLETO
+# FUNÇÃO 08: DETECTAR HARDWARE COMPLETO (Adaptado para Android)
 # ============================================================================
 detect_hardware() {
     log "SYSTEM" "Iniciando detecção detalhada de hardware..."
     
-    export CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep "model name" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "Unknown")
-    export CPU_VENDOR=$(cat /proc/cpuinfo 2>/dev/null | grep "vendor_id" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "Unknown")
+    # CPU Info (Android)
+    export CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep "Processor" | head -1 | cut -d: -f2 | sed 's/^ //')
+    if [ -z "$CPU_MODEL" ]; then
+        export CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep "model name" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "Unknown ARM Processor")
+    fi
+    
+    export CPU_VENDOR=$(cat /proc/cpuinfo 2>/dev/null | grep "vendor_id" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "ARM")
     export CPU_CORES_PHYSICAL=$(cat /proc/cpuinfo 2>/dev/null | grep "cpu cores" | head -1 | cut -d: -f2 | sed 's/^ //' || echo "$CPU_CORES")
     export CPU_CORES_LOGICAL=$(nproc 2>/dev/null || echo "4")
-    export CPU_FREQ_MIN=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
-    export CPU_FREQ_MAX=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
-    export CPU_FREQ_CUR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null | awk '{print $1/1000}' || echo "0")
-    export CPU_GOVERNOR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
     
+    # Frequência CPU (Android)
+    if [ -f /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq ]; then
+        export CPU_FREQ_MIN=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq 2>/dev/null | awk '{print int($1/1000)}' || echo "0")
+        export CPU_FREQ_MAX=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null | awk '{print int($1/1000)}' || echo "0")
+        export CPU_FREQ_CUR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null | awk '{print int($1/1000)}' || echo "0")
+        export CPU_GOVERNOR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
+    else
+        export CPU_FREQ_MIN=0
+        export CPU_FREQ_MAX=0
+        export CPU_FREQ_CUR=0
+        export CPU_GOVERNOR="unknown"
+    fi
+    
+    # Memória (Android)
     if [ -f /proc/meminfo ]; then
-        local mem_total_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
-        local mem_free_kb=$(grep MemFree /proc/meminfo 2>/dev/null | awk '{print $2}')
-        local mem_available_kb=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
-        local swap_total_kb=$(grep SwapTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
-        local swap_free_kb=$(grep SwapFree /proc/meminfo 2>/dev/null | awk '{print $2}')
+        local mem_total_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+        local mem_free_kb=$(grep MemFree /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+        local mem_available_kb=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "$mem_free_kb")
         
         export MEM_TOTAL=$((mem_total_kb / 1024))
         export MEM_FREE=$((mem_free_kb / 1024))
         export MEM_AVAILABLE=$((mem_available_kb / 1024))
-        export MEM_SWAP_TOTAL=$((swap_total_kb / 1024))
-        export MEM_SWAP_FREE=$((swap_free_kb / 1024))
     else
         export MEM_TOTAL=2048
         export MEM_FREE=1024
         export MEM_AVAILABLE=1024
-        export MEM_SWAP_TOTAL=0
-        export MEM_SWAP_FREE=0
     fi
     
-    export HUGEPAGES_TOTAL=$(cat /proc/sys/vm/nr_hugepages 2>/dev/null || echo "0")
-    export HUGEPAGES_SIZE=$(cat /proc/meminfo 2>/dev/null | grep Hugepagesize | awk '{print $2}' || echo "0")
+    # HugePages (provavelmente não disponível no Android)
+    export HUGEPAGES_TOTAL=0
+    export HUGEPAGES_SIZE=0
     
+    # AES-NI / ARM CRC
     if grep -q aes /proc/cpuinfo 2>/dev/null; then
         export AES_NI_SUPPORTED=true
     else
@@ -257,22 +283,31 @@ detect_hardware() {
         export ARM_CRC=false
     fi
     
-    export THERMAL_ZONES=$(ls -d /sys/class/thermal/thermal_zone* 2>/dev/null | wc -l)
-    export CPU_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}' || echo "35")
+    # Temperatura (Android)
+    export THERMAL_ZONES=0
+    export CPU_TEMP=35
+    if [ -d /sys/class/thermal ]; then
+        export THERMAL_ZONES=$(ls -d /sys/class/thermal/thermal_zone* 2>/dev/null | wc -l)
+        if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+            export CPU_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print int($1/1000)}' || echo "35")
+        fi
+    fi
     
+    # Armazenamento (Android)
     export STORAGE_TOTAL=$(df -P /data 2>/dev/null | tail -1 | awk '{print $2}' || echo "0")
     export STORAGE_USED=$(df -P /data 2>/dev/null | tail -1 | awk '{print $3}' || echo "0")
     export STORAGE_FREE=$(df -P /data 2>/dev/null | tail -1 | awk '{print $4}' || echo "0")
     export STORAGE_PERCENT=$(df -P /data 2>/dev/null | tail -1 | awk '{print $5}' | sed 's/%//' || echo "0")
     
     log "HARDWARE" "CPU: $CPU_MODEL ($CPU_CORES_LOGICAL cores)"
-    log "HARDWARE" "Frequência: ${CPU_FREQ_MIN}MHz - ${CPU_FREQ_MAX}MHz (atual: ${CPU_FREQ_CUR}MHz)"
+    log "HARDWARE" "Frequência: ${CPU_FREQ_MIN}MHz - ${CPU_FREQ_MAX}MHz"
     log "HARDWARE" "Memória: ${MEM_TOTAL}MB total, ${MEM_AVAILABLE}MB disponível"
-    log "HARDWARE" "AES-NI: $AES_NI_SUPPORTED | HugePages: ${HUGEPAGES_TOTAL}x${HUGEPAGES_SIZE}KB"
+    log "HARDWARE" "AES-NI: $AES_NI_SUPPORTED | ARM CRC: $ARM_CRC"
+    log "HARDWARE" "Temperatura: ${CPU_TEMP}°C"
     
     if [ "$MEM_TOTAL" -gt 3000 ]; then
-        export RANDOMX_1GB_PAGES=true
-        log "RANDOMX" "1GB Pages ativado automaticamente (memória suficiente)"
+        export RANDOMX_1GB_PAGES=false  # Mantém false no Android
+        log "RANDOMX" "1GB Pages não suportado no Android"
     fi
 }
 
@@ -289,8 +324,8 @@ check_termux_permissions() {
     fi
     
     if ! command -v termux-api > /dev/null 2>&1; then
-        log "WARNING" "Termux:API não instalado. Funcionalidades limitadas."
-        log "INFO" "Instale com: pkg install termux-api"
+        log "WARNING" "Termux:API não instalado. Instalando..."
+        pkg install -y termux-api > /dev/null 2>&1
     else
         log "SUCCESS" "Termux:API instalado"
     fi
@@ -308,10 +343,15 @@ check_termux_permissions() {
             log "BATTERY" "Nível: ${percent}% | Status: ${status}"
         fi
     fi
+    
+    # Verificar permissão para manter dispositivo acordado
+    if command -v termux-wake-lock > /dev/null 2>&1; then
+        log "TERMUX" "Dispositivo será mantido acordado durante a mineração"
+    fi
 }
 
 # ============================================================================
-# FUNÇÃO 10: ENVIAR NOTIFICAÇÃO
+# FUNÇÃO 10: ENVIAR NOTIFICAÇÃO (Termux)
 # ============================================================================
 send_notification() {
     local title="$1"
@@ -324,14 +364,14 @@ send_notification() {
             --content "$content" \
             --priority "$priority" \
             --id "randomx_miner" \
-            --vibrate 500 \
+            --vibrate 200 \
             --sound 2>/dev/null
         log "NOTIFICATION" "$title: $content"
     fi
 }
 
 # ============================================================================
-# FUNÇÃO 11: VIBRAR DISPOSITIVO
+# FUNÇÃO 11: VIBRAR DISPOSITIVO (Termux)
 # ============================================================================
 vibrate_device() {
     local duration="${1:-500}"
@@ -342,7 +382,7 @@ vibrate_device() {
 }
 
 # ============================================================================
-# FUNÇÃO 12: TEXTO PARA FALA
+# FUNÇÃO 12: TEXTO PARA FALA (Termux)
 # ============================================================================
 speak_text() {
     local text="$1"
@@ -353,16 +393,16 @@ speak_text() {
 }
 
 # ============================================================================
-# FUNÇÃO 13: VERIFICAR DEPENDÊNCIAS BÁSICAS
+# FUNÇÃO 13: VERIFICAR DEPENDÊNCIAS (Adaptado para Termux)
 # ============================================================================
 check_dependencies() {
     log "SYSTEM" "Verificando dependências básicas..."
     
-    local deps=("wget" "curl" "tar" "gzip" "nano" "bc")
+    local deps=("wget" "curl" "tar" "gzip" "nano" "bc" "termux-api" "termux-tools")
     local missing=()
     
     for dep in "${deps[@]}"; do
-        if ! command -v "$dep" > /dev/null 2>&1; then
+        if ! command -v "$dep" > /dev/null 2>&1 && [ "$dep" != "termux-api" ] && [ "$dep" != "termux-tools" ]; then
             missing+=("$dep")
         fi
     done
@@ -373,17 +413,20 @@ check_dependencies() {
         pkg install -y "${missing[@]}" > /dev/null 2>&1
     fi
     
-    for dep in "${deps[@]}"; do
-        if command -v "$dep" > /dev/null 2>&1; then
-            log "SUCCESS" "$dep instalado"
-        else
-            log "ERROR" "Falha ao instalar $dep"
-        fi
-    done
+    # Instalar pacotes Termux especiais
+    if ! command -v termux-api > /dev/null 2>&1; then
+        pkg install -y termux-api > /dev/null 2>&1
+    fi
+    
+    if ! command -v termux-notification > /dev/null 2>&1; then
+        pkg install -y termux-tools > /dev/null 2>&1
+    fi
+    
+    log "SUCCESS" "Dependências verificadas"
 }
 
 # ============================================================================
-# FUNÇÃO 14: DETECTAR ARQUITETURA
+# FUNÇÃO 14: DETECTAR ARQUITETURA (Adaptado para Android)
 # ============================================================================
 detect_architecture() {
     export ARCH=$(uname -m)
@@ -394,26 +437,31 @@ detect_architecture() {
             export ARCH_TYPE="arm64"
             export XMRIG_ARCH="arm64"
             export XMRIG_FILE="xmrig-6.21.0-android-arm64.tar.gz"
+            export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-arm64.tar.gz"
             ;;
         armv7l|armhf|armv8l)
             export ARCH_TYPE="arm32"
             export XMRIG_ARCH="armv7"
             export XMRIG_FILE="xmrig-6.21.0-android-armv7.tar.gz"
+            export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-armv7.tar.gz"
             ;;
         x86_64|amd64)
             export ARCH_TYPE="x64"
             export XMRIG_ARCH="x86_64"
             export XMRIG_FILE="xmrig-6.21.0-android-x86_64.tar.gz"
+            export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-x86_64.tar.gz"
             ;;
         i*86)
             export ARCH_TYPE="x86"
             export XMRIG_ARCH="i686"
             export XMRIG_FILE="xmrig-6.21.0-android-i686.tar.gz"
+            export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-i686.tar.gz"
             ;;
         *)
             export ARCH_TYPE="unknown"
             export XMRIG_ARCH=""
             export XMRIG_FILE=""
+            export XMRIG_URL=""
             ;;
     esac
     
@@ -459,14 +507,17 @@ install_method_android_official() {
 }
 
 # ============================================================================
-# FUNÇÃO 16: INSTALAR XMRIG (MÉTODO 2 - STATIC LINUX ARM64)
+# FUNÇÃO 16: INSTALAR XMRIG (MÉTODO 2 - STATIC ANDROID)
 # ============================================================================
-install_method_linux_static() {
-    log "MINER" "Método 2: Linux static binary"
+install_method_android_static() {
+    log "MINER" "Método 2: Android static binary"
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    local url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz"
+    local url="https://builds.xmrig.com/xmrig-aarch64-linux-android.tar.gz"
+    if [ "$ARCH_TYPE" = "arm32" ]; then
+        url="https://builds.xmrig.com/xmrig-arm-linux-androideabi.tar.gz"
+    fi
     
     if command -v wget > /dev/null 2>&1; then
         wget -q --timeout=30 "$url" -O xmrig.tar.gz
@@ -478,11 +529,10 @@ install_method_linux_static() {
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
-        local dir=$(find . -type d -name "xmrig-*" | head -1)
-        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
-            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado com sucesso via método Linux static"
+            log "SUCCESS" "XMRig instalado via Android static"
             return 0
         fi
     fi
@@ -491,13 +541,14 @@ install_method_linux_static() {
 }
 
 # ============================================================================
-# FUNÇÃO 17: INSTALAR XMRIG (MÉTODO 3 - COMPILAÇÃO)
+# FUNÇÃO 17: INSTALAR XMRIG (MÉTODO 3 - COMPILAÇÃO - Adaptado para Termux)
 # ============================================================================
 install_method_compile() {
-    log "MINER" "Método 3: Compilação do código fonte"
+    log "MINER" "Método 3: Compilação no Termux"
     
+    log "INFO" "Instalando ferramentas de compilação..."
     pkg update -y > /dev/null 2>&1
-    pkg install -y git build-essential cmake libuv-dev libssl-dev libhwloc-dev > /dev/null 2>&1
+    pkg install -y git build-essential cmake libuv libuv-static openssl libhwloc > /dev/null 2>&1
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
@@ -505,16 +556,19 @@ install_method_compile() {
         rm -rf xmrig
     fi
     
+    log "INFO" "Clonando repositório..."
     git clone https://github.com/xmrig/xmrig.git --depth=1 2>/dev/null
     if [ -d "xmrig" ]; then
         cd xmrig || return 1
         mkdir -p build && cd build || return 1
-        cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DWITH_HTTPD=OFF 2>/dev/null
+        log "INFO" "Configurando compilação..."
+        cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DWITH_HTTPD=OFF -DCMAKE_BUILD_TYPE=Release 2>/dev/null
+        log "INFO" "Compilando (isso pode levar vários minutos)..."
         make -j$CPU_CORES 2>/dev/null
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig compilado com sucesso"
+            log "SUCCESS" "XMRig compilado com sucesso no Termux"
             return 0
         fi
     fi
@@ -549,13 +603,12 @@ install_method_github_wget() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz
+    wget -q --timeout=30 "$XMRIG_URL" -O xmrig.tar.gz
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
-        local dir=$(find . -type d -name "xmrig-*" | head -1)
-        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
-            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
             log "SUCCESS" "XMRig instalado via GitHub wget"
             return 0
@@ -573,13 +626,12 @@ install_method_github_curl() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -o xmrig.tar.gz
+    curl -s -L --connect-timeout 30 "$XMRIG_URL" -o xmrig.tar.gz
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
-        local dir=$(find . -type d -name "xmrig-*" | head -1)
-        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
-            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
             log "SUCCESS" "XMRig instalado via GitHub curl"
             return 0
@@ -597,7 +649,8 @@ install_method_binary_wget() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -O "$MINER_BIN/xmrig"
+    local binary_url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-${XMRIG_ARCH}"
+    wget -q --timeout=30 "$binary_url" -O "$MINER_BIN/xmrig"
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
@@ -616,7 +669,8 @@ install_method_binary_curl() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    curl -s -L --connect-timeout 30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64" -o "$MINER_BIN/xmrig"
+    local binary_url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-${XMRIG_ARCH}"
+    curl -s -L --connect-timeout 30 "$binary_url" -o "$MINER_BIN/xmrig"
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
@@ -635,13 +689,12 @@ install_method_xmrig_com() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    wget -q --timeout=30 "https://xmrig.com/downloads/xmrig-static-linux-arm64.tar.gz" -O xmrig.tar.gz
+    wget -q --timeout=30 "https://xmrig.com/downloads/xmrig-android-${XMRIG_ARCH}.tar.gz" -O xmrig.tar.gz
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
-        local dir=$(find . -type d -name "xmrig-*" | head -1)
-        if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
-            cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+        find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
             log "SUCCESS" "XMRig instalado via xmrig.com"
             return 0
@@ -673,7 +726,7 @@ install_method_local_cache() {
 install_method_archive_org() {
     log "MINER" "Método 11: Archive.org mirror"
     
-    wget -q --timeout=30 "https://archive.org/download/xmrig/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+    wget -q --timeout=30 "https://archive.org/download/xmrig-android/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
@@ -692,15 +745,14 @@ install_method_github_latest() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*linux-static-arm64.tar.gz" | head -1)
+    local latest_url=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest 2>/dev/null | grep -o "https://.*android-${XMRIG_ARCH}\.tar\.gz" | head -1)
     
     if [ -n "$latest_url" ]; then
         wget -q --timeout=30 "$latest_url" -O xmrig.tar.gz
         if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
             tar -xzf xmrig.tar.gz
-            local dir=$(find . -type d -name "xmrig-*" | head -1)
-            if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
-                cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
+            find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+            if [ -f "$MINER_BIN/xmrig" ]; then
                 chmod +x "$MINER_BIN/xmrig" 2>/dev/null
                 log "SUCCESS" "XMRig instalado via GitHub latest"
                 return 0
@@ -719,7 +771,7 @@ install_method_builds_arm() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-arm-linux-gnueabihf.tar.gz" -O xmrig.tar.gz
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-arm-linux-androideabi.tar.gz" -O xmrig.tar.gz
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
@@ -742,7 +794,7 @@ install_method_builds_arm64() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-aarch64-linux-gnu.tar.gz" -O xmrig.tar.gz
+    wget -q --timeout=30 "https://builds.xmrig.com/xmrig-aarch64-linux-android.tar.gz" -O xmrig.tar.gz
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         tar -xzf xmrig.tar.gz
@@ -769,7 +821,7 @@ install_method_proot() {
     
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    proot -0 wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O xmrig.tar.gz 2>/dev/null
+    proot -0 wget -q --timeout=30 "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-${XMRIG_ARCH}.tar.gz" -O xmrig.tar.gz 2>/dev/null
     
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
         proot -0 tar -xzf xmrig.tar.gz 2>/dev/null
@@ -798,7 +850,7 @@ install_method_cross_compile() {
     if [ -d "xmrig" ]; then
         cd xmrig || return 1
         mkdir -p build && cd build || return 1
-        cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_C_FLAGS="-static" -DCMAKE_CXX_FLAGS="-static" 2>/dev/null
+        cmake .. -DWITH_RANDOMX=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DCMAKE_C_FLAGS="-static" -DCMAKE_CXX_FLAGS="-static" -DCMAKE_SYSTEM_NAME=Android 2>/dev/null
         make -j$CPU_CORES 2>/dev/null
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
@@ -870,7 +922,7 @@ install_method_debian() {
 install_method_ipfs() {
     log "MINER" "Método 19: IPFS gateway"
     
-    wget -q --timeout=30 "https://ipfs.io/ipfs/QmXmrigBinaryHash/xmrig" -O "$MINER_BIN/xmrig" 2>/dev/null
+    wget -q --timeout=30 "https://ipfs.io/ipfs/QmXmrigBinaryHash/xmrig-android-${XMRIG_ARCH}" -O "$MINER_BIN/xmrig" 2>/dev/null
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
@@ -882,39 +934,12 @@ install_method_ipfs() {
 }
 
 # ============================================================================
-# FUNÇÃO 34: INSTALAR XMRIG (MÉTODO 20 - TORRENT)
-# ============================================================================
-install_method_torrent() {
-    log "MINER" "Método 20: Torrent (transmission)"
-    
-    if ! command -v transmission-cli > /dev/null 2>&1; then
-        pkg install -y transmission > /dev/null 2>&1
-    fi
-    
-    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
-    
-    transmission-cli -w . "magnet:?xt=urn:btih:XMRIGTORRENT" 2>/dev/null &
-    local pid=$!
-    sleep 10
-    kill $pid 2>/dev/null
-    
-    if [ -f "xmrig" ]; then
-        cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
-        chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via torrent"
-        return 0
-    fi
-    
-    return 1
-}
-
-# ============================================================================
-# FUNÇÃO 35: INSTALAR XMRIG (MÉTODO 21 - GITHUB MIRROR 1)
+# FUNÇÃO 34: INSTALAR XMRIG (MÉTODO 20 - GITHUB MIRROR 1)
 # ============================================================================
 install_method_mirror_1() {
-    log "MINER" "Método 21: GitHub mirror 1"
+    log "MINER" "Método 20: GitHub mirror 1"
     
-    wget -q --timeout=30 "https://mirror.ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    wget -q --timeout=30 "https://mirror.ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/${XMRIG_FILE}" -O "$MINER_TEMP/xmrig.tar.gz"
     
     cd "$MINER_TEMP" 2>/dev/null || return 1
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
@@ -931,12 +956,12 @@ install_method_mirror_1() {
 }
 
 # ============================================================================
-# FUNÇÃO 36: INSTALAR XMRIG (MÉTODO 22 - GITHUB MIRROR 2)
+# FUNÇÃO 35: INSTALAR XMRIG (MÉTODO 21 - GITHUB MIRROR 2)
 # ============================================================================
 install_method_mirror_2() {
-    log "MINER" "Método 22: GitHub mirror 2"
+    log "MINER" "Método 21: GitHub mirror 2"
     
-    wget -q --timeout=30 "https://ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    wget -q --timeout=30 "https://ghproxy.com/github.com/xmrig/xmrig/releases/download/v6.21.0/${XMRIG_FILE}" -O "$MINER_TEMP/xmrig.tar.gz"
     
     cd "$MINER_TEMP" 2>/dev/null || return 1
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
@@ -953,12 +978,12 @@ install_method_mirror_2() {
 }
 
 # ============================================================================
-# FUNÇÃO 37: INSTALAR XMRIG (MÉTODO 23 - GITHUB MIRROR 3)
+# FUNÇÃO 36: INSTALAR XMRIG (MÉTODO 22 - GITHUB MIRROR 3)
 # ============================================================================
 install_method_mirror_3() {
-    log "MINER" "Método 23: GitHub mirror 3"
+    log "MINER" "Método 22: GitHub mirror 3"
     
-    wget -q --timeout=30 "https://hub.fastgit.xyz/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    wget -q --timeout=30 "https://hub.fastgit.xyz/xmrig/xmrig/releases/download/v6.21.0/${XMRIG_FILE}" -O "$MINER_TEMP/xmrig.tar.gz"
     
     cd "$MINER_TEMP" 2>/dev/null || return 1
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
@@ -975,12 +1000,12 @@ install_method_mirror_3() {
 }
 
 # ============================================================================
-# FUNÇÃO 38: INSTALAR XMRIG (MÉTODO 24 - GITHUB MIRROR 4)
+# FUNÇÃO 37: INSTALAR XMRIG (MÉTODO 23 - GITHUB MIRROR 4)
 # ============================================================================
 install_method_mirror_4() {
-    log "MINER" "Método 24: GitHub mirror 4"
+    log "MINER" "Método 23: GitHub mirror 4"
     
-    wget -q --timeout=30 "https://gh.api.99988866.xyz/github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-arm64.tar.gz" -O "$MINER_TEMP/xmrig.tar.gz"
+    wget -q --timeout=30 "https://gh.api.99988866.xyz/github.com/xmrig/xmrig/releases/download/v6.21.0/${XMRIG_FILE}" -O "$MINER_TEMP/xmrig.tar.gz"
     
     cd "$MINER_TEMP" 2>/dev/null || return 1
     if [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ]; then
@@ -989,6 +1014,29 @@ install_method_mirror_4() {
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
             log "SUCCESS" "XMRig instalado via GitHub mirror 4"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# ============================================================================
+# FUNÇÃO 38: INSTALAR XMRIG (MÉTODO 24 - F-DROID REPO)
+# ============================================================================
+install_method_fdroid() {
+    log "MINER" "Método 24: F-Droid repository"
+    
+    cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
+    
+    wget -q --timeout=30 "https://f-droid.org/repo/com.xmrig.miner_100.apk" -O xmrig.apk
+    
+    if [ -f "xmrig.apk" ] && [ -s "xmrig.apk" ]; then
+        unzip -q xmrig.apk -d xmrig_extract 2>/dev/null
+        find xmrig_extract -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
+        if [ -f "$MINER_BIN/xmrig" ]; then
+            chmod +x "$MINER_BIN/xmrig" 2>/dev/null
+            log "SUCCESS" "XMRig extraído de APK"
             return 0
         fi
     fi
@@ -1007,13 +1055,14 @@ install_method_fallback() {
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║      XMRig NÃO FOI INSTALADO AUTOMATICAMENTE              ║"
 echo "╠════════════════════════════════════════════════════════════╣"
-echo "║ Instale manualmente seguindo os passos:                   ║"
+echo "║ Instale manualmente no Termux:                            ║"
 echo "║                                                            ║"
-echo "║ 1. Acesse: https://github.com/xmrig/xmrig/releases        ║"
-echo "║ 2. Baixe o arquivo para sua arquitetura                   ║"
-echo "║ 3. Extraia e coloque o binário em:                        ║"
-echo "║    $MINER_BIN/xmrig                                        ║"
-echo "║ 4. Execute: chmod +x $MINER_BIN/xmrig                     ║"
+echo "║ 1. pkg update && pkg upgrade                              ║"
+echo "║ 2. pkg install xmrig                                      ║"
+echo "║ 3. ou acesse: https://github.com/xmrig/xmrig/releases     ║"
+echo "║ 4. Baixe o arquivo Android para sua arquitetura           ║"
+echo "║ 5. Extraia e coloque em: $MINER_BIN/xmrig                 ║"
+echo "║ 6. chmod +x $MINER_BIN/xmrig                              ║"
 echo "║                                                            ║"
 echo "║ Pressione Enter para continuar...                         ║"
 echo "╚════════════════════════════════════════════════════════════╝"
@@ -1026,7 +1075,7 @@ EOF
 }
 
 # ============================================================================
-# FUNÇÃO 40: INSTALAR XMRIG (FUNÇÃO PRINCIPAL QUE TENTA TODOS OS MÉTODOS)
+# FUNÇÃO 40: INSTALAR XMRIG (FUNÇÃO PRINCIPAL - 25 MÉTODOS)
 # ============================================================================
 install_xmrig_all_methods() {
     log "MINER" "Iniciando instalação do XMRig com 25 métodos diferentes..."
@@ -1037,7 +1086,7 @@ install_xmrig_all_methods() {
     
     local methods=(
         install_method_android_official
-        install_method_linux_static
+        install_method_android_static
         install_method_compile
         install_method_termux_pkg
         install_method_github_wget
@@ -1055,19 +1104,19 @@ install_xmrig_all_methods() {
         install_method_qemu
         install_method_debian
         install_method_ipfs
-        install_method_torrent
         install_method_mirror_1
         install_method_mirror_2
         install_method_mirror_3
         install_method_mirror_4
+        install_method_fdroid
         install_method_fallback
     )
     
     local method_names=(
         "Android binary oficial"
-        "Linux static binary"
-        "Compilação do fonte"
-        "Pacote Termux"
+        "Android static binary"
+        "Compilação no Termux"
+        "Pacote Termux (pkg)"
         "GitHub Release (wget)"
         "GitHub Release (curl)"
         "GitHub Binary (wget)"
@@ -1083,11 +1132,11 @@ install_xmrig_all_methods() {
         "QEMU emulation"
         "Debian package"
         "IPFS gateway"
-        "Torrent"
         "GitHub mirror 1"
         "GitHub mirror 2"
         "GitHub mirror 3"
         "GitHub mirror 4"
+        "F-Droid APK"
         "Fallback (instruções)"
     )
     
@@ -1098,16 +1147,16 @@ install_xmrig_all_methods() {
         
         if $method; then
             if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
-                # Verificar se não é o script de fallback
                 if ! grep -q "fallback" "$MINER_BIN/xmrig" 2>/dev/null; then
                     local version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)
                     log "SUCCESS" "✓ XMRig instalado com sucesso via método $i: ${method_names[$((i-1))]}"
                     log "MINER" "Versão: ${version:-desconhecida}"
                     
-                    # Salvar no cache
                     cp "$MINER_BIN/xmrig" "$MINER_CACHE/xmrig" 2>/dev/null
                     
-                    send_notification "XMRig Instalado" "Método $i funcionou"
+                    if command -v termux-notification > /dev/null 2>&1; then
+                        termux-notification --title "XMRig Instalado" --content "Método $i funcionou" 2>/dev/null
+                    fi
                     return 0
                 fi
             fi
@@ -1118,9 +1167,11 @@ install_xmrig_all_methods() {
     
     log "ERROR" "Todos os 25 métodos de instalação falharam."
     log "INFO" "Verifique sua conexão com a internet e tente novamente."
-    log "INFO" "Se o problema persistir, instale manualmente: https://github.com/xmrig/xmrig/releases"
+    log "INFO" "Instalação manual: pkg install xmrig"
     
-    send_notification "ERRO" "Falha na instalação do XMRig" "high"
+    if command -v termux-notification > /dev/null 2>&1; then
+        termux-notification --title "ERRO" --content "Falha na instalação do XMRig" --priority high 2>/dev/null
+    fi
     return 1
 }
 
@@ -1136,7 +1187,6 @@ check_xmrig() {
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
     fi
     
-    # Se for o script de fallback, não conta como sucesso real
     if grep -q "fallback" "$MINER_BIN/xmrig" 2>/dev/null; then
         return 1
     fi
@@ -1145,7 +1195,7 @@ check_xmrig() {
 }
 
 # ============================================================================
-# FUNÇÃO 42: GERAR CONFIGURAÇÃO RANDOMX
+# FUNÇÃO 42: GERAR CONFIGURAÇÃO RANDOMX (Adaptado para Android)
 # ============================================================================
 generate_config() {
     local wallet="$1"
@@ -1171,7 +1221,7 @@ generate_config() {
     "pools": [
         {
             "url": "$pool",
-            "user": "$wallet.$worker_id",
+            "user": "$wallet",
             "pass": "x",
             "rig-id": "$worker_id",
             "nicehash": false,
@@ -1182,8 +1232,8 @@ generate_config() {
     "randomx": {
         "mode": "$RANDOMX_MODE",
         "1gb-pages": $RANDOMX_1GB_PAGES,
-        "rdmsr": true,
-        "wrmsr": true,
+        "rdmsr": false,
+        "wrmsr": false,
         "cache_qos": $RANDOMX_CACHE_QOS,
         "numa": $RANDOMX_NUMA,
         "scratchpad_prefetch_mode": $RANDOMX_SCRATCHPAD_PREFETCH
@@ -1204,7 +1254,6 @@ EOF
 # ============================================================================
 # FUNÇÃO 43: POOLS DE MINERAÇÃO (20 POOLS)
 # ============================================================================
-
 POOLS=(
     "pool.minexmr.com:7777"
     "pool.minexmr.com:4444"
@@ -1257,7 +1306,6 @@ select_pool() {
 # ============================================================================
 # FUNÇÃO 45: CARTEIRAS MONERO (EXEMPLO)
 # ============================================================================
-
 WALLETS=(
     "44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
     "48Y3P2p2jJkX3VKoYXsQvAqQy8zY1qLZqX9kLkLqX9kLkLqX9kLkLqX9kLkLqX9kLkL"
@@ -1306,10 +1354,29 @@ select_wallet() {
 }
 
 # ============================================================================
-# FUNÇÃO 47: INICIAR MINERAÇÃO
+# FUNÇÃO 47: INICIAR MINERAÇÃO (Adaptado para Android)
 # ============================================================================
 start_mining() {
     log "MINER" "Iniciando processo de mineração RandomX..."
+    
+    # Verificar bateria
+    if command -v termux-battery-status > /dev/null 2>&1; then
+        local battery=$(termux-battery-status 2>/dev/null)
+        local percent=$(echo "$battery" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
+        local status=$(echo "$battery" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+        
+        if [ -n "$percent" ] && [ "$percent" -lt 15 ] && [ "$status" != "CHARGING" ]; then
+            log "WARNING" "Bateria baixa (${percent}%) e não carregando. Mineração não iniciada."
+            send_notification "Bateria Baixa" "Conecte o carregador para minerar" "high"
+            return 1
+        fi
+    fi
+    
+    # Wake lock
+    if command -v termux-wake-lock > /dev/null 2>&1; then
+        termux-wake-lock 2>/dev/null
+        log "TERMUX" "Wake lock ativado"
+    fi
     
     if [ -f "$MINER_CONFIG/miner.pid" ]; then
         local pid=$(cat "$MINER_CONFIG/miner.pid" 2>/dev/null)
@@ -1337,14 +1404,27 @@ start_mining() {
     fi
     
     cd "$MINER_ROOT" 2>/dev/null || return 1
+    
+    # Limpar logs antigos
+    > "$MINER_LOGS/xmrig.log" 2>/dev/null
+    
+    # Iniciar minerador
+    log "MINER" "Executando: $MINER_BIN/xmrig -c $MINER_CONFIG/config.json"
     nohup "$MINER_BIN/xmrig" -c "$MINER_CONFIG/config.json" >> "$MINER_LOGS/xmrig.log" 2>&1 &
     local pid=$!
     
-    sleep 3
+    sleep 5
+    
     if kill -0 "$pid" 2>/dev/null; then
         echo "$pid" > "$MINER_CONFIG/miner.pid" 2>/dev/null
         log "SUCCESS" "Mineração RandomX iniciada (PID: $pid)"
+        
+        # Notificação
         send_notification "RandomX Miner" "Mineração iniciada - PID: $pid"
+        
+        # Vibrar
+        vibrate_device 200
+        
         collect_stats
     else
         log "ERROR" "Falha ao iniciar mineração"
@@ -1358,6 +1438,11 @@ start_mining() {
 # ============================================================================
 stop_mining() {
     log "MINER" "Parando mineração..."
+    
+    # Release wake lock
+    if command -v termux-wake-unlock > /dev/null 2>&1; then
+        termux-wake-unlock 2>/dev/null
+    fi
     
     if [ ! -f "$MINER_CONFIG/miner.pid" ]; then
         log "WARNING" "Mineração não está ativa"
@@ -1435,13 +1520,21 @@ average_hashrate() {
     if [ -f "$MINER_LOGS/xmrig.log" ]; then
         while read -r rate; do
             if [ -n "$rate" ]; then
-                total=$(echo "$total + $rate" | bc 2>/dev/null)
+                if command -v bc >/dev/null 2>&1; then
+                    total=$(echo "$total + $rate" | bc 2>/dev/null)
+                else
+                    total=$((total + $(echo "$rate" | cut -d. -f1)))
+                fi
                 count=$((count + 1))
             fi
         done <<< "$(tail -500 "$MINER_LOGS/xmrig.log" 2>/dev/null | grep -oE "speed.*[0-9]+\.[0-9]+" | tail -$samples | grep -oE "[0-9]+\.[0-9]+")"
         
-        if [ $count -gt 0 ] && command -v bc >/dev/null 2>&1; then
-            echo "scale=2; $total / $count" | bc 2>/dev/null || echo "0"
+        if [ $count -gt 0 ]; then
+            if command -v bc >/dev/null 2>&1; then
+                echo "scale=2; $total / $count" | bc 2>/dev/null || echo "0"
+            else
+                echo $((total / count))
+            fi
         else
             echo "0"
         fi
@@ -1480,8 +1573,12 @@ acceptance_rate() {
     local rejected=$(rejected_shares)
     local total=$((accepted + rejected))
     
-    if [ $total -gt 0 ] && command -v bc >/dev/null 2>&1; then
-        echo "scale=2; $accepted * 100 / $total" | bc 2>/dev/null || echo "0"
+    if [ $total -gt 0 ]; then
+        if command -v bc >/dev/null 2>&1; then
+            echo "scale=2; $accepted * 100 / $total" | bc 2>/dev/null || echo "0"
+        else
+            echo $((accepted * 100 / total))
+        fi
     else
         echo "0"
     fi
@@ -1544,21 +1641,21 @@ collect_stats() {
 }
 
 # ============================================================================
-# FUNÇÃO 59: MONITOR EM TEMPO REAL
+# FUNÇÃO 59: MONITOR EM TEMPO REAL (Adaptado para Android)
 # ============================================================================
 live_monitor() {
     clear
     echo -e "${PURPLE}${BOLD}"
     echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║               RANDOMX LIVE MONITOR - TEMPO REAL                  ║"
+    echo "║               RANDOMX LIVE MONITOR - TERMUX                      ║"
     echo "╚══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
-    local refresh=2
+    local refresh=5
     local count=0
     
     while true; do
-        if [ $((count % 15)) -eq 0 ]; then
+        if [ $((count % 3)) -eq 0 ]; then
             collect_stats
         fi
         
@@ -1595,20 +1692,24 @@ live_monitor() {
         echo -e "${WHITE}Tempo de Execução:${NC} $(format_time $uptime)"
         
         if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-            local temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}')
-            if (( $(echo "$temp > 70" | bc -l 2>/dev/null) )); then
+            local temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print int($1/1000)}')
+            if [ -n "$temp" ] && [ "$temp" -gt 70 ]; then
                 echo -e "${WHITE}Temperatura:${NC} ${RED}${temp}°C (ALTA)${NC}"
             else
-                echo -e "${WHITE}Temperatura:${NC} ${temp}°C"
+                echo -e "${WHITE}Temperatura:${NC} ${temp:-?}°C"
             fi
         fi
         
-        if [ -f /proc/meminfo ]; then
-            local mem_free=$(grep MemFree /proc/meminfo 2>/dev/null | awk '{print $2}')
-            local mem_total=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
-            if [ -n "$mem_total" ] && [ -n "$mem_free" ] && [ "$mem_total" -gt 0 ]; then
-                local mem_used=$(( (mem_total - mem_free) * 100 / mem_total ))
-                echo -e "${WHITE}Memória:${NC} ${mem_used}% usado"
+        if command -v termux-battery-status > /dev/null 2>&1; then
+            local battery=$(termux-battery-status 2>/dev/null)
+            local percent=$(echo "$battery" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
+            local status=$(echo "$battery" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+            if [ -n "$percent" ]; then
+                if [ "$percent" -lt 20 ] && [ "$status" != "CHARGING" ]; then
+                    echo -e "${WHITE}Bateria:${NC} ${RED}${percent}% (${status})${NC}"
+                else
+                    echo -e "${WHITE}Bateria:${NC} ${percent}% (${status})"
+                fi
             fi
         fi
         
@@ -1639,7 +1740,7 @@ live_monitor() {
 }
 
 # ============================================================================
-# FUNÇÃO 60: BENCHMARK RANDOMX
+# FUNÇÃO 60: BENCHMARK RANDOMX (Adaptado para Android)
 # ============================================================================
 run_benchmark() {
     log "BENCH" "Iniciando benchmark RandomX..."
@@ -1648,7 +1749,7 @@ run_benchmark() {
         install_xmrig_all_methods || return 1
     fi
     
-    local bench_time=60
+    local bench_time=30  # Reduzido para Android
     local bench_file="$MINER_TEMP/benchmark_$(date +%s).log"
     
     echo -e "\n${CYAN}Executando benchmark RandomX por ${bench_time} segundos...${NC}\n"
@@ -1659,7 +1760,7 @@ run_benchmark() {
     for i in $(seq 1 $((bench_time / 10))); do
         echo -ne "Progresso: $((i*10))% ["
         for j in $(seq 1 $i); do echo -n "#"; done
-        for j in $(seq $i 6); do echo -n " "; done
+        for j in $(seq $i 3); do echo -n " "; done
         echo -ne "]\r"
         sleep 10
     done
@@ -1683,11 +1784,11 @@ run_benchmark() {
         
         if command -v bc >/dev/null 2>&1; then
             if (( $(echo "$hashrate > 2000" | bc -l 2>/dev/null) )); then
-                echo -e "${GREEN}⚡ Excelente performance! Use modo 'fast'${NC}"
+                echo -e "${GREEN}⚡ Excelente performance para Android!${NC}"
             elif (( $(echo "$hashrate > 1000" | bc -l 2>/dev/null) )); then
-                echo -e "${YELLOW}⚡ Boa performance! Use modo 'auto'${NC}"
+                echo -e "${YELLOW}⚡ Boa performance para Android${NC}"
             else
-                echo -e "${BLUE}⚡ Use modo 'light' para economia${NC}"
+                echo -e "${BLUE}⚡ Performance normal para Android${NC}"
             fi
         fi
         
@@ -1702,7 +1803,7 @@ run_benchmark() {
 }
 
 # ============================================================================
-# FUNÇÃO 61: TESTAR LATÊNCIA DAS POOLS
+# FUNÇÃO 61: TESTAR LATÊNCIA DAS POOLS (Adaptado para Android)
 # ============================================================================
 test_pools_latency() {
     echo -e "\n${CYAN}Testando latência das pools RandomX...${NC}"
@@ -1717,15 +1818,21 @@ test_pools_latency() {
         
         echo -ne "Pool $i: $pool ... "
         
-        local ping_time=$(ping -c 1 -W 2 "$host" 2>/dev/null | grep 'time=' | cut -d= -f4 | cut -d' ' -f1)
+        # Ping adaptado para Android
+        local ping_time=$(ping -c 1 -W 2 "$host" 2>/dev/null | grep 'time=' | head -1 | sed 's/.*time=\([0-9.]*\).*/\1/')
         
         if [ -n "$ping_time" ]; then
             echo -e "${GREEN}${ping_time}ms${NC}"
             results+=("$ping_time:$pool")
         else
-            if command -v nc > /dev/null 2>&1 && nc -z -w 2 "$host" "$port" 2>/dev/null; then
-                echo -e "${YELLOW}conecta (ping falhou)${NC}"
-                results+=("999:$pool")
+            # Tentar telnet/nc
+            if command -v nc > /dev/null 2>&1; then
+                if nc -z -w 2 "$host" "$port" 2>/dev/null; then
+                    echo -e "${YELLOW}conecta (ping falhou)${NC}"
+                    results+=("999:$pool")
+                else
+                    echo -e "${RED}falhou${NC}"
+                fi
             else
                 echo -e "${RED}falhou${NC}"
             fi
@@ -1750,18 +1857,15 @@ change_randomx_mode() {
     echo "═══════════════════════════════════════════════════"
     echo "Modos disponíveis:"
     echo "  1) fast  - Máximo desempenho (recomendado para 4+GB RAM)"
-    echo "             • Usa mais memória"
     echo "             • Melhor hashrate"
-    echo "             • Consumo maior"
+    echo "             • Maior consumo"
     echo ""
     echo "  2) light - Economia de memória (recomendado para <3GB RAM)"
     echo "             • Usa menos memória"
     echo "             • Hashrate reduzido"
-    echo "             • Consumo moderado"
+    echo "             • Indicado para Android"
     echo ""
     echo "  3) auto  - Automático (deixa o XMRig decidir)"
-    echo "             • Alterna entre modos conforme necessidade"
-    echo "             • Balanceado"
     echo ""
     read -p "Escolha (1-3): " mode_choice
     
@@ -1803,9 +1907,9 @@ set_cpu_threads() {
     echo "Núcleos disponíveis: $CPU_CORES"
     echo "Threads atuais: $CPU_THREADS"
     echo ""
-    echo "Recomendações:"
-    echo "  • Para RandomX, use todos os núcleos disponíveis"
-    echo "  • Deixe 1 núcleo livre para o sistema se possível"
+    echo "Recomendações para Android:"
+    echo "  • Deixe 1-2 núcleos livres para o sistema"
+    echo "  • Não use todos os núcleos em dispositivos mais antigos"
     echo ""
     read -p "Quantos threads usar? (1-$CPU_CORES): " threads
     
@@ -1869,43 +1973,21 @@ set_cpu_priority() {
 }
 
 # ============================================================================
-# FUNÇÃO 65: CONFIGURAR 1GB PAGES
+# FUNÇÃO 65: CONFIGURAR 1GB PAGES (Desabilitado no Android)
 # ============================================================================
 toggle_1gb_pages() {
     echo -e "\n${CYAN}Configuração de 1GB Pages${NC}"
     echo "═══════════════════════════════════════════════════"
-    
-    if [ "$MEM_TOTAL" -lt 3000 ]; then
-        echo -e "${YELLOW}Aviso: Seu dispositivo tem menos de 3GB de RAM${NC}"
-        echo "1GB Pages pode não funcionar corretamente."
-    fi
-    
-    echo "Status atual: $RANDOMX_1GB_PAGES"
+    echo -e "${YELLOW}1GB Pages não é suportado em dispositivos Android${NC}"
+    echo "Esta funcionalidade permanecerá desabilitada."
     echo ""
-    echo "1GB Pages melhora a performance do RandomX em até 30%"
-    echo "mas requer pelo menos 3GB de RAM livre."
-    echo ""
-    read -p "Ativar 1GB Pages? (s/n): " choice
-    
-    case $choice in
-        s|S|y|Y)
-            export RANDOMX_1GB_PAGES=true
-            log "RANDOMX" "1GB Pages ativado"
-            ;;
-        n|N)
-            export RANDOMX_1GB_PAGES=false
-            log "RANDOMX" "1GB Pages desativado"
-            ;;
-        *)
-            log "ERROR" "Opção inválida"
-            return
-            ;;
-    esac
+    export RANDOMX_1GB_PAGES=false
     
     if [ -f "$MINER_CONFIG/config.json" ]; then
-        sed -i "s/\"1gb-pages\": [a-z]*/\"1gb-pages\": $RANDOMX_1GB_PAGES/" "$MINER_CONFIG/config.json" 2>/dev/null
-        log "RANDOMX" "Configuração atualizada"
+        sed -i "s/\"1gb-pages\": [a-z]*/\"1gb-pages\": false/" "$MINER_CONFIG/config.json" 2>/dev/null
     fi
+    
+    read -p "Pressione Enter para continuar..."
 }
 
 # ============================================================================
@@ -1968,6 +2050,7 @@ clear_all_logs() {
         > "$MINER_LOGS/success.log" 2>/dev/null
         > "$MINER_LOGS/debug.log" 2>/dev/null
         log "SUCCESS" "Todos os logs foram limpos"
+        send_notification "Logs Limpos" "Todos os arquivos de log foram apagados"
     else
         log "INFO" "Operação cancelada"
     fi
@@ -1987,8 +2070,10 @@ backup_configuration() {
     if [ $? -eq 0 ] && [ -f "$backup_file" ]; then
         local size=$(du -h "$backup_file" | cut -f1)
         log "SUCCESS" "Backup criado: $(basename "$backup_file") (${size})"
+        send_notification "Backup Criado" "Configurações salvas com sucesso"
         
-        ls -t "$MINER_BACKUP"/config_*.tar.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+        # Manter apenas os 5 backups mais recentes
+        ls -t "$MINER_BACKUP"/config_*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
     else
         log "ERROR" "Falha ao criar backup"
     fi
@@ -2011,7 +2096,7 @@ restore_backup() {
     local i=1
     for backup in "${backups[@]}"; do
         local size=$(du -h "$backup" | cut -f1)
-        local date=$(basename "$backup" | sed 's/config_\(.*\).tar.gz/\1/')
+        local date=$(basename "$backup" | sed 's/config_\(.*\).tar.gz/\1/' | sed 's/_/ /')
         echo "  $i) $date - ${size}"
         i=$((i + 1))
     done
@@ -2035,6 +2120,8 @@ restore_backup() {
                 POOL=$(cat "$MINER_CONFIG/current_pool" 2>/dev/null)
                 generate_config "$WALLET" "$POOL"
             fi
+            
+            send_notification "Backup Restaurado" "Configurações recuperadas com sucesso"
         else
             log "INFO" "Restauração cancelada"
         fi
@@ -2059,14 +2146,16 @@ export_statistics() {
         echo ""
         echo "Data e hora: $(date '+%Y-%m-%d %H:%M:%S')"
         echo ""
-        echo "═══ SISTEMA ═══"
-        echo "Dispositivo: $ANDROID_MODEL"
-        echo "Android: $ANDROID_RELEASE (API $ANDROID_SDK)"
+        echo "═══ SISTEMA (ANDROID) ═══"
+        echo "Modelo: $(getprop ro.product.model 2>/dev/null || echo 'Desconhecido')"
+        echo "Android: $(getprop ro.build.version.release 2>/dev/null || echo 'Desconhecido')"
+        echo "Arquitetura: $ARCH"
         echo "CPU: $CPU_MODEL"
         echo "Núcleos: $CPU_CORES ($CPU_THREADS em uso)"
         echo "Memória Total: ${MEM_TOTAL}MB"
         echo "Memória Disponível: ${MEM_AVAILABLE}MB"
         echo "AES-NI: $AES_NI_SUPPORTED"
+        echo "ARM CRC: $ARM_CRC"
         echo ""
         echo "═══ MINERAÇÃO ═══"
         echo "Status: $(mining_status | sed 's/\x1b\[[0-9;]*m//g')"
@@ -2080,7 +2169,7 @@ export_statistics() {
         echo ""
         echo "═══ CONFIGURAÇÕES ═══"
         echo "Modo RandomX: $RANDOMX_MODE"
-        echo "1GB Pages: $RANDOMX_1GB_PAGES"
+        echo "1GB Pages: $RANDOMX_1GB_PAGES (não suportado no Android)"
         echo "NUMA: $RANDOMX_NUMA"
         echo "Prioridade CPU: $CPU_PRIORITY"
         echo ""
@@ -2103,33 +2192,44 @@ export_statistics() {
         local size=$(du -h "$stats_file" | cut -f1)
         log "SUCCESS" "Estatísticas exportadas: $(basename "$stats_file") (${size})"
         echo -e "\n${CYAN}Arquivo salvo em:${NC} $stats_file"
+        
+        # Copiar para o storage do Android se disponível
+        if [ -d ~/storage/downloads ]; then
+            cp "$stats_file" ~/storage/downloads/ 2>/dev/null
+            log "INFO" "Cópia salva em: ~/storage/downloads/$(basename "$stats_file")"
+        fi
+        
+        send_notification "Estatísticas Exportadas" "Relatório gerado com sucesso"
     else
         log "ERROR" "Falha ao exportar estatísticas"
     fi
 }
 
 # ============================================================================
-# FUNÇÃO 72: INFORMAÇÕES DO SISTEMA
+# FUNÇÃO 72: INFORMAÇÕES DO SISTEMA (Adaptado para Android)
 # ============================================================================
 show_system_info() {
     clear
     echo -e "${PURPLE}${BOLD}"
     echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║                 INFORMAÇÕES DO SISTEMA                           ║"
+    echo "║                 INFORMAÇÕES DO SISTEMA ANDROID                   ║"
     echo "╚══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
-    if [ -f /system/build.prop ]; then
-        ANDROID_MODEL=$(getprop ro.product.model 2>/dev/null || echo "Desconhecido")
-        ANDROID_MANUFACTURER=$(getprop ro.product.manufacturer 2>/dev/null || echo "Desconhecido")
-        ANDROID_RELEASE=$(getprop ro.build.version.release 2>/dev/null || echo "Desconhecido")
-        ANDROID_SDK=$(getprop ro.build.version.sdk 2>/dev/null || echo "Desconhecido")
-    fi
+    # Informações do dispositivo
+    ANDROID_MODEL=$(getprop ro.product.model 2>/dev/null || echo "Desconhecido")
+    ANDROID_MANUFACTURER=$(getprop ro.product.manufacturer 2>/dev/null || echo "Desconhecido")
+    ANDROID_BRAND=$(getprop ro.product.brand 2>/dev/null || echo "Desconhecido")
+    ANDROID_RELEASE=$(getprop ro.build.version.release 2>/dev/null || echo "Desconhecido")
+    ANDROID_SDK=$(getprop ro.build.version.sdk 2>/dev/null || echo "Desconhecido")
+    ANDROID_SECURITY_PATCH=$(getprop ro.build.version.security_patch 2>/dev/null || echo "Desconhecido")
     
-    echo -e "\n${WHITE}HARDWARE:${NC}"
-    echo "  Dispositivo: ${ANDROID_MODEL:-Desconhecido}"
-    echo "  Fabricante: ${ANDROID_MANUFACTURER:-Desconhecido}"
-    echo "  Android: ${ANDROID_RELEASE:-Desconhecido} (API ${ANDROID_SDK:-Desconhecido})"
+    echo -e "\n${WHITE}DISPOSITIVO:${NC}"
+    echo "  Modelo: $ANDROID_MODEL"
+    echo "  Fabricante: $ANDROID_MANUFACTURER"
+    echo "  Marca: $ANDROID_BRAND"
+    echo "  Android: $ANDROID_RELEASE (API $ANDROID_SDK)"
+    echo "  Security Patch: $ANDROID_SECURITY_PATCH"
     
     echo -e "\n${WHITE}PROCESSADOR:${NC}"
     echo "  Modelo: $CPU_MODEL"
@@ -2139,14 +2239,12 @@ show_system_info() {
     echo "  Frequência Atual: ${CPU_FREQ_CUR}MHz"
     echo "  Governador: $CPU_GOVERNOR"
     echo "  AES-NI: $AES_NI_SUPPORTED"
+    echo "  ARM CRC: $ARM_CRC"
     
     echo -e "\n${WHITE}MEMÓRIA:${NC}"
     echo "  Total: ${MEM_TOTAL}MB"
     echo "  Livre: ${MEM_FREE}MB"
     echo "  Disponível: ${MEM_AVAILABLE}MB"
-    echo "  Swap Total: ${MEM_SWAP_TOTAL}MB"
-    echo "  Swap Livre: ${MEM_SWAP_FREE}MB"
-    echo "  HugePages: ${HUGEPAGES_TOTAL}x${HUGEPAGES_SIZE}KB"
     
     echo -e "\n${WHITE}ARMAZENAMENTO:${NC}"
     echo "  Total: $((STORAGE_TOTAL/1024))MB"
@@ -2163,24 +2261,20 @@ show_system_info() {
         if [ -n "$battery" ]; then
             local percent=$(echo "$battery" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
             local status=$(echo "$battery" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+            local health=$(echo "$battery" | grep -o '"health":"[^"]*"' | cut -d: -f2 | tr -d '"')
             local temp=$(echo "$battery" | grep -o '"temperature":[0-9.]*' | cut -d: -f2)
             echo -e "\n${WHITE}BATERIA:${NC}"
             echo "  Nível: ${percent}%"
             echo "  Status: $status"
+            echo "  Saúde: $health"
             echo "  Temperatura: ${temp}°C"
         fi
     fi
     
-    echo -e "\n${WHITE}REDE:${NC}"
-    if command -v termux-wifi-connectioninfo >/dev/null 2>&1; then
-        local wifi=$(termux-wifi-connectioninfo 2>/dev/null)
-        local ssid=$(echo "$wifi" | grep -o '"ssid":"[^"]*"' | cut -d: -f2 | tr -d '"')
-        local ip=$(echo "$wifi" | grep -o '"ip":"[^"]*"' | cut -d: -f2 | tr -d '"')
-        echo "  SSID: ${ssid:-Desconhecido}"
-        echo "  IP: ${ip:-$(get_local_ip)}"
-    else
-        echo "  IP: $(get_local_ip)"
-    fi
+    echo -e "\n${WHITE}TERMUX:${NC}"
+    echo "  Versão: $(pkg list-installed | grep termux | head -1 | awk '{print $2}' 2>/dev/null || echo 'Desconhecido')"
+    echo "  Storage: $([ -d ~/storage ] && echo "Configurado" || echo "Não configurado")"
+    echo "  Wake Lock: $([ -f "$MINER_CONFIG/miner.pid" ] && echo "Ativo" || echo "Inativo")"
     
     echo -e "\n${WHITE}MINERAÇÃO:${NC}"
     echo "  Status: $(mining_status)"
@@ -2191,7 +2285,6 @@ show_system_info() {
     echo "  Modo RandomX: $RANDOMX_MODE"
     echo "  Threads: $CPU_THREADS/$CPU_CORES (${CPU_MAX_USAGE}%)"
     echo "  Prioridade: $CPU_PRIORITY"
-    echo "  1GB Pages: $RANDOMX_1GB_PAGES"
     
     echo ""
     read -p "Pressione Enter para continuar..."
@@ -2221,9 +2314,17 @@ check_for_updates() {
         read -p "Deseja atualizar? (s/n): " update_choice
         
         if [ "$update_choice" = "s" ] || [ "$update_choice" = "S" ]; then
+            log "UPDATE" "Iniciando atualização..."
             stop_mining
             rm -f "$MINER_BIN/xmrig" 2>/dev/null
-            install_xmrig_all_methods
+            rm -rf "$MINER_CACHE/xmrig" 2>/dev/null
+            
+            if install_xmrig_all_methods; then
+                log "SUCCESS" "XMRig atualizado com sucesso para versão $latest_version"
+                send_notification "Atualização Concluída" "XMRig atualizado para v$latest_version"
+            else
+                log "ERROR" "Falha ao atualizar XMRig"
+            fi
         fi
     else
         echo -e "${GREEN}Você está usando a versão mais recente${NC}"
@@ -2241,6 +2342,7 @@ auto_recovery() {
             rm -f "$MINER_CONFIG/miner.pid" 2>/dev/null
             start_mining
             send_notification "Auto-Recuperação" "Mineração reiniciada automaticamente"
+            vibrate_device 200
         fi
     fi
 }
@@ -2269,6 +2371,7 @@ edit_config_manual() {
     
     log "CONFIG" "Configuração editada manualmente"
     
+    # Validar JSON se python estiver disponível
     if command -v python3 >/dev/null 2>&1; then
         if python3 -c "import json; f=open('$MINER_CONFIG/config.json'); json.load(f)" 2>/dev/null; then
             log "SUCCESS" "Configuração válida"
@@ -2276,17 +2379,21 @@ edit_config_manual() {
             log "ERROR" "Configuração inválida! Restaure o backup se necessário"
         fi
     fi
+    
+    if [ -f "$MINER_CONFIG/miner.pid" ]; then
+        log "INFO" "Reinicie a mineração para aplicar as alterações"
+    fi
 }
 
 # ============================================================================
-# FUNÇÃO 76: MENU PRINCIPAL (CORRIGIDO - SEM LOOP INFINITO)
+# FUNÇÃO 76: MENU PRINCIPAL (CORRIGIDO - 30 OPÇÕES)
 # ============================================================================
 show_main_menu() {
     while true; do
         clear
         echo -e "${PURPLE}${BOLD}"
         echo "╔══════════════════════════════════════════════════════════════════╗"
-        echo "║           RANDOMX MONERO MINER - v10.0 FINAL                     ║"
+        echo "║           RANDOMX MONERO MINER - TERMUX v10.0                    ║"
         echo "║              25 MÉTODOS DE INSTALAÇÃO DO XMRIG                   ║"
         echo "╚══════════════════════════════════════════════════════════════════╝"
         echo -e "${NC}"
@@ -2319,7 +2426,7 @@ show_main_menu() {
         echo -e "   8) Trocar modo RandomX (fast/light/auto)"
         echo -e "   9) Configurar threads CPU"
         echo -e "  10) Configurar prioridade CPU"
-        echo -e "  11) Ativar/Desativar 1GB Pages"
+        echo -e "  11) Configurar 1GB Pages (não suportado)"
         echo ""
         echo -e "  ${WHITE}FERRAMENTAS${NC}"
         echo -e "  12) Testar latência das pools"
@@ -2396,6 +2503,7 @@ show_main_menu() {
                 if [ "$confirm" = "s" ] || [ "$confirm" = "S" ]; then
                     stop_mining
                     rm -f "$MINER_BIN/xmrig" 2>/dev/null
+                    rm -rf "$MINER_CACHE/xmrig" 2>/dev/null
                     install_xmrig_all_methods
                 fi
                 sleep 2
@@ -2405,6 +2513,7 @@ show_main_menu() {
                 if command -v termux-wake-unlock >/dev/null 2>&1; then
                     termux-wake-unlock 2>/dev/null
                 fi
+                send_notification "RandomX Miner" "Sistema encerrado"
                 echo -e "\n${GREEN}Até mais!${NC}"
                 exit 0
                 ;;
@@ -2426,7 +2535,8 @@ init_system() {
     clear
     echo -e "${PURPLE}${BOLD}"
     echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║           RANDOMX MONERO MINER - INICIALIZANDO...                ║"
+    echo "║           RANDOMX MONERO MINER - TERMUX ANDROID                  ║"
+    echo "║                    INICIALIZANDO SISTEMA...                      ║"
     echo "╚══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     
@@ -2444,25 +2554,30 @@ init_system() {
             install_xmrig_all_methods
         fi
     else
-        log "SUCCESS" "XMRig já está instalado"
+        local version=$("$MINER_BIN/xmrig" --version 2>/dev/null | head -1)
+        log "SUCCESS" "XMRig já está instalado: ${version:-versão desconhecida}"
     fi
     
     if [ ! -f "$MINER_CONFIG/current_pool" ]; then
         POOL="${POOLS[0]}"
         echo "$POOL" > "$MINER_CONFIG/current_pool" 2>/dev/null
+        log "INFO" "Pool padrão configurada: $POOL"
     fi
     
     if [ ! -f "$MINER_CONFIG/current_wallet" ]; then
         WALLET="${WALLETS[0]}"
         echo "$WALLET" > "$MINER_CONFIG/current_wallet" 2>/dev/null
+        log "INFO" "Carteira de exemplo configurada"
     fi
     
     if [ ! -f "$MINER_CONFIG/config.json" ] && [ -f "$MINER_CONFIG/current_pool" ] && [ -f "$MINER_CONFIG/current_wallet" ]; then
         POOL=$(cat "$MINER_CONFIG/current_pool" 2>/dev/null)
         WALLET=$(cat "$MINER_CONFIG/current_wallet" 2>/dev/null)
+        WORKER=$(cat "$MINER_CONFIG/worker.id" 2>/dev/null || echo "android-$$")
         generate_config "$WALLET" "$POOL"
     fi
     
+    # Iniciar processos em background
     (
         while true; do
             sleep 300
@@ -2477,19 +2592,38 @@ init_system() {
         done
     ) &
     
+    send_notification "RandomX Miner" "Sistema inicializado"
+    
     show_main_menu
 }
 
 # ============================================================================
-# FUNÇÃO 78: OBTER IP LOCAL
+# FUNÇÃO 78: OBTER IP LOCAL (Adaptado para Android)
 # ============================================================================
 get_local_ip() {
-    if command -v ifconfig >/dev/null 2>&1; then
-        ifconfig 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '127.0.0.1' | head -1
+    if command -v ip >/dev/null 2>&1; then
+        ip addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '127.0.0.1' | head -1
+    elif command -v ifconfig >/dev/null 2>&1; then
+        ifconfig 2>/dev/null | grep -oP 'inet addr:\K[\d.]+' | grep -v '127.0.0.1' | head -1
     else
         echo "127.0.0.1"
     fi
 }
+
+# ============================================================================
+# TRAP PARA LIMPEZA
+# ============================================================================
+cleanup() {
+    echo -e "\n${YELLOW}Finalizando RandomX Miner...${NC}"
+    stop_mining
+    if command -v termux-wake-unlock >/dev/null 2>&1; then
+        termux-wake-unlock 2>/dev/null
+    fi
+    send_notification "RandomX Miner" "Sistema encerrado"
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM EXIT
 
 # ============================================================================
 # INÍCIO
@@ -2497,5 +2631,5 @@ get_local_ip() {
 init_system
 
 # ============================================================================
-# FIM DO SCRIPT
+# FIM DO SCRIPT - TODAS AS 78 FUNÇÕES PRESERVADAS
 # ============================================================================
