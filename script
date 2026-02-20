@@ -84,7 +84,7 @@ BLINK='\033[5m'
 REVERSE='\033[7m'
 
 # ============================================================================
-# FUNÇÃO 01: CRIAR DIRETÓRIOS (CORRIGIDO)
+# FUNÇÃO 01: CRIAR DIRETÓRIOS
 # ============================================================================
 create_directories() {
     mkdir -p "$MINER_ROOT" 2>/dev/null
@@ -111,7 +111,7 @@ create_directories() {
 }
 
 # ============================================================================
-# FUNÇÃO 02: LOG AVANÇADO (CORRIGIDO - SEM PROCESSOS ZUMBI)
+# FUNÇÃO 02: LOG AVANÇADO
 # ============================================================================
 log() {
     local level="$1"
@@ -158,7 +158,7 @@ log() {
 }
 
 # ============================================================================
-# FUNÇÃO 03: GERAR UUID (CORRIGIDO - SEM DEPENDÊNCIAS EXTERNAS)
+# FUNÇÃO 03: GERAR UUID
 # ============================================================================
 generate_uuid() {
     local uuid=""
@@ -209,7 +209,7 @@ format_time() {
 }
 
 # ============================================================================
-# FUNÇÃO 07: FORMATAR HASH (CORRIGIDO)
+# FUNÇÃO 07: FORMATAR HASH
 # ============================================================================
 format_hash() {
     local hash=$1
@@ -242,7 +242,7 @@ format_hash() {
 }
 
 # ============================================================================
-# FUNÇÃO 08: DETECTAR HARDWARE COMPLETO (CORRIGIDO PARA ANDROID)
+# FUNÇÃO 08: DETECTAR HARDWARE COMPLETO
 # ============================================================================
 detect_hardware() {
     log "SYSTEM" "Iniciando detecção detalhada de hardware..."
@@ -429,7 +429,7 @@ speak_text() {
 }
 
 # ============================================================================
-# FUNÇÃO 13: VERIFICAR DEPENDÊNCIAS (COMPLETA)
+# FUNÇÃO 13: VERIFICAR DEPENDÊNCIAS
 # ============================================================================
 check_dependencies() {
     log "SYSTEM" "Verificando dependências básicas..."
@@ -1042,7 +1042,7 @@ install_method_debian() {
 }
 
 # ============================================================================
-# FUNÇÃO 33: INSTALAR XMRIG (MÉTODO 19 - IPFS) - CORRIGIDO
+# FUNÇÃO 33: INSTALAR XMRIG (MÉTODO 19 - IPFS)
 # ============================================================================
 install_method_ipfs() {
     log "MINER" "Método 19: IPFS gateway (experimental)"
@@ -1514,7 +1514,7 @@ select_wallet() {
 }
 
 # ============================================================================
-# FUNÇÃO 47: INICIAR MINERAÇÃO (CORRIGIDO)
+# FUNÇÃO 47: INICIAR MINERAÇÃO
 # ============================================================================
 start_mining() {
     log "MINER" "Iniciando processo de mineração RandomX..."
@@ -1743,7 +1743,7 @@ current_diff() {
 }
 
 # ============================================================================
-# FUNÇÃO 57: UPTIME DA MINERAÇÃO (CORRIGIDO - USA /PROC)
+# FUNÇÃO 57: UPTIME DA MINERAÇÃO
 # ============================================================================
 mining_uptime() {
     if [ -f "$MINER_CONFIG/miner.pid" ]; then
@@ -1792,7 +1792,7 @@ collect_stats() {
 }
 
 # ============================================================================
-# FUNÇÃO 59: MONITOR EM TEMPO REAL (CORRIGIDO)
+# FUNÇÃO 59: MONITOR EM TEMPO REAL
 # ============================================================================
 live_monitor() {
     clear
@@ -1946,7 +1946,7 @@ run_benchmark() {
 }
 
 # ============================================================================
-# FUNÇÃO 61: TESTAR LATÊNCIA DAS POOLS (CORRIGIDO)
+# FUNÇÃO 61: TESTAR LATÊNCIA DAS POOLS
 # ============================================================================
 test_pools_latency() {
     echo -e "\n${CYAN}Testando latência das pools RandomX...${NC}"
@@ -2126,24 +2126,43 @@ set_cpu_priority() {
 }
 
 # ============================================================================
-# FUNÇÃO 65: CONFIGURAR 1GB PAGES (DESABILITADO NO ANDROID)
+# FUNÇÃO 65: CONFIGURAR 1GB PAGES
 # ============================================================================
 toggle_1gb_pages() {
     echo -e "\n${CYAN}Configuração de 1GB Pages${NC}"
     echo "═══════════════════════════════════════════════════"
-    echo -e "${YELLOW}1GB Pages não é suportado em dispositivos Android${NC}"
-    echo "Esta funcionalidade permanecerá desabilitada."
-    echo ""
-    echo "No Android, o XMRig usa alocação de memória padrão."
-    echo "Para melhor performance, use o modo 'light'."
-    echo ""
-    export RANDOMX_1GB_PAGES=false
     
-    if [ -f "$MINER_CONFIG/config.json" ]; then
-        sed -i "s/\"1gb-pages\": [a-z]*/\"1gb-pages\": false/" "$MINER_CONFIG/config.json" 2>/dev/null
+    if [ "$MEM_TOTAL" -lt 3000 ]; then
+        echo -e "${YELLOW}Aviso: Seu dispositivo tem menos de 3GB de RAM${NC}"
+        echo "1GB Pages pode não funcionar corretamente."
     fi
     
-    read -p "Pressione Enter para continuar..."
+    echo "Status atual: $RANDOMX_1GB_PAGES"
+    echo ""
+    echo "1GB Pages melhora a performance do RandomX em até 30%"
+    echo "mas requer pelo menos 3GB de RAM livre."
+    echo ""
+    read -p "Ativar 1GB Pages? (s/n): " choice
+    
+    case $choice in
+        s|S|y|Y)
+            export RANDOMX_1GB_PAGES=true
+            log "RANDOMX" "1GB Pages ativado"
+            ;;
+        n|N)
+            export RANDOMX_1GB_PAGES=false
+            log "RANDOMX" "1GB Pages desativado"
+            ;;
+        *)
+            log "ERROR" "Opção inválida"
+            return
+            ;;
+    esac
+    
+    if [ -f "$MINER_CONFIG/config.json" ]; then
+        sed -i "s/\"1gb-pages\": [a-z]*/\"1gb-pages\": $RANDOMX_1GB_PAGES/" "$MINER_CONFIG/config.json" 2>/dev/null
+        log "RANDOMX" "Configuração atualizada"
+    fi
 }
 
 # ============================================================================
@@ -2331,7 +2350,7 @@ export_statistics() {
         echo ""
         echo "═══ CONFIGURAÇÕES ═══"
         echo "Modo RandomX: $RANDOMX_MODE"
-        echo "1GB Pages: $RANDOMX_1GB_PAGES (não suportado)"
+        echo "1GB Pages: $RANDOMX_1GB_PAGES"
         echo "NUMA: $RANDOMX_NUMA"
         echo "Prioridade CPU: $CPU_PRIORITY"
         echo "Threads: $CPU_THREADS/$CPU_CORES (${CPU_MAX_USAGE}%)"
@@ -2368,7 +2387,7 @@ export_statistics() {
 }
 
 # ============================================================================
-# FUNÇÃO 72: INFORMAÇÕES DO SISTEMA (CORRIGIDO)
+# FUNÇÃO 72: INFORMAÇÕES DO SISTEMA
 # ============================================================================
 show_system_info() {
     clear
@@ -2545,7 +2564,7 @@ edit_config_manual() {
 }
 
 # ============================================================================
-# FUNÇÃO 76: MENU PRINCIPAL (CORRIGIDO - LEITURA ROBUSTA)
+# FUNÇÃO 76: MENU PRINCIPAL (CORRIGIDO - SEM LOOP INFINITO)
 # ============================================================================
 show_main_menu() {
     while true; do
@@ -2585,7 +2604,7 @@ show_main_menu() {
         echo -e "   8) Trocar modo RandomX (fast/light/auto)"
         echo -e "   9) Configurar threads CPU"
         echo -e "  10) Configurar prioridade CPU"
-        echo -e "  11) Configurar 1GB Pages (não suportado)"
+        echo -e "  11) Configurar 1GB Pages"
         echo ""
         echo -e "  ${WHITE}FERRAMENTAS${NC}"
         echo -e "  12) Testar latência das pools"
@@ -2619,13 +2638,20 @@ show_main_menu() {
         
         # Leitura robusta para Termux
         echo -n "Escolha uma opção (0-30): "
+        local choice=""
         if [ -c /dev/tty ]; then
             read choice < /dev/tty
         else
             read choice
         fi
         
+        # Remover caracteres indesejados
         choice=$(echo "$choice" | tr -d ' \t\n\r')
+        
+        # Se estiver vazio, apenas continua o loop (sem mensagem de erro)
+        if [ -z "$choice" ]; then
+            continue
+        fi
         
         case $choice in
             1) start_mining; sleep 2 ;;
