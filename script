@@ -449,6 +449,7 @@ check_dependencies() {
         "psmisc"
         "coreutils"
         "findutils"
+        "unzip"
     )
     
     local missing=()
@@ -497,6 +498,7 @@ detect_architecture() {
             export XMRIG_FILE="xmrig-6.21.0-android-arm64.tar.gz"
             export XMRIG_BINARY="xmrig"
             export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-arm64.tar.gz"
+            export XMRIG_STATIC_URL="https://builds.xmrig.com/xmrig-aarch64-linux-android.tar.gz"
             ;;
         armv7l|armhf|armv8l|arm)
             export ARCH_TYPE="arm32"
@@ -504,6 +506,7 @@ detect_architecture() {
             export XMRIG_FILE="xmrig-6.21.0-android-armv7.tar.gz"
             export XMRIG_BINARY="xmrig"
             export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-armv7.tar.gz"
+            export XMRIG_STATIC_URL="https://builds.xmrig.com/xmrig-arm-linux-androideabi.tar.gz"
             ;;
         x86_64|amd64)
             export ARCH_TYPE="x64"
@@ -511,6 +514,7 @@ detect_architecture() {
             export XMRIG_FILE="xmrig-6.21.0-android-x86_64.tar.gz"
             export XMRIG_BINARY="xmrig"
             export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-x86_64.tar.gz"
+            export XMRIG_STATIC_URL="https://builds.xmrig.com/xmrig-x86_64-linux-android.tar.gz"
             ;;
         i*86|i686)
             export ARCH_TYPE="x86"
@@ -518,6 +522,7 @@ detect_architecture() {
             export XMRIG_FILE="xmrig-6.21.0-android-i686.tar.gz"
             export XMRIG_BINARY="xmrig"
             export XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-android-i686.tar.gz"
+            export XMRIG_STATIC_URL="https://builds.xmrig.com/xmrig-i686-linux-android.tar.gz"
             ;;
         *)
             export ARCH_TYPE="unknown"
@@ -525,10 +530,85 @@ detect_architecture() {
             export XMRIG_FILE=""
             export XMRIG_BINARY=""
             export XMRIG_URL=""
+            export XMRIG_STATIC_URL=""
             ;;
     esac
     
     log "SYSTEM" "Arquitetura detectada: $ARCH ($ARCH_TYPE)"
+}
+
+# ============================================================================
+# FUNÇÃO 14.5: VERIFICAR E REMOVER XMRIG EXISTENTE
+# ============================================================================
+verify_and_remove_xmrig() {
+    log "MINER" "Verificando instalação existente do XMRig..."
+    
+    local needs_reinstall=0
+    local xmrig_paths=(
+        "$MINER_BIN/xmrig"
+        "$PREFIX/bin/xmrig"
+        "$HOME/../usr/bin/xmrig"
+    )
+    
+    # Verificar se existe algum xmrig
+    for path in "${xmrig_paths[@]}"; do
+        if [ -f "$path" ]; then
+            log "INFO" "XMRig encontrado em: $path"
+            
+            # Tentar verificar versão
+            local version=$("$path" --version 2>/dev/null | head -1)
+            if [ -n "$version" ]; then
+                log "INFO" "Versão atual: $version"
+                
+                # Verificar se é uma versão Android válida
+                if echo "$version" | grep -q "Android"; then
+                    log "SUCCESS" "Versão Android válida detectada"
+                    needs_reinstall=0
+                else
+                    log "WARNING" "Versão pode não ser compatível com Android"
+                    needs_reinstall=1
+                fi
+            else
+                log "WARNING" "Não foi possível verificar a versão (pode ser inválido)"
+                needs_reinstall=1
+            fi
+            
+            # Testar execução básica
+            if ! "$path" --help > /dev/null 2>&1; then
+                log "WARNING" "XMRig parece não ser executável corretamente"
+                needs_reinstall=1
+            fi
+            
+            break
+        fi
+    done
+    
+    if [ $needs_reinstall -eq 1 ]; then
+        log "INFO" "Removendo instalação existente para reinstalar..."
+        
+        # Remover de todos os locais possíveis
+        for path in "${xmrig_paths[@]}"; do
+            if [ -f "$path" ]; then
+                rm -f "$path" 2>/dev/null
+                log "INFO" "Removido: $path"
+            fi
+        done
+        
+        # Remover cache
+        rm -f "$MINER_CACHE/xmrig" 2>/dev/null
+        
+        # Remover pacote termux se instalado
+        if pkg list-installed 2>/dev/null | grep -q "^xmrig"; then
+            pkg uninstall -y xmrig > /dev/null 2>&1
+            log "INFO" "Pacote xmrig desinstalado"
+        fi
+        
+        log "SUCCESS" "Instalação anterior removida"
+        return 1
+    fi
+    
+    log "SUCCESS" "XMRig existente parece válido"
+    return 0
 }
 
 # ============================================================================
@@ -546,6 +626,8 @@ install_method_android_official() {
     
     local url="https://github.com/xmrig/xmrig/releases/download/v6.21.0/$XMRIG_FILE"
     local success=0
+    
+    log "INFO" "Baixando de: $url"
     
     if command -v wget > /dev/null 2>&1; then
         wget -q --show-progress --timeout=30 "$url" -O xmrig.tar.gz
@@ -567,9 +649,15 @@ install_method_android_official() {
         if [ -n "$dir" ] && [ -f "$dir/xmrig" ]; then
             cp "$dir/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado com sucesso via método oficial"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            # Verificar se o binário é executável
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado com sucesso via método oficial"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            else
+                log "ERROR" "Binário baixado não é executável"
+            fi
         fi
     fi
     
@@ -582,26 +670,24 @@ install_method_android_official() {
 install_method_android_static() {
     log "MINER" "Método 2: Android static binary"
     
+    if [ -z "$XMRIG_STATIC_URL" ]; then
+        return 1
+    fi
+    
     cd "$MINER_TEMP" 2>/dev/null || mkdir -p "$MINER_TEMP" && cd "$MINER_TEMP" || return 1
     
-    local url=""
-    case "$ARCH_TYPE" in
-        arm64) url="https://builds.xmrig.com/xmrig-aarch64-linux-android.tar.gz" ;;
-        arm32) url="https://builds.xmrig.com/xmrig-arm-linux-androideabi.tar.gz" ;;
-        x64)   url="https://builds.xmrig.com/xmrig-x86_64-linux-android.tar.gz" ;;
-        x86)   url="https://builds.xmrig.com/xmrig-i686-linux-android.tar.gz" ;;
-        *)     return 1 ;;
-    esac
-    
+    local url="$XMRIG_STATIC_URL"
     local success=0
     
+    log "INFO" "Baixando de: $url"
+    
     if command -v wget > /dev/null 2>&1; then
-        wget -q --timeout=30 "$url" -O xmrig.tar.gz
+        wget -q --show-progress --timeout=30 "$url" -O xmrig.tar.gz
         [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ] && success=1
     fi
     
     if [ $success -eq 0 ] && command -v curl > /dev/null 2>&1; then
-        curl -s -L --connect-timeout 30 "$url" -o xmrig.tar.gz
+        curl -L --progress-bar --connect-timeout 30 "$url" -o xmrig.tar.gz
         [ -f "xmrig.tar.gz" ] && [ -s "xmrig.tar.gz" ] && success=1
     fi
     
@@ -610,9 +696,12 @@ install_method_android_static() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via Android static"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via Android static"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -673,9 +762,12 @@ install_method_compile() {
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig compilado com sucesso no Termux"
-            cd "$MINER_TEMP" && rm -rf xmrig 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig compilado com sucesso no Termux"
+                cd "$MINER_TEMP" && rm -rf xmrig 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -694,8 +786,11 @@ install_method_termux_pkg() {
     if command -v xmrig > /dev/null 2>&1; then
         cp "$(which xmrig)" "$MINER_BIN/xmrig" 2>/dev/null
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via pacote Termux"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig instalado via pacote Termux"
+            return 0
+        fi
     fi
     
     return 1
@@ -716,9 +811,12 @@ install_method_github_wget() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub wget"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub wget"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -740,9 +838,12 @@ install_method_github_curl() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub curl"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub curl"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -762,8 +863,11 @@ install_method_binary_wget() {
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via GitHub binary wget"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig instalado via GitHub binary wget"
+            return 0
+        fi
     fi
     
     return 1
@@ -782,8 +886,11 @@ install_method_binary_curl() {
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via GitHub binary curl"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig instalado via GitHub binary curl"
+            return 0
+        fi
     fi
     
     return 1
@@ -805,9 +912,12 @@ install_method_xmrig_com() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via xmrig.com"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via xmrig.com"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -823,8 +933,11 @@ install_method_local_cache() {
     if [ -f "$MINER_CACHE/xmrig" ] && [ -s "$MINER_CACHE/xmrig" ]; then
         cp "$MINER_CACHE/xmrig" "$MINER_BIN/xmrig" 2>/dev/null
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig restaurado do cache local"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig restaurado do cache local"
+            return 0
+        fi
     fi
     
     return 1
@@ -841,8 +954,11 @@ install_method_archive_org() {
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via Archive.org"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig instalado via Archive.org"
+            return 0
+        fi
     fi
     
     return 1
@@ -865,9 +981,12 @@ install_method_github_latest() {
             find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
             if [ -f "$MINER_BIN/xmrig" ]; then
                 chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-                log "SUCCESS" "XMRig instalado via GitHub latest"
-                rm -rf "$MINER_TEMP"/* 2>/dev/null
-                return 0
+                
+                if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                    log "SUCCESS" "XMRig instalado via GitHub latest"
+                    rm -rf "$MINER_TEMP"/* 2>/dev/null
+                    return 0
+                fi
             fi
         fi
     fi
@@ -890,9 +1009,12 @@ install_method_builds_arm() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -914,9 +1036,12 @@ install_method_builds_arm64() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM64"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via builds.xmrig.com ARM64"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -942,9 +1067,12 @@ install_method_proot() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via PRoot"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via PRoot"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -977,9 +1105,12 @@ install_method_cross_compile() {
         if [ -f "xmrig" ]; then
             cp xmrig "$MINER_BIN/xmrig" 2>/dev/null
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig cross-compilado com sucesso"
-            cd "$MINER_TEMP" && rm -rf xmrig 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig cross-compilado com sucesso"
+                cd "$MINER_TEMP" && rm -rf xmrig 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1005,9 +1136,12 @@ install_method_qemu() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via QEMU"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via QEMU"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1031,9 +1165,12 @@ install_method_debian() {
             find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
             if [ -f "$MINER_BIN/xmrig" ]; then
                 chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-                log "SUCCESS" "XMRig instalado via Debian package"
-                rm -rf "$MINER_TEMP"/* 2>/dev/null
-                return 0
+                
+                if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                    log "SUCCESS" "XMRig instalado via Debian package"
+                    rm -rf "$MINER_TEMP"/* 2>/dev/null
+                    return 0
+                fi
             fi
         fi
     fi
@@ -1046,13 +1183,6 @@ install_method_debian() {
 # ============================================================================
 install_method_ipfs() {
     log "MINER" "Método 19: IPFS gateway (experimental)"
-    
-    local cids=(
-        "QmXmrigAndroidArm64"
-        "QmXmrigAndroidArm32"
-        "QmXmrigAndroidX64"
-        "QmXmrigAndroidX86"
-    )
     
     local cid=""
     case "$ARCH_TYPE" in
@@ -1067,8 +1197,11 @@ install_method_ipfs() {
     
     if [ -f "$MINER_BIN/xmrig" ] && [ -s "$MINER_BIN/xmrig" ]; then
         chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-        log "SUCCESS" "XMRig instalado via IPFS"
-        return 0
+        
+        if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+            log "SUCCESS" "XMRig instalado via IPFS"
+            return 0
+        fi
     fi
     
     return 1
@@ -1089,9 +1222,12 @@ install_method_mirror_1() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub mirror 1"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub mirror 1"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1113,9 +1249,12 @@ install_method_mirror_2() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub mirror 2"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub mirror 2"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1137,9 +1276,12 @@ install_method_mirror_3() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub mirror 3"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub mirror 3"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1161,9 +1303,12 @@ install_method_mirror_4() {
         find . -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig instalado via GitHub mirror 4"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig instalado via GitHub mirror 4"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1185,9 +1330,12 @@ install_method_fdroid() {
         find xmrig_extract -name "xmrig" -type f -executable -exec cp {} "$MINER_BIN/xmrig" \; 2>/dev/null
         if [ -f "$MINER_BIN/xmrig" ]; then
             chmod +x "$MINER_BIN/xmrig" 2>/dev/null
-            log "SUCCESS" "XMRig extraído de APK"
-            rm -rf "$MINER_TEMP"/* 2>/dev/null
-            return 0
+            
+            if "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+                log "SUCCESS" "XMRig extraído de APK"
+                rm -rf "$MINER_TEMP"/* 2>/dev/null
+                return 0
+            fi
         fi
     fi
     
@@ -1247,6 +1395,9 @@ install_xmrig_all_methods() {
     mkdir -p "$MINER_BIN" "$MINER_TEMP" "$MINER_CACHE" 2>/dev/null
     
     detect_architecture
+    
+    # Verificar e remover instalação existente se necessário
+    verify_and_remove_xmrig
     
     local methods=(
         install_method_android_official
@@ -1336,7 +1487,7 @@ install_xmrig_all_methods() {
 }
 
 # ============================================================================
-# FUNÇÃO 41: VERIFICAR XMRIG
+# FUNÇÃO 41: VERIFICAR XMRIG (VERSÃO MELHORADA)
 # ============================================================================
 check_xmrig() {
     if [ ! -f "$MINER_BIN/xmrig" ]; then
@@ -1348,6 +1499,12 @@ check_xmrig() {
     fi
     
     if grep -q "fallback" "$MINER_BIN/xmrig" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Teste adicional: verificar se o binário realmente funciona
+    if ! "$MINER_BIN/xmrig" --help > /dev/null 2>&1; then
+        log "WARNING" "XMRig parece estar corrompido ou não é executável"
         return 1
     fi
     
@@ -1514,7 +1671,7 @@ select_wallet() {
 }
 
 # ============================================================================
-# FUNÇÃO 47: INICIAR MINERAÇÃO
+# FUNÇÃO 47: INICIAR MINERAÇÃO (CORRIGIDO)
 # ============================================================================
 start_mining() {
     log "MINER" "Iniciando processo de mineração RandomX..."
@@ -1583,7 +1740,10 @@ start_mining() {
         collect_stats
     else
         log "ERROR" "Falha ao iniciar mineração"
-        tail -20 "$MINER_LOGS/xmrig.log" 2>/dev/null
+        log "INFO" "Verificando logs para mais detalhes:"
+        tail -20 "$MINER_LOGS/xmrig.log" 2>/dev/null | while read -r line; do
+            log "MINER" "$line"
+        done
         return 1
     fi
 }
@@ -2742,7 +2902,7 @@ init_system() {
     
     echo ""
     if ! check_xmrig; then
-        echo -e "${YELLOW}XMRig não encontrado. Deseja instalar agora? (s/n)${NC}"
+        echo -e "${YELLOW}XMRig não encontrado ou precisa ser reinstalado. Deseja instalar agora? (s/n)${NC}"
         read -p "> " install_choice
         if [ "$install_choice" = "s" ] || [ "$install_choice" = "S" ]; then
             install_xmrig_all_methods
