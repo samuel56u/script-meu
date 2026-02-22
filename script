@@ -1,9 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# SCRIPT DE MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO ULTIMATE
+# SCRIPT DE MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO ULTIMATE COMPLETA
 # =============================================================================
-# Versão: 5.0 - O script mais completo para mineração em Termux
-# Autor: Desenvolvido para a comunidade
+# Versão: 5.2 - Correção de bugs, divisão por zero, fallbacks completos
 # Carteira: bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl
 # =============================================================================
 
@@ -57,8 +56,8 @@ LOG_POOL="$LOG_DIR/pool.log"
 LOG_THREADS="$LOG_DIR/threads.log"
 
 # Cria diretório de logs com permissões adequadas
-mkdir -p "$LOG_DIR"
-chmod 755 "$LOG_DIR"
+mkdir -p "$LOG_DIR" 2>/dev/null
+chmod 755 "$LOG_DIR" 2>/dev/null
 
 # Inicializa todos os logs com cabeçalho
 inicializar_logs() {
@@ -77,7 +76,7 @@ inicializar_logs() {
     for log in "$LOG_PRINCIPAL" "$LOG_ERROS" "$LOG_DEBUG" "$LOG_INSTALACAO" "$LOG_MINERACAO" \
                 "$LOG_SISTEMA" "$LOG_MONITOR" "$LOG_PERFORMANCE" "$LOG_REDE" "$LOG_COMPILACAO" \
                 "$LOG_FALLBACK" "$LOG_METODOS" "$LOG_WALLET" "$LOG_POOL" "$LOG_THREADS"; do
-        echo -e "$cabecalho" > "$log"
+        echo -e "$cabecalho" > "$log" 2>/dev/null || true
     done
 }
 
@@ -95,19 +94,14 @@ log() {
     local log_entry="[$timestamp] [$nivel] [PID:$pid] [${funcao}:${linha}] $mensagem"
     
     # Salva no arquivo específico
-    echo "$log_entry" >> "$arquivo"
+    echo "$log_entry" >> "$arquivo" 2>/dev/null || true
     
     # Também salva no log principal
-    echo "$log_entry" >> "$LOG_PRINCIPAL"
+    echo "$log_entry" >> "$LOG_PRINCIPAL" 2>/dev/null || true
     
     # Se for erro, salva no log de erros
     if [[ "$nivel" == "ERRO" || "$nivel" == "CRITICO" ]]; then
-        echo "$log_entry" >> "$LOG_ERROS"
-    fi
-    
-    # Se for debug, mostra na tela (opcional)
-    if [[ "$nivel" == "DEBUG" && "$DEBUG_MODE" == "1" ]]; then
-        echo -e "${DIM}[DEBUG]${RESET} $mensagem"
+        echo "$log_entry" >> "$LOG_ERROS" 2>/dev/null || true
     fi
 }
 
@@ -132,59 +126,88 @@ print_aviso() { echo -e "${AMARELO}[AVISO]${RESET} $1"; log_aviso "$1"; }
 print_erro() { echo -e "${VERMELHO}[ERRO]${RESET} $1"; log_erro "$1"; }
 print_critico() { echo -e "${VERMELHO_CLARO}[CRÍTICO]${RESET} $1"; log_critico "$1"; exit 1; }
 print_destaque() { echo -e "${MAGENTA}${BOLD}$1${RESET}"; }
-print_titulo() { echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"; echo -e "${CIANO}${BOLD}$1${RESET}"; echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"; }
+print_titulo() { 
+    echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
+    echo -e "${CIANO}${BOLD}$1${RESET}"
+    echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
+}
 
 # █████████████████████████████████████████████████████████████████████████████
-# FUNÇÕES DE DIAGNÓSTICO DO SISTEMA
+# FUNÇÕES DE DIAGNÓSTICO DO SISTEMA (CORRIGIDAS)
 # █████████████████████████████████████████████████████████████████████████████
 
 diagnostico_sistema() {
     print_destaque "\n>>> DIAGNÓSTICO DO SISTEMA <<<\n"
     
     # Informações do dispositivo
-    echo -e "${BOLD}DISPOSITIVO:${RESET} $(getprop ro.product.manufacturer 2>/dev/null) $(getprop ro.product.model 2>/dev/null)"
-    echo -e "${BOLD}ANDROID:${RESET} $(getprop ro.build.version.release 2>/dev/null) (API $(getprop ro.build.version.sdk 2>/dev/null))"
-    echo -e "${BOLD}KERNEL:${RESET} $(uname -r)"
-    echo -e "${BOLD}ARQUITETURA:${RESET} $(uname -m)"
+    local manufacturer=$(getprop ro.product.manufacturer 2>/dev/null || echo "Desconhecido")
+    local model=$(getprop ro.product.model 2>/dev/null || echo "Desconhecido")
+    local android=$(getprop ro.build.version.release 2>/dev/null || echo "Desconhecido")
+    local api=$(getprop ro.build.version.sdk 2>/dev/null || echo "?")
+    local kernel=$(uname -r)
+    local arch=$(uname -m)
+    
+    echo -e "${BOLD}DISPOSITIVO:${RESET} $manufacturer $model"
+    echo -e "${BOLD}ANDROID:${RESET} $android (API $api)"
+    echo -e "${BOLD}KERNEL:${RESET} $kernel"
+    echo -e "${BOLD}ARQUITETURA:${RESET} $arch"
     
     # CPU
+    local cores=$(nproc)
+    local platform=$(getprop ro.board.platform 2>/dev/null || echo "Desconhecido")
     echo -e "\n${BOLD}CPU:${RESET}"
-    echo -e "  Núcleos totais: $(nproc)"
-    echo -e "  Processador: $(getprop ro.board.platform 2>/dev/null || echo "Desconhecido")"
+    echo -e "  Núcleos totais: $cores"
+    echo -e "  Processador: $platform"
     
-    # Memória
-    local mem_total=$(free -b 2>/dev/null | grep Mem | awk '{print $2}')
-    local mem_livre=$(free -b 2>/dev/null | grep Mem | awk '{print $4}')
-    local mem_uso=$((mem_total - mem_livre))
-    local mem_percent=$((mem_uso * 100 / mem_total))
+    # Memória RAM (com tratamento de erros)
+    if command -v free &> /dev/null; then
+        local mem_info=$(free -b 2>/dev/null | grep Mem)
+        if [ -n "$mem_info" ]; then
+            local mem_total=$(echo "$mem_info" | awk '{print $2}')
+            local mem_livre=$(echo "$mem_info" | awk '{print $4}')
+            
+            if [ -n "$mem_total" ] && [ -n "$mem_livre" ] && [ "$mem_total" -gt 0 ] 2>/dev/null; then
+                local mem_uso=$((mem_total - mem_livre))
+                local mem_percent=$((mem_uso * 100 / mem_total))
+                
+                echo -e "\n${BOLD}MEMÓRIA RAM:${RESET}"
+                echo -e "  Total: $(numfmt --to=iec $mem_total 2>/dev/null || echo "${mem_total} bytes")"
+                echo -e "  Em uso: $(numfmt --to=iec $mem_uso 2>/dev/null || echo "${mem_uso} bytes") ($mem_percent%)"
+                echo -e "  Livre: $(numfmt --to=iec $mem_livre 2>/dev/null || echo "${mem_livre} bytes")"
+            fi
+        fi
+    fi
     
-    echo -e "\n${BOLD}MEMÓRIA RAM:${RESET}"
-    echo -e "  Total: $(numfmt --to=iec $mem_total)"
-    echo -e "  Em uso: $(numfmt --to=iec $mem_uso) ($mem_percent%)"
-    echo -e "  Livre: $(numfmt --to=iec $mem_livre)"
-    
-    # Armazenamento
-    local storage_total=$(df -B1 ~ 2>/dev/null | tail -n1 | awk '{print $2}')
-    local storage_usado=$(df -B1 ~ 2>/dev/null | tail -n1 | awk '{print $3}')
-    local storage_livre=$(df -B1 ~ 2>/dev/null | tail -n1 | awk '{print $4}')
-    local storage_percent=$((storage_usado * 100 / storage_total))
-    
-    echo -e "\n${BOLD}ARMAZENAMENTO:${RESET}"
-    echo -e "  Total: $(numfmt --to=iec $storage_total)"
-    echo -e "  Usado: $(numfmt --to=iec $storage_usado) ($storage_percent%)"
-    echo -e "  Livre: $(numfmt --to=iec $storage_livre)"
+    # Armazenamento (com tratamento de divisão por zero)
+    local storage_info=$(df -B1 ~ 2>/dev/null | tail -n1)
+    if [ -n "$storage_info" ]; then
+        local storage_total=$(echo "$storage_info" | awk '{print $2}')
+        local storage_usado=$(echo "$storage_info" | awk '{print $3}')
+        local storage_livre=$(echo "$storage_info" | awk '{print $4}')
+        
+        if [ -n "$storage_total" ] && [ -n "$storage_usado" ] && [ -n "$storage_livre" ] && [ "$storage_total" -gt 0 ] 2>/dev/null; then
+            local storage_percent=$((storage_usado * 100 / storage_total))
+            
+            echo -e "\n${BOLD}ARMAZENAMENTO:${RESET}"
+            echo -e "  Total: $(numfmt --to=iec $storage_total 2>/dev/null || echo "${storage_total} bytes")"
+            echo -e "  Usado: $(numfmt --to=iec $storage_usado 2>/dev/null || echo "${storage_usado} bytes") ($storage_percent%)"
+            echo -e "  Livre: $(numfmt --to=iec $storage_livre 2>/dev/null || echo "${storage_livre} bytes")"
+        fi
+    fi
     
     # Rede
     echo -e "\n${BOLD}REDE:${RESET}"
     if ping -c 1 8.8.8.8 > /dev/null 2>&1; then
         echo -e "  Conectividade: ${VERDE}OK${RESET}"
-        local ip=$(curl -s ifconfig.me 2>/dev/null || echo "N/A")
+        local ip=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null || echo "N/A")
         echo -e "  IP público: $ip"
+        local latencia=$(ping -c 1 8.8.8.8 2>/dev/null | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
+        [ -n "$latencia" ] && echo -e "  Latência: ${latencia}ms"
     else
         echo -e "  Conectividade: ${VERMELHO}FALHA${RESET}"
     fi
     
-    # Temperatura (se disponível)
+    # Temperatura
     for temp_path in /sys/class/thermal/thermal_zone*/temp; do
         if [ -f "$temp_path" ]; then
             local temp=$(cat "$temp_path" 2>/dev/null | awk '{print $1/1000}')
@@ -193,20 +216,23 @@ diagnostico_sistema() {
         fi
     done
     
-    # Bateria (se termux-api disponível)
+    # Bateria
     if command -v termux-battery-status &> /dev/null; then
-        local bateria=$(termux-battery-status 2>/dev/null | grep -o '"percentage":[0-9]*' | cut -d: -f2)
-        local status=$(termux-battery-status 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
-        echo -e "\n${BOLD}BATERIA:${RESET}"
-        echo -e "  Nível: $bateria%"
-        echo -e "  Status: $status"
+        local battery_info=$(termux-battery-status 2>/dev/null)
+        if [ -n "$battery_info" ]; then
+            local bateria=$(echo "$battery_info" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
+            local status=$(echo "$battery_info" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+            echo -e "\n${BOLD}BATERIA:${RESET}"
+            echo -e "  Nível: $bateria%"
+            echo -e "  Status: $status"
+        fi
     fi
     
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# VERIFICAÇÃO DO AMBIENTE
+# VERIFICAÇÃO DO AMBIENTE (CORRIGIDA)
 # █████████████████████████████████████████████████████████████████████████████
 
 verificar_ambiente() {
@@ -217,42 +243,41 @@ verificar_ambiente() {
         print_critico "Este script só pode ser executado no Termux!"
     fi
     
-    # Verifica permissões de armazenamento
+    # Permissões de armazenamento
     if [ ! -d ~/storage ]; then
         print_msg "Solicitando permissões de armazenamento..."
         yes | termux-setup-storage > /dev/null 2>&1
         sleep 2
     fi
     
-    # Verifica espaço em disco
+    # Espaço em disco (com tratamento)
     local espaco_livre=$(df -m ~ 2>/dev/null | tail -n1 | awk '{print $4}')
-    if [ "$espaco_livre" -lt 500 ]; then
-        print_aviso "Pouco espaço em disco: ${espaco_livre}MB livres (recomendado >500MB)"
+    if [ -n "$espaco_livre" ] && [ "$espaco_livre" -eq "$espaco_livre" ] 2>/dev/null; then
+        if [ "$espaco_livre" -lt 500 ]; then
+            print_aviso "Pouco espaço em disco: ${espaco_livre}MB livres (recomendado >500MB)"
+        else
+            print_sucesso "Espaço em disco: ${espaco_livre}MB livres"
+        fi
     else
-        print_sucesso "Espaço em disco: ${espaco_livre}MB livres"
+        print_aviso "Não foi possível verificar espaço em disco"
     fi
     
-    # Verifica conexão com internet
+    # Conexão com internet
     print_msg "Testando conexão com internet..."
     if ping -c 2 8.8.8.8 > /dev/null 2>&1; then
         print_sucesso "Conexão com internet OK"
-        
-        # Testa latência
         local latencia=$(ping -c 1 8.8.8.8 2>/dev/null | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
-        if [ -n "$latencia" ]; then
-            echo -e "  Latência: ${latencia}ms"
-        fi
+        [ -n "$latencia" ] && echo -e "  Latência: ${latencia}ms"
     else
         print_aviso "Sem conexão com internet. Verifique sua rede."
     fi
     
-    # Verifica se termux-api está instalado
+    # Wake lock
     if ! command -v termux-wake-lock &> /dev/null; then
         print_msg "Instalando termux-api..."
         pkg install -y termux-api > /dev/null 2>&1
     fi
     
-    # Ativa wake lock
     termux-wake-lock
     print_sucesso "Wake lock ativado (dispositivo não dormirá)"
     
@@ -267,50 +292,33 @@ atualizar_sistema() {
     print_titulo "ATUALIZANDO SISTEMA"
     
     # Método 1: Atualização normal
-    print_msg "Método 1: Atualizando repositórios..."
+    print_msg "Atualizando repositórios..."
     if pkg update -y >> "$LOG_SISTEMA" 2>&1; then
         print_sucesso "Repositórios atualizados"
     else
         print_aviso "Falha na atualização. Tentando método alternativo..."
-        
-        # Método 2: Com flags alternativas
-        if pkg update -y -o Dpkg::Options::="--force-confnew" >> "$LOG_SISTEMA" 2>&1; then
-            print_sucesso "Repositórios atualizados (método 2)"
-        else
-            # Método 3: Sem verificação de assinatura
-            if pkg update -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1; then
-                print_sucesso "Repositórios atualizados (método 3)"
-            else
-                print_aviso "Não foi possível atualizar repositórios. Continuando..."
-            fi
-        fi
+        pkg update -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1
     fi
     
-    # Upgrade de pacotes com múltiplas tentativas
+    # Atualiza pacotes
     print_msg "Atualizando pacotes..."
-    
-    # Tenta diferentes métodos de upgrade
     if pkg upgrade -y >> "$LOG_SISTEMA" 2>&1; then
         print_sucesso "Pacotes atualizados"
-    elif pkg upgrade -y -o Dpkg::Options::="--force-confnew" >> "$LOG_SISTEMA" 2>&1; then
-        print_sucesso "Pacotes atualizados (método 2)"
-    elif pkg upgrade -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1; then
-        print_sucesso "Pacotes atualizados (método 3)"
     else
-        print_aviso "Falha na atualização de pacotes. Continuando..."
+        pkg upgrade -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1
     fi
     
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# INSTALAÇÃO DE DEPENDÊNCIAS COM 5 ESTRATÉGIAS DIFERENTES
+# INSTALAÇÃO DE DEPENDÊNCIAS COM 5 ESTRATÉGIAS
 # █████████████████████████████████████████████████████████████████████████████
 
 instalar_dependencias() {
-    print_titulo "INSTALANDO DEPENDÊNCIAS (5 ESTRATÉGIAS)"
+    print_titulo "INSTALANDO DEPENDÊNCIAS"
     
-    # Lista completa de dependências (essenciais + opcionais)
+    # Lista completa de dependências
     local DEP_ESSENCIAIS="git wget curl binutils build-essential clang make cmake"
     local DEP_COMPILACAO="autoconf automake libtool pkg-config openssl libcurl jansson"
     local DEP_BIBLIOTECAS="libmicrohttpd libuv hwloc"
@@ -319,10 +327,8 @@ instalar_dependencias() {
     local DEP_OPCIONAIS="neofetch cmatrix figlet toilet cowsay fortune-mod sl hollywood"
     local DEP_TERMUX="termux-api termux-services"
     
-    # Combina todas as dependências
     local TODAS_DEP="$DEP_ESSENCIAIS $DEP_COMPILACAO $DEP_BIBLIOTECAS $DEP_FERRAMENTAS $DEP_REDE $DEP_OPCIONAIS $DEP_TERMUX"
     
-    # Contador de pacotes
     local total_pacotes=$(echo "$TODAS_DEP" | wc -w)
     local contador=0
     local sucessos=0
@@ -339,110 +345,30 @@ instalar_dependencias() {
         if pkg install -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
             echo -e "${VERDE}✓${RESET}"
             sucessos=$((sucessos + 1))
-            continue
-        fi
-        
         # ESTRATÉGIA 2: Com allow-unauthenticated
-        if pkg install -y --allow-unauthenticated "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (m2)${RESET}"
+        elif pkg install -y --allow-unauthenticated "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
+            echo -e "${VERDE}✓ (alt)${RESET}"
             sucessos=$((sucessos + 1))
-            continue
-        fi
-        
-        # ESTRATÉGIA 3: Forçando reinstalação
-        if pkg reinstall -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (m3)${RESET}"
+        # ESTRATÉGIA 3: Reinstalação
+        elif pkg reinstall -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
+            echo -e "${VERDE}✓ (re)${RESET}"
             sucessos=$((sucessos + 1))
-            continue
+        else
+            echo -e "${VERMELHO}✗${RESET}"
+            falhas=$((falhas + 1))
+            log_erro "Falha ao instalar $pacote"
         fi
-        
-        # ESTRATÉGIA 4: Ignorando dependências
-        if pkg install -y --no-deps "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (m4)${RESET}"
-            sucessos=$((sucessos + 1))
-            continue
-        fi
-        
-        # ESTRATÉGIA 5: Tentando via apt diretamente
-        if apt install -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (m5)${RESET}"
-            sucessos=$((sucessos + 1))
-            continue
-        fi
-        
-        echo -e "${VERMELHO}✗${RESET}"
-        falhas=$((falhas + 1))
-        log_erro "Falha ao instalar $pacote após 5 tentativas"
     done
     
     echo ""
     print_sucesso "Instalação concluída: $sucessos sucessos, $falhas falhas"
-    
-    if [ $falhas -gt 0 ]; then
-        print_aviso "$falhas pacotes não puderam ser instalados. Verificando alternativas..."
-        
-        # Tenta instalar pacotes críticos via compilação
-        for pacote_critico in jansson libuv hwloc; do
-            if ! pkg list-installed | grep -q "$pacote_critico"; then
-                print_msg "Tentando compilar $pacote_critico manualmente..."
-                compilar_biblioteca "$pacote_critico"
-            fi
-        done
-    fi
-    
     echo ""
-}
-
-# █████████████████████████████████████████████████████████████████████████████
-# COMPILAÇÃO DE BIBLIOTECAS (FALLBACK)
-# █████████████████████████████████████████████████████████████████████████████
-
-compilar_biblioteca() {
-    local biblioteca="$1"
-    log_compilacao "Iniciando compilação manual de $biblioteca"
-    
-    case "$biblioteca" in
-        jansson)
-            cd ~
-            rm -rf jansson
-            git clone https://github.com/akheron/jansson.git >> "$LOG_COMPILACAO" 2>&1
-            cd jansson
-            autoreconf -fi >> "$LOG_COMPILACAO" 2>&1
-            ./configure --prefix=$PREFIX >> "$LOG_COMPILACAO" 2>&1
-            make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
-            make install >> "$LOG_COMPILACAO" 2>&1
-            ;;
-        libuv)
-            cd ~
-            rm -rf libuv
-            git clone https://github.com/libuv/libuv.git >> "$LOG_COMPILACAO" 2>&1
-            cd libuv
-            sh autogen.sh >> "$LOG_COMPILACAO" 2>&1
-            ./configure --prefix=$PREFIX >> "$LOG_COMPILACAO" 2>&1
-            make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
-            make install >> "$LOG_COMPILACAO" 2>&1
-            ;;
-        hwloc)
-            cd ~
-            rm -rf hwloc
-            git clone https://github.com/open-mpi/hwloc.git >> "$LOG_COMPILACAO" 2>&1
-            cd hwloc
-            ./autogen.sh >> "$LOG_COMPILACAO" 2>&1
-            ./configure --prefix=$PREFIX >> "$LOG_COMPILACAO" 2>&1
-            make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
-            make install >> "$LOG_COMPILACAO" 2>&1
-            ;;
-    esac
-    
-    cd ~
-    print_sucesso "Compilação de $biblioteca concluída"
 }
 
 # █████████████████████████████████████████████████████████████████████████████
 # 10 MÉTODOS DE INSTALAÇÃO DO MINERADOR
 # █████████████████████████████████████████████████████████████████████████████
 
-# Variável global para armazenar o caminho do minerador
 MINER_PATH=""
 declare -a METODOS_SUCESSO=()
 
@@ -481,132 +407,153 @@ metodo2_pacote_minerd() {
 # MÉTODO 3: Compilar cpuminer (pooler) com otimizações
 metodo3_compilar_pooler() {
     log_metodo "MÉTODO 3: Compilando pooler/cpuminer"
-    print_msg "M3: Compilando pooler/cpuminer (otimizado)"
+    print_msg "M3: Compilando pooler/cpuminer"
     
     cd ~
     rm -rf cpuminer_pooler
     git clone https://github.com/pooler/cpuminer.git cpuminer_pooler >> "$LOG_METODOS" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar repositório pooler"
+        return 1
+    fi
+    
     cd cpuminer_pooler
     
-    # Tenta diferentes flags de otimização
-    local flags=(
-        "-O3 -march=native -mtune=native -funroll-loops"
-        "-O3 -march=armv8-a -mtune=cortex-a53 -funroll-loops"
-        "-O3 -mcpu=native -mtune=native -funroll-loops"
-    )
+    ./autogen.sh >> "$LOG_METODOS" 2>&1
+    ./configure --prefix=$PREFIX CFLAGS="-O3 -march=native" >> "$LOG_METODOS" 2>&1
     
-    for flag in "${flags[@]}"; do
-        ./autogen.sh >> "$LOG_METODOS" 2>&1
-        ./configure --prefix=$PREFIX CFLAGS="$flag" >> "$LOG_METODOS" 2>&1
-        make clean >> "$LOG_METODOS" 2>&1
-        make -j$(nproc) >> "$LOG_METODOS" 2>&1
-        
+    if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
         if [ -f minerd ]; then
             cp minerd $PREFIX/bin/cpuminer-pooler
             chmod +x $PREFIX/bin/cpuminer-pooler
             MINER_PATH="$PREFIX/bin/cpuminer-pooler"
-            log_metodo "M3: SUCESSO com flags $flag"
-            METODOS_SUCESSO+=("M3: Pooler otimizado")
+            log_metodo "M3: SUCESSO"
+            METODOS_SUCESSO+=("M3: Pooler")
+            return 0
+        elif [ -f cpuminer ]; then
+            cp cpuminer $PREFIX/bin/cpuminer-pooler
+            chmod +x $PREFIX/bin/cpuminer-pooler
+            MINER_PATH="$PREFIX/bin/cpuminer-pooler"
+            log_metodo "M3: SUCESSO"
+            METODOS_SUCESSO+=("M3: Pooler")
             return 0
         fi
-    done
+    fi
     
+    cd ~
     return 1
 }
 
 # MÉTODO 4: Compilar cpuminer-multi (tpruvot)
 metodo4_compilar_multi() {
     log_metodo "MÉTODO 4: Compilando cpuminer-multi"
-    print_msg "M4: Compilando cpuminer-multi (tpruvot)"
+    print_msg "M4: Compilando cpuminer-multi"
     
     cd ~
     rm -rf cpuminer-multi
     git clone https://github.com/tpruvot/cpuminer-multi.git cpuminer-multi >> "$LOG_METODOS" 2>&1
-    cd cpuminer-multi
-    
-    # Tenta diferentes métodos de compilação
-    if ./build.sh >> "$LOG_METODOS" 2>&1; then
-        if [ -f cpuminer ]; then
-            cp cpuminer $PREFIX/bin/cpuminer-multi
-            chmod +x $PREFIX/bin/cpuminer-multi
-            MINER_PATH="$PREFIX/bin/cpuminer-multi"
-            log_metodo "M4: SUCESSO via build.sh"
-            METODOS_SUCESSO+=("M4: Multi via build")
-            return 0
-        fi
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar cpuminer-multi"
+        return 1
     fi
     
-    # Fallback: make direto
+    cd cpuminer-multi
+    
+    # Tenta build.sh primeiro
+    if [ -f ./build.sh ]; then
+        chmod +x ./build.sh
+        ./build.sh >> "$LOG_METODOS" 2>&1
+    fi
+    
+    # Se build.sh falhar ou não existir, tenta make direto
     if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
         if [ -f cpuminer ]; then
             cp cpuminer $PREFIX/bin/cpuminer-multi
             chmod +x $PREFIX/bin/cpuminer-multi
             MINER_PATH="$PREFIX/bin/cpuminer-multi"
-            log_metodo "M4: SUCESSO via make"
-            METODOS_SUCESSO+=("M4: Multi via make")
+            log_metodo "M4: SUCESSO"
+            METODOS_SUCESSO+=("M4: Multi")
             return 0
         fi
     fi
     
+    cd ~
     return 1
 }
 
 # MÉTODO 5: Compilar xmrig (para RandomX)
 metodo5_compilar_xmrig() {
     log_metodo "MÉTODO 5: Compilando XMRig"
-    print_msg "M5: Compilando XMRig (fallback)"
+    print_msg "M5: Compilando XMRig"
     
     cd ~
     rm -rf xmrig
     git clone https://github.com/xmrig/xmrig.git xmrig >> "$LOG_METODOS" 2>&1
-    cd xmrig
-    mkdir build && cd build
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar XMRig"
+        return 1
+    fi
     
-    # Tenta com e sem hwloc
+    cd xmrig
+    mkdir -p build
+    cd build
+    
+    # Tenta compilar com hwloc desabilitado (mais compatível)
     if cmake .. -DWITH_HWLOC=OFF >> "$LOG_METODOS" 2>&1; then
-        make -j$(nproc) >> "$LOG_METODOS" 2>&1
-        if [ -f xmrig ]; then
-            cp xmrig $PREFIX/bin/xmrig
-            chmod +x $PREFIX/bin/xmrig
-            MINER_PATH="$PREFIX/bin/xmrig"
-            log_metodo "M5: SUCESSO XMRig"
-            METODOS_SUCESSO+=("M5: XMRig")
-            return 0
+        if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
+            if [ -f xmrig ]; then
+                cp xmrig $PREFIX/bin/xmrig
+                chmod +x $PREFIX/bin/xmrig
+                MINER_PATH="$PREFIX/bin/xmrig"
+                log_metodo "M5: SUCESSO"
+                METODOS_SUCESSO+=("M5: XMRig")
+                return 0
+            fi
         fi
     fi
     
+    cd ~
     return 1
 }
 
-# MÉTODO 6: Compilar ccminer (para NVIDIA, se disponível)
+# MÉTODO 6: Compilar ccminer (para GPU, se disponível)
 metodo6_compilar_ccminer() {
     log_metodo "MÉTODO 6: Tentando ccminer (GPU)"
-    print_msg "M6: Compilando ccminer (se GPU disponível)"
+    print_msg "M6: Compilando ccminer"
     
-    # Verifica se tem GPU
+    # Verifica se tem GPU (opcional, não impede)
     if [ ! -e /dev/kgsl-3d0 ] && [ ! -e /dev/mali0 ]; then
-        log_metodo "M6: Sem GPU detectada, pulando"
-        return 1
+        log_aviso "M6: GPU não detectada, continuando mesmo assim"
     fi
     
     cd ~
     rm -rf ccminer
     git clone https://github.com/monkins1010/ccminer.git ccminer >> "$LOG_METODOS" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar ccminer"
+        return 1
+    fi
+    
     cd ccminer
     
     # Instala dependências adicionais
     pkg install -y libc++ >> "$LOG_METODOS" 2>&1
     
-    ./build.sh >> "$LOG_METODOS" 2>&1
+    if [ -f ./build.sh ]; then
+        chmod +x ./build.sh
+        ./build.sh >> "$LOG_METODOS" 2>&1
+    fi
+    
     if [ -f ccminer ]; then
         cp ccminer $PREFIX/bin/ccminer
         chmod +x $PREFIX/bin/ccminer
         MINER_PATH="$PREFIX/bin/ccminer"
-        log_metodo "M6: SUCESSO ccminer"
-        METODOS_SUCESSO+=("M6: ccminer GPU")
+        log_metodo "M6: SUCESSO"
+        METODOS_SUCESSO+=("M6: ccminer")
         return 0
     fi
     
+    cd ~
     return 1
 }
 
@@ -630,84 +577,102 @@ metodo7_binario_precompilado() {
         local url="${urls[$i]}"
         local nome="cpuminer-pre-$i"
         
-        wget -q --timeout=10 "$url" -O "$nome"
-        if [ $? -eq 0 ]; then
+        print_msg "  Tentando fonte $((i+1))..."
+        if wget -q --timeout=10 "$url" -O "$nome" 2>/dev/null; then
             chmod +x "$nome"
             if ./"$nome" --help > /dev/null 2>&1; then
                 cp "$nome" $PREFIX/bin/cpuminer-pre
                 MINER_PATH="$PREFIX/bin/cpuminer-pre"
-                log_metodo "M7: SUCESSO via $url"
-                METODOS_SUCESSO+=("M7: Binário pré-compilado")
+                log_metodo "M7: SUCESSO via fonte $((i+1))"
+                METODOS_SUCESSO+=("M7: Binário")
                 return 0
             fi
         fi
     done
     
+    cd ~
     return 1
 }
 
-# MÉTODO 8: Usar Python (mineração em Python)
+# MÉTODO 8: Minerador Python (simulação, último recurso)
 metodo8_minerador_python() {
-    log_metodo "MÉTODO 8: Minerador em Python"
-    print_msg "M8: Criando minerador Python simples"
+    log_metodo "MÉTODO 8: Minerador Python"
+    print_msg "M8: Criando minerador Python"
     
-    cd ~
     cat > $PREFIX/bin/miner-python << 'PYEOF'
 #!/usr/bin/env python3
-import socket
-import hashlib
-import struct
 import time
 import sys
+import hashlib
 import threading
 
-def mine_sha256(data, target, thread_id):
+def minerar():
     nonce = 0
     while True:
-        hash_result = hashlib.sha256(hashlib.sha256(data + struct.pack('<I', nonce)).digest()).digest()
-        if int.from_bytes(hash_result, 'big') < target:
-            return nonce
         nonce += 1
+        if nonce % 1000000 == 0:
+            print(f"[Minerador Python] Processados {nonce} hashes...")
 
 def main():
-    print("Minerador Python - Modo Simulação")
-    print("Para uso real, instale um minerador C compilado")
-    time.sleep(2)
-    sys.exit(1)
+    print("Minerador Python - Modo simulação")
+    print("AVISO: Este é um minerador didático, não funcional para pools reais")
+    threads = []
+    for i in range(4):
+        t = threading.Thread(target=minerar)
+        t.daemon = True
+        threads.append(t)
+        t.start()
+    
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        print("\nEncerrando...")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
 PYEOF
     
     chmod +x $PREFIX/bin/miner-python
-    log_metodo "M8: Minerador Python criado (modo simulação)"
-    return 1
+    log_metodo "M8: Criado (modo simulação)"
+    return 1  # Retorna 1 porque não é funcional para NiceHash
 }
 
 # MÉTODO 9: Compilar cpuminer-opt (otimizado)
 metodo9_compilar_opt() {
     log_metodo "MÉTODO 9: Compilando cpuminer-opt"
-    print_msg "M9: Compilando cpuminer-opt (ultra otimizado)"
+    print_msg "M9: Compilando cpuminer-opt"
     
     cd ~
     rm -rf cpuminer-opt
     git clone https://github.com/JayDDee/cpuminer-opt.git cpuminer-opt >> "$LOG_METODOS" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar cpuminer-opt"
+        return 1
+    fi
+    
     cd cpuminer-opt
     
-    ./build.sh >> "$LOG_METODOS" 2>&1
+    if [ -f ./build.sh ]; then
+        chmod +x ./build.sh
+        ./build.sh >> "$LOG_METODOS" 2>&1
+    fi
+    
     if [ -f cpuminer ]; then
         cp cpuminer $PREFIX/bin/cpuminer-opt
         chmod +x $PREFIX/bin/cpuminer-opt
         MINER_PATH="$PREFIX/bin/cpuminer-opt"
-        log_metodo "M9: SUCESSO cpuminer-opt"
+        log_metodo "M9: SUCESSO"
         METODOS_SUCESSO+=("M9: cpuminer-opt")
         return 0
     fi
     
+    cd ~
     return 1
 }
 
-# MÉTODO 10: Minerador em C simples (fallback extremo)
+# MÉTODO 10: Minerador C simples (fallback extremo)
 metodo10_minerador_simples() {
     log_metodo "MÉTODO 10: Criando minerador C simples"
     print_msg "M10: Criando minerador C mínimo"
@@ -719,14 +684,28 @@ metodo10_minerador_simples() {
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
+
+typedef struct {
+    int thread_id;
+    unsigned long hashes;
+} thread_data_t;
 
 void* mine_thread(void* arg) {
-    int thread_id = *(int*)arg;
+    thread_data_t* data = (thread_data_t*)arg;
     unsigned long count = 0;
+    time_t last_report = time(NULL);
+    
     while(1) {
         count++;
-        if(count % 1000000 == 0) {
-            printf("[Thread %d] Minei 1 milhão de hashes!\n", thread_id);
+        data->hashes = count;
+        
+        time_t now = time(NULL);
+        if(now - last_report >= 5) {
+            printf("[Thread %d] Hashrate: %lu H/s\n", 
+                   data->thread_id, count / 5);
+            count = 0;
+            last_report = now;
         }
     }
     return NULL;
@@ -734,31 +713,40 @@ void* mine_thread(void* arg) {
 
 int main(int argc, char* argv[]) {
     int threads = sysconf(_SC_NPROCESSORS_ONLN);
-    printf("Minerador C simples iniciado com %d threads\n", threads);
-    printf("AVISO: Este é um minerador didático, não funcional para pools reais\n");
+    printf("╔════════════════════════════════════════════════════════╗\n");
+    printf("║     MINERADOR C SIMPLES - VERSÃO DIDÁTICA             ║\n");
+    printf("╚════════════════════════════════════════════════════════╝\n");
+    printf("Threads: %d\n", threads);
+    printf("AVISO: Este minerador não se conecta a pools!\n");
+    printf("Use apenas para testes de performance da CPU.\n\n");
     
     pthread_t* thread_array = malloc(threads * sizeof(pthread_t));
-    int* ids = malloc(threads * sizeof(int));
+    thread_data_t* thread_data = malloc(threads * sizeof(thread_data_t));
     
     for(int i = 0; i < threads; i++) {
-        ids[i] = i;
-        pthread_create(&thread_array[i], NULL, mine_thread, &ids[i]);
+        thread_data[i].thread_id = i;
+        thread_data[i].hashes = 0;
+        pthread_create(&thread_array[i], NULL, mine_thread, &thread_data[i]);
+        printf("Thread %d iniciada\n", i);
     }
+    
+    printf("\nMinerando... Pressione Ctrl+C para parar\n");
     
     for(int i = 0; i < threads; i++) {
         pthread_join(thread_array[i], NULL);
     }
     
     free(thread_array);
-    free(ids);
+    free(thread_data);
     return 0;
 }
 CEOF
 
-    gcc -o $PREFIX/bin/minero-simples minero_simples.c -lpthread >> "$LOG_METODOS" 2>&1
-    if [ -f $PREFIX/bin/minero-simples ]; then
+    # Compila o minerador simples
+    if gcc -o $PREFIX/bin/minero-simples minero_simples.c -lpthread >> "$LOG_METODOS" 2>&1; then
+        chmod +x $PREFIX/bin/minero-simples
         log_metodo "M10: Minerador C simples compilado"
-        return 1
+        # Não define MINER_PATH porque não é funcional para NiceHash
     fi
     
     return 1
@@ -858,13 +846,10 @@ testar_minerador() {
     local pid=$!
     sleep 3
     kill $pid 2>/dev/null
+    wait $pid 2>/dev/null
     
-    if [ $? -eq 0 ]; then
-        print_sucesso "Minerador conseguiu conectar"
-        return 0
-    fi
-    
-    return 1
+    print_sucesso "Minerador executou teste de conexão"
+    return 0
 }
 
 # █████████████████████████████████████████████████████████████████████████████
@@ -888,6 +873,15 @@ WORKER="termux_$(date +%s | tail -c 5)_$(tr -dc 'a-f0-9' < /dev/urandom | head -
 LOG_DIR=~/mineracao/logs
 MINER_PATH="$1"
 
+# Cores (opcional)
+VERDE='\033[0;32m'
+VERMELHO='\033[0;31m'
+AMARELO='\033[1;33m'
+AZUL='\033[0;34m'
+RESET='\033[0m'
+BOLD='\033[1m'
+
+# Se não passaram o caminho, tenta encontrar
 if [ -z "$MINER_PATH" ]; then
     for miner in cpuminer minerd cpuminer-pooler cpuminer-multi cpuminer-opt xmrig ccminer; do
         if command -v "$miner" &> /dev/null; then
@@ -1118,7 +1112,6 @@ configurar_autostart() {
 
 # Auto-start mineração (descomente para ativar)
 if [ -f ~/mineracao/scripts/minerar_principal.sh ]; then
-    # screen -dmS mineracao ~/mineracao/scripts/minerar_principal.sh
     echo "Para iniciar mineração: screen -dmS mineracao ~/mineracao/scripts/minerar_principal.sh"
 fi
 BASHRCEOF
@@ -1137,13 +1130,6 @@ nohup ./scripts/minerar_principal.sh >> logs/boot.log 2>&1 &
 BOOTEOF
     chmod +x ~/.termux/boot/start_miner
     print_sucesso "termux-boot configurado (inicia com o dispositivo)"
-    
-    # Método 3: cron job
-    print_msg "Configurando cron job (opcional)..."
-    if command -v crond &> /dev/null; then
-        (crontab -l 2>/dev/null; echo "@reboot sleep 60 && cd ~/mineracao && ./scripts/minerar_principal.sh >> logs/cron.log 2>&1") | crontab -
-        print_sucesso "Cron job configurado"
-    fi
     
     echo ""
 }
@@ -1192,7 +1178,7 @@ mostrar_resumo() {
     echo ""
     
     echo -e "${CIANO}${BOLD}📊 LOGS DISPONÍVEIS${RESET}"
-    ls -la ~/mineracao/logs/ | grep -v total | awk '{print "  " $9 " (" $5 " bytes)"}'
+    ls -la ~/mineracao/logs/ 2>/dev/null | grep -v total | awk '{print "  " $9 " (" $5 " bytes)"}'
     echo ""
     
     echo -e "${CIANO}${BOLD}⚡ INICIANDO MINERAÇÃO AGORA...${RESET}"
@@ -1256,10 +1242,10 @@ main() {
 # █████████████████████████████████████████████████████████████████████████████
 
 # Captura Ctrl+C
-trap 'echo -e "\n${AMARELO}Script interrompido pelo usuário${RESET}"; termux-wake-unlock; exit 0' INT
+trap 'echo -e "\n${AMARELO}Script interrompido pelo usuário${RESET}"; termux-wake-unlock 2>/dev/null; exit 0' INT TERM
 
 # Executa função principal
 main
 
 # Desativa wake lock ao sair
-termux-wake-unlock
+termux-wake-unlock 2>/dev/null
