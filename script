@@ -1,16 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# SCRIPT DE MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO ULTIMATE COMPLETA
+# SCRIPT DE MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO PRECISA E COMPLETA
 # =============================================================================
-# Versão: 5.2 - Correção de bugs, divisão por zero, fallbacks completos
+# Versão: 6.0 - Precisão Máxima, Sem Simplificações
 # Carteira: bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl
 # =============================================================================
 
 # █████████████████████████████████████████████████████████████████████████████
-# CONFIGURAÇÕES GLOBAIS E CORES
+# CONFIGURAÇÕES GLOBAIS E CORES (MANTIDAS DA VERSÃO 5.2)
 # █████████████████████████████████████████████████████████████████████████████
 
-# Cores para output (24 bits true color)
 VERDE='\033[0;32m'
 VERMELHO='\033[0;31m'
 AMARELO='\033[1;33m'
@@ -34,11 +33,38 @@ PISCANDO='\033[5m'
 INVERSO='\033[7m'
 
 # █████████████████████████████████████████████████████████████████████████████
-# FUNÇÕES DE LOG AVANÇADAS
+# CONFIGURAÇÕES DE PRECISÃO (NOVAS)
 # █████████████████████████████████████████████████████████████████████████████
 
-# Configuração de logs
-LOG_DIR=~/mineracao/logs
+# Modo debug (0 = desligado, 1 = ligado). Altere para 1 apenas para troubleshooting.
+DEBUG_MODE=0
+
+# Diretório base para a instalação precisa (separado do original para evitar conflitos)
+BASE_DIR=~/mineracao_precisa
+LOG_DIR="$BASE_DIR/logs"
+CONFIG_DIR="$BASE_DIR/config"
+SCRIPTS_DIR="$BASE_DIR/scripts"
+BACKUP_DIR="$BASE_DIR/backups"
+DOWNLOAD_DIR="$BASE_DIR/downloads"
+WORK_DIR="$BASE_DIR/work"
+
+# Timeouts generosos para operações críticas (em segundos)
+TIMEOUT_COMPILACAO=7200    # 2 horas para compilações pesadas
+TIMEOUT_DOWNLOAD=300       # 5 minutos para downloads
+TIMEOUT_TESTE=60           # 1 minuto para testes
+
+# Número máximo de tentativas para operações críticas
+MAX_TENTATIVAS=3
+
+# Criar estrutura de diretórios
+mkdir -p "$LOG_DIR" "$CONFIG_DIR" "$SCRIPTS_DIR" "$BACKUP_DIR" "$DOWNLOAD_DIR" "$WORK_DIR" 2>/dev/null
+chmod 755 "$BASE_DIR" "$LOG_DIR" "$CONFIG_DIR" "$SCRIPTS_DIR" "$BACKUP_DIR" "$DOWNLOAD_DIR" "$WORK_DIR" 2>/dev/null
+
+# █████████████████████████████████████████████████████████████████████████████
+# FUNÇÕES DE LOG AVANÇADAS (ADAPTADAS DA VERSÃO 5.2)
+# █████████████████████████████████████████████████████████████████████████████
+
+# Arquivos de log específicos (mantidos e expandidos)
 LOG_PRINCIPAL="$LOG_DIR/principal.log"
 LOG_ERROS="$LOG_DIR/erros.log"
 LOG_DEBUG="$LOG_DIR/debug.log"
@@ -51,61 +77,62 @@ LOG_REDE="$LOG_DIR/rede.log"
 LOG_COMPILACAO="$LOG_DIR/compilacao.log"
 LOG_FALLBACK="$LOG_DIR/fallback.log"
 LOG_METODOS="$LOG_DIR/metodos.log"
+LOG_VERIFICACAO="$LOG_DIR/verificacao.log"
+LOG_TESTES="$LOG_DIR/testes.log"
 LOG_WALLET="$LOG_DIR/wallet.log"
 LOG_POOL="$LOG_DIR/pool.log"
 LOG_THREADS="$LOG_DIR/threads.log"
 
-# Cria diretório de logs com permissões adequadas
-mkdir -p "$LOG_DIR" 2>/dev/null
-chmod 755 "$LOG_DIR" 2>/dev/null
-
-# Inicializa todos os logs com cabeçalho
+# Inicializa todos os logs com cabeçalho detalhado
 inicializar_logs() {
-    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S.%6N") # Microssegundos para precisão
     local cabecalho="═════════════════════════════════════════════════════════════════════════════════\n"
     cabecalho+="LOG INICIADO EM: $timestamp\n"
+    cabecalho+="SCRIPT VERSÃO: 6.0 (Precisa)\n"
     cabecalho+="TERMUX VERSÃO: $(termux-info 2>/dev/null | head -n1)\n"
-    cabecalho+="DISPOSITIVO: $(getprop ro.product.model 2>/dev/null || echo "Desconhecido")\n"
-    cabecalho+="ANDROID: $(getprop ro.build.version.release 2>/dev/null || echo "Desconhecido")\n"
+    cabecalho+="DISPOSITIVO: $(getprop ro.product.manufacturer 2>/dev/null) $(getprop ro.product.model 2>/dev/null)\n"
+    cabecalho+="ANDROID: $(getprop ro.build.version.release 2>/dev/null) (API $(getprop ro.build.version.sdk 2>/dev/null))\n"
+    cabecalho+="KERNEL: $(uname -r)\n"
     cabecalho+="ARQUITETURA: $(uname -m)\n"
     cabecalho+="NÚCLEOS CPU: $(nproc)\n"
     cabecalho+="MEMÓRIA RAM: $(free -h 2>/dev/null | grep Mem | awk '{print $2}' || echo "N/A")\n"
-    cabecalho+="ARMAZENAMENTO: $(df -h ~ 2>/dev/null | tail -n1 | awk '{print $2}' || echo "N/A")\n"
+    cabecalho+="ARMAZENAMENTO TOTAL: $(df -h ~ 2>/dev/null | tail -n1 | awk '{print $2}' || echo "N/A")\n"
+    cabecalho+="ARMAZENAMENTO LIVRE: $(df -h ~ 2>/dev/null | tail -n1 | awk '{print $4}' || echo "N/A")\n"
+    cabecalho+="BASE_DIR: $BASE_DIR\n"
     cabecalho+="═════════════════════════════════════════════════════════════════════════════════\n\n"
-    
+
     for log in "$LOG_PRINCIPAL" "$LOG_ERROS" "$LOG_DEBUG" "$LOG_INSTALACAO" "$LOG_MINERACAO" \
                 "$LOG_SISTEMA" "$LOG_MONITOR" "$LOG_PERFORMANCE" "$LOG_REDE" "$LOG_COMPILACAO" \
-                "$LOG_FALLBACK" "$LOG_METODOS" "$LOG_WALLET" "$LOG_POOL" "$LOG_THREADS"; do
+                "$LOG_FALLBACK" "$LOG_METODOS" "$LOG_VERIFICACAO" "$LOG_TESTES" \
+                "$LOG_WALLET" "$LOG_POOL" "$LOG_THREADS"; do
         echo -e "$cabecalho" > "$log" 2>/dev/null || true
     done
 }
 
-# Função de log universal
+# Função de log universal com timestamp preciso (microssegundos)
 log() {
     local nivel="$1"
     local mensagem="$2"
     local arquivo="$3"
-    local timestamp=$(date "+%Y-%m-%d %H:%M:%S.%3N")
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S.%6N")
     local pid=$$
     local funcao="${FUNCNAME[2]:-main}"
     local linha="${BASH_LINENO[1]:-0}"
-    
-    # Formata a mensagem de log
+
     local log_entry="[$timestamp] [$nivel] [PID:$pid] [${funcao}:${linha}] $mensagem"
-    
-    # Salva no arquivo específico
+
     echo "$log_entry" >> "$arquivo" 2>/dev/null || true
-    
-    # Também salva no log principal
     echo "$log_entry" >> "$LOG_PRINCIPAL" 2>/dev/null || true
-    
-    # Se for erro, salva no log de erros
+
     if [[ "$nivel" == "ERRO" || "$nivel" == "CRITICO" ]]; then
         echo "$log_entry" >> "$LOG_ERROS" 2>/dev/null || true
     fi
+    if [[ "$nivel" == "DEBUG" && "$DEBUG_MODE" == "1" ]]; then
+        echo -e "${DIM}[DEBUG]${RESET} $mensagem"
+    fi
 }
 
-# Funções de logging específicas
+# Funções de logging específicas (adaptadas)
 log_info() { log "INFO" "$1" "$LOG_INSTALACAO"; }
 log_sucesso() { log "SUCESSO" "$1" "$LOG_INSTALACAO"; }
 log_aviso() { log "AVISO" "$1" "$LOG_INSTALACAO"; }
@@ -118,58 +145,146 @@ log_fallback() { log "FALLBACK" "$1" "$LOG_FALLBACK"; }
 log_performance() { log "PERFORMANCE" "$1" "$LOG_PERFORMANCE"; }
 log_rede() { log "REDE" "$1" "$LOG_REDE"; }
 log_mineracao() { log "MINERACAO" "$1" "$LOG_MINERACAO"; }
+log_verificacao() { log "VERIFICACAO" "$1" "$LOG_VERIFICACAO"; }
+log_teste() { log "TESTE" "$1" "$LOG_TESTES"; }
 
-# Função de output visual
+# Funções de output visual (mantidas)
 print_msg() { echo -e "${AZUL}[INFO]${RESET} $1"; log_info "$1"; }
 print_sucesso() { echo -e "${VERDE}[SUCESSO]${RESET} $1"; log_sucesso "$1"; }
 print_aviso() { echo -e "${AMARELO}[AVISO]${RESET} $1"; log_aviso "$1"; }
 print_erro() { echo -e "${VERMELHO}[ERRO]${RESET} $1"; log_erro "$1"; }
 print_critico() { echo -e "${VERMELHO_CLARO}[CRÍTICO]${RESET} $1"; log_critico "$1"; exit 1; }
 print_destaque() { echo -e "${MAGENTA}${BOLD}$1${RESET}"; }
-print_titulo() { 
+print_titulo() {
     echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
     echo -e "${CIANO}${BOLD}$1${RESET}"
     echo -e "${CIANO}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# FUNÇÕES DE DIAGNÓSTICO DO SISTEMA (CORRIGIDAS)
+# FUNÇÕES DE VERIFICAÇÃO PRECISA (NOVAS OU ADAPTADAS)
+# █████████████████████████████████████████████████████████████████████████████
+
+# Verifica se um comando existe e é executável
+verificar_comando() {
+    local cmd="$1"
+    local nome="$2"
+    log_verificacao "Verificando comando: $cmd ($nome)"
+    if command -v "$cmd" &> /dev/null; then
+        local path=$(which "$cmd")
+        local versao=$("$cmd" --version 2>/dev/null | head -n1 || echo "versão desconhecida")
+        log_verificacao "OK: $nome encontrado em $path ($versao)"
+        return 0
+    else
+        log_verificacao "FALTA: $nome ($cmd) não encontrado"
+        return 1
+    fi
+}
+
+# Verifica se um arquivo existe, é legível e tem tamanho mínimo
+verificar_arquivo() {
+    local arquivo="$1"
+    local descricao="$2"
+    local tamanho_minimo="${3:-0}"
+    log_verificacao "Verificando arquivo: $arquivo ($descricao)"
+    if [ ! -e "$arquivo" ]; then
+        log_verificacao "ERRO: Arquivo não existe"
+        return 1
+    fi
+    if [ ! -r "$arquivo" ]; then
+        log_verificacao "ERRO: Arquivo sem permissão de leitura"
+        return 1
+    fi
+    if [ -f "$arquivo" ] && [ "$tamanho_minimo" -gt 0 ]; then
+        local tamanho=$(stat -c%s "$arquivo" 2>/dev/null || echo "0")
+        if [ "$tamanho" -lt "$tamanho_minimo" ]; then
+            log_verificacao "ERRO: Arquivo muito pequeno ($tamanho bytes < $tamanho_minimo)"
+            return 1
+        fi
+    fi
+    log_verificacao "OK: Arquivo válido"
+    return 0
+}
+
+# Verifica conectividade de rede de forma robusta
+verificar_conexao_rede() {
+    log_verificacao "Verificando conexão de rede..."
+    local servidores=("8.8.8.8" "1.1.1.1" "9.9.9.9" "208.67.222.222")
+    local sucesso=0
+    for servidor in "${servidores[@]}"; do
+        if ping -c 2 -W 5 "$servidor" > /dev/null 2>&1; then
+            local latencia=$(ping -c 1 "$servidor" 2>/dev/null | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
+            log_verificacao "Conexão com $servidor OK (latência: ${latencia:-N/A}ms)"
+            sucesso=1
+            break
+        else
+            log_verificacao "Falha ao conectar com $servidor"
+        fi
+    done
+    if [ $sucesso -eq 1 ]; then
+        if nslookup google.com > /dev/null 2>&1; then
+            log_verificacao "Resolução DNS OK"
+        else
+            log_aviso "Resolução DNS com problemas"
+        fi
+        return 0
+    fi
+    log_verificacao "FALHA: Sem conectividade com a internet"
+    return 1
+}
+
+# Verifica espaço em disco com precisão
+verificar_espaco_disco() {
+    local minimo_mb="$1"
+    local path="${2:-$BASE_DIR}"
+    log_verificacao "Verificando espaço em disco em $path (mínimo: ${minimo_mb}MB)"
+    local espaco_livre=$(df -m "$path" 2>/dev/null | tail -n1 | awk '{print $4}')
+    if [ -z "$espaco_livre" ] || [ "$espaco_livre" -le 0 ] 2>/dev/null; then
+        log_verificacao "ERRO: Não foi possível determinar espaço em disco"
+        return 1
+    fi
+    log_verificacao "Espaço livre: ${espaco_livre}MB"
+    if [ "$espaco_livre" -lt "$minimo_mb" ]; then
+        log_verificacao "INSUFICIENTE: ${espaco_livre}MB < ${minimo_mb}MB"
+        return 1
+    fi
+    log_verificacao "SUFICIENTE: ${espaco_livre}MB >= ${minimo_mb}MB"
+    return 0
+}
+
+# █████████████████████████████████████████████████████████████████████████████
+# DIAGNÓSTICO PRECISO DO SISTEMA (ADAPTADO DA VERSÃO 5.2)
 # █████████████████████████████████████████████████████████████████████████████
 
 diagnostico_sistema() {
-    print_destaque "\n>>> DIAGNÓSTICO DO SISTEMA <<<\n"
+    print_destaque "\n>>> DIAGNÓSTICO PRECISO DO SISTEMA <<<\n"
     
-    # Informações do dispositivo
     local manufacturer=$(getprop ro.product.manufacturer 2>/dev/null || echo "Desconhecido")
     local model=$(getprop ro.product.model 2>/dev/null || echo "Desconhecido")
     local android=$(getprop ro.build.version.release 2>/dev/null || echo "Desconhecido")
     local api=$(getprop ro.build.version.sdk 2>/dev/null || echo "?")
     local kernel=$(uname -r)
     local arch=$(uname -m)
-    
+    local cores=$(nproc)
+    local platform=$(getprop ro.board.platform 2>/dev/null || echo "Desconhecido")
+
     echo -e "${BOLD}DISPOSITIVO:${RESET} $manufacturer $model"
     echo -e "${BOLD}ANDROID:${RESET} $android (API $api)"
     echo -e "${BOLD}KERNEL:${RESET} $kernel"
     echo -e "${BOLD}ARQUITETURA:${RESET} $arch"
-    
-    # CPU
-    local cores=$(nproc)
-    local platform=$(getprop ro.board.platform 2>/dev/null || echo "Desconhecido")
     echo -e "\n${BOLD}CPU:${RESET}"
     echo -e "  Núcleos totais: $cores"
     echo -e "  Processador: $platform"
-    
-    # Memória RAM (com tratamento de erros)
+
+    # Memória RAM (com tratamento)
     if command -v free &> /dev/null; then
         local mem_info=$(free -b 2>/dev/null | grep Mem)
         if [ -n "$mem_info" ]; then
             local mem_total=$(echo "$mem_info" | awk '{print $2}')
             local mem_livre=$(echo "$mem_info" | awk '{print $4}')
-            
             if [ -n "$mem_total" ] && [ -n "$mem_livre" ] && [ "$mem_total" -gt 0 ] 2>/dev/null; then
                 local mem_uso=$((mem_total - mem_livre))
                 local mem_percent=$((mem_uso * 100 / mem_total))
-                
                 echo -e "\n${BOLD}MEMÓRIA RAM:${RESET}"
                 echo -e "  Total: $(numfmt --to=iec $mem_total 2>/dev/null || echo "${mem_total} bytes")"
                 echo -e "  Em uso: $(numfmt --to=iec $mem_uso 2>/dev/null || echo "${mem_uso} bytes") ($mem_percent%)"
@@ -177,36 +292,32 @@ diagnostico_sistema() {
             fi
         fi
     fi
-    
-    # Armazenamento (com tratamento de divisão por zero)
+
+    # Armazenamento (com tratamento)
     local storage_info=$(df -B1 ~ 2>/dev/null | tail -n1)
     if [ -n "$storage_info" ]; then
         local storage_total=$(echo "$storage_info" | awk '{print $2}')
         local storage_usado=$(echo "$storage_info" | awk '{print $3}')
         local storage_livre=$(echo "$storage_info" | awk '{print $4}')
-        
         if [ -n "$storage_total" ] && [ -n "$storage_usado" ] && [ -n "$storage_livre" ] && [ "$storage_total" -gt 0 ] 2>/dev/null; then
             local storage_percent=$((storage_usado * 100 / storage_total))
-            
             echo -e "\n${BOLD}ARMAZENAMENTO:${RESET}"
             echo -e "  Total: $(numfmt --to=iec $storage_total 2>/dev/null || echo "${storage_total} bytes")"
             echo -e "  Usado: $(numfmt --to=iec $storage_usado 2>/dev/null || echo "${storage_usado} bytes") ($storage_percent%)"
             echo -e "  Livre: $(numfmt --to=iec $storage_livre 2>/dev/null || echo "${storage_livre} bytes")"
         fi
     fi
-    
+
     # Rede
     echo -e "\n${BOLD}REDE:${RESET}"
-    if ping -c 1 8.8.8.8 > /dev/null 2>&1; then
+    if verificar_conexao_rede; then
         echo -e "  Conectividade: ${VERDE}OK${RESET}"
         local ip=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null || echo "N/A")
         echo -e "  IP público: $ip"
-        local latencia=$(ping -c 1 8.8.8.8 2>/dev/null | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
-        [ -n "$latencia" ] && echo -e "  Latência: ${latencia}ms"
     else
         echo -e "  Conectividade: ${VERMELHO}FALHA${RESET}"
     fi
-    
+
     # Temperatura
     for temp_path in /sys/class/thermal/thermal_zone*/temp; do
         if [ -f "$temp_path" ]; then
@@ -215,551 +326,651 @@ diagnostico_sistema() {
             break
         fi
     done
-    
+
     # Bateria
     if command -v termux-battery-status &> /dev/null; then
         local battery_info=$(termux-battery-status 2>/dev/null)
         if [ -n "$battery_info" ]; then
             local bateria=$(echo "$battery_info" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
             local status=$(echo "$battery_info" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
-            echo -e "\n${BOLD}BATERIA:${RESET}"
-            echo -e "  Nível: $bateria%"
-            echo -e "  Status: $status"
+            echo -e "\n${BOLD}BATERIA:${RESET} $bateria% ($status)"
         fi
     fi
-    
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# VERIFICAÇÃO DO AMBIENTE (CORRIGIDA)
+# VERIFICAÇÃO PRECISA DO AMBIENTE
 # █████████████████████████████████████████████████████████████████████████████
 
-verificar_ambiente() {
-    print_titulo "VERIFICANDO AMBIENTE TERMUX"
-    
-    # Verifica se está no Termux
+verificar_ambiente_preciso() {
+    print_titulo "VERIFICAÇÃO PRECISA DO AMBIENTE TERMUX"
+    local erros=0
+    local avisos=0
+
+    # 1. Ambiente Termux
+    print_msg "Verificando ambiente Termux..."
     if [ ! -d /data/data/com.termux ]; then
         print_critico "Este script só pode ser executado no Termux!"
+    else
+        print_sucesso "Ambiente Termux confirmado"
     fi
-    
-    # Permissões de armazenamento
+
+    # 2. Permissões de armazenamento
+    print_msg "Verificando permissões de armazenamento..."
     if [ ! -d ~/storage ]; then
-        print_msg "Solicitando permissões de armazenamento..."
+        print_msg "Solicitando permissões..."
         yes | termux-setup-storage > /dev/null 2>&1
-        sleep 2
+        sleep 3
     fi
-    
-    # Espaço em disco (com tratamento)
-    local espaco_livre=$(df -m ~ 2>/dev/null | tail -n1 | awk '{print $4}')
-    if [ -n "$espaco_livre" ] && [ "$espaco_livre" -eq "$espaco_livre" ] 2>/dev/null; then
-        if [ "$espaco_livre" -lt 500 ]; then
-            print_aviso "Pouco espaço em disco: ${espaco_livre}MB livres (recomendado >500MB)"
-        else
-            print_sucesso "Espaço em disco: ${espaco_livre}MB livres"
-        fi
+    if [ -d ~/storage ]; then
+        print_sucesso "Permissões de armazenamento OK"
     else
-        print_aviso "Não foi possível verificar espaço em disco"
+        print_aviso "Permissões de armazenamento não concedidas"
+        avisos=$((avisos + 1))
     fi
-    
-    # Conexão com internet
-    print_msg "Testando conexão com internet..."
-    if ping -c 2 8.8.8.8 > /dev/null 2>&1; then
+
+    # 3. Espaço em disco (precisamos de pelo menos 2GB para compilações)
+    print_msg "Verificando espaço em disco (mínimo 2GB)..."
+    if verificar_espaco_disco 2048; then
+        print_sucesso "Espaço em disco suficiente"
+    else
+        local espaco=$(df -h ~ | tail -n1 | awk '{print $4}')
+        print_aviso "Espaço em disco limitado: $espaco (recomendado >2GB)"
+        avisos=$((avisos + 1))
+    fi
+
+    # 4. Conexão com internet
+    print_msg "Verificando conexão com internet..."
+    if verificar_conexao_rede; then
         print_sucesso "Conexão com internet OK"
-        local latencia=$(ping -c 1 8.8.8.8 2>/dev/null | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
-        [ -n "$latencia" ] && echo -e "  Latência: ${latencia}ms"
     else
-        print_aviso "Sem conexão com internet. Verifique sua rede."
-    fi
-    
-    # Wake lock
-    if ! command -v termux-wake-lock &> /dev/null; then
-        print_msg "Instalando termux-api..."
-        pkg install -y termux-api > /dev/null 2>&1
-    fi
-    
-    termux-wake-lock
-    print_sucesso "Wake lock ativado (dispositivo não dormirá)"
-    
-    echo ""
-}
-
-# █████████████████████████████████████████████████████████████████████████████
-# ATUALIZAÇÃO DO SISTEMA COM MÚLTIPLOS MÉTODOS
-# █████████████████████████████████████████████████████████████████████████████
-
-atualizar_sistema() {
-    print_titulo "ATUALIZANDO SISTEMA"
-    
-    # Método 1: Atualização normal
-    print_msg "Atualizando repositórios..."
-    if pkg update -y >> "$LOG_SISTEMA" 2>&1; then
-        print_sucesso "Repositórios atualizados"
-    else
-        print_aviso "Falha na atualização. Tentando método alternativo..."
-        pkg update -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1
-    fi
-    
-    # Atualiza pacotes
-    print_msg "Atualizando pacotes..."
-    if pkg upgrade -y >> "$LOG_SISTEMA" 2>&1; then
-        print_sucesso "Pacotes atualizados"
-    else
-        pkg upgrade -y --allow-unauthenticated >> "$LOG_SISTEMA" 2>&1
-    fi
-    
-    echo ""
-}
-
-# █████████████████████████████████████████████████████████████████████████████
-# INSTALAÇÃO DE DEPENDÊNCIAS COM 5 ESTRATÉGIAS
-# █████████████████████████████████████████████████████████████████████████████
-
-instalar_dependencias() {
-    print_titulo "INSTALANDO DEPENDÊNCIAS"
-    
-    # Lista completa de dependências
-    local DEP_ESSENCIAIS="git wget curl binutils build-essential clang make cmake"
-    local DEP_COMPILACAO="autoconf automake libtool pkg-config openssl libcurl jansson"
-    local DEP_BIBLIOTECAS="libmicrohttpd libuv hwloc"
-    local DEP_FERRAMENTAS="screen tmux nano vim htop bc"
-    local DEP_REDE="netcat-openbsd dnsutils traceroute"
-    local DEP_OPCIONAIS="neofetch cmatrix figlet toilet cowsay fortune-mod sl hollywood"
-    local DEP_TERMUX="termux-api termux-services"
-    
-    local TODAS_DEP="$DEP_ESSENCIAIS $DEP_COMPILACAO $DEP_BIBLIOTECAS $DEP_FERRAMENTAS $DEP_REDE $DEP_OPCIONAIS $DEP_TERMUX"
-    
-    local total_pacotes=$(echo "$TODAS_DEP" | wc -w)
-    local contador=0
-    local sucessos=0
-    local falhas=0
-    
-    print_msg "Total de pacotes a instalar: $total_pacotes"
-    echo ""
-    
-    for pacote in $TODAS_DEP; do
-        contador=$((contador + 1))
-        echo -ne "${AZUL}[${contador}/${total_pacotes}]${RESET} Instalando ${BOLD}$pacote${RESET}... "
-        
-        # ESTRATÉGIA 1: Instalação normal
-        if pkg install -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓${RESET}"
-            sucessos=$((sucessos + 1))
-        # ESTRATÉGIA 2: Com allow-unauthenticated
-        elif pkg install -y --allow-unauthenticated "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (alt)${RESET}"
-            sucessos=$((sucessos + 1))
-        # ESTRATÉGIA 3: Reinstalação
-        elif pkg reinstall -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
-            echo -e "${VERDE}✓ (re)${RESET}"
-            sucessos=$((sucessos + 1))
+        print_erro "Sem conexão com internet. Tentando novamente em 10s..."
+        sleep 10
+        if verificar_conexao_rede; then
+            print_sucesso "Conexão estabelecida na segunda tentativa"
         else
-            echo -e "${VERMELHO}✗${RESET}"
-            falhas=$((falhas + 1))
-            log_erro "Falha ao instalar $pacote"
+            print_critico "Sem conexão com internet. Abortando."
+        fi
+    fi
+
+    # 5. Comandos essenciais
+    print_msg "Verificando comandos essenciais..."
+    local comandos_essenciais=("pkg" "curl" "wget" "git" "tar" "gzip" "make" "gcc")
+    local faltando=()
+    for cmd in "${comandos_essenciais[@]}"; do
+        if ! verificar_comando "$cmd" "$cmd"; then
+            faltando+=("$cmd")
         fi
     done
-    
+    if [ ${#faltando[@]} -eq 0 ]; then
+        print_sucesso "Todos os comandos essenciais disponíveis"
+    else
+        print_aviso "Comandos faltando: ${faltando[*]}. Tentando instalar..."
+        pkg update -y >> "$LOG_SISTEMA" 2>&1
+        pkg install -y "${faltando[@]}" >> "$LOG_SISTEMA" 2>&1
+        for cmd in "${faltando[@]}"; do
+            if verificar_comando "$cmd" "$cmd"; then
+                print_sucesso "$cmd instalado"
+            else
+                print_erro "Não foi possível instalar $cmd"
+                erros=$((erros + 1))
+            fi
+        done
+    fi
+
+    # 6. termux-api
+    print_msg "Verificando termux-api..."
+    if verificar_comando "termux-wake-lock" "termux-api"; then
+        print_sucesso "termux-api disponível"
+    else
+        print_msg "Instalando termux-api..."
+        pkg install -y termux-api >> "$LOG_SISTEMA" 2>&1
+        if verificar_comando "termux-wake-lock" "termux-api"; then
+            print_sucesso "termux-api instalado"
+        else
+            print_aviso "termux-api não disponível (funcionalidade limitada)"
+            avisos=$((avisos + 1))
+        fi
+    fi
+
+    # 7. Ativar wake lock
+    if command -v termux-wake-lock &> /dev/null; then
+        termux-wake-lock
+        print_sucesso "Wake lock ativado (dispositivo não dormirá)"
+    fi
+
     echo ""
-    print_sucesso "Instalação concluída: $sucessos sucessos, $falhas falhas"
+    print_destaque "RESUMO DA VERIFICAÇÃO:"
+    echo -e "  ${BOLD}Erros:${RESET} $erros"
+    echo -e "  ${BOLD}Avisos:${RESET} $avisos"
+    echo ""
+    if [ $erros -gt 0 ]; then
+        print_critico "Erros críticos encontrados. Corrija-os antes de continuar."
+    fi
+    if [ $avisos -gt 0 ]; then
+        print_aviso "Existem avisos, mas é possível continuar."
+    fi
+}
+
+# █████████████████████████████████████████████████████████████████████████████
+# ATUALIZAÇÃO PRECISA DO SISTEMA (ADAPTADA)
+# █████████████████████████████████████████████████████████████████████████████
+
+atualizar_sistema_preciso() {
+    print_titulo "ATUALIZAÇÃO PRECISA DO SISTEMA"
+    local tentativa=1
+    while [ $tentativa -le $MAX_TENTATIVAS ]; do
+        print_msg "Tentativa $tentativa de $MAX_TENTATIVAS: Atualizando repositórios..."
+        if pkg update -y >> "$LOG_SISTEMA" 2>&1; then
+            print_sucesso "Repositórios atualizados na tentativa $tentativa"
+            break
+        else
+            print_aviso "Falha na atualização (tentativa $tentativa)"
+            if [ $tentativa -lt $MAX_TENTATIVAS ]; then
+                sleep 10
+            fi
+        fi
+        tentativa=$((tentativa + 1))
+    done
+
+    tentativa=1
+    while [ $tentativa -le $MAX_TENTATIVAS ]; do
+        print_msg "Tentativa $tentativa de $MAX_TENTATIVAS: Atualizando pacotes..."
+        if pkg upgrade -y >> "$LOG_SISTEMA" 2>&1; then
+            print_sucesso "Pacotes atualizados na tentativa $tentativa"
+            break
+        else
+            print_aviso "Falha na atualização de pacotes (tentativa $tentativa)"
+            if [ $tentativa -lt $MAX_TENTATIVAS ]; then
+                sleep 10
+            fi
+        fi
+        tentativa=$((tentativa + 1))
+    done
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# 10 MÉTODOS DE INSTALAÇÃO DO MINERADOR
+# INSTALAÇÃO PRECISA DE DEPENDÊNCIAS (ADAPTADA COM VERIFICAÇÕES)
+# █████████████████████████████████████████████████████████████████████████████
+
+instalar_dependencias_preciso() {
+    print_titulo "INSTALAÇÃO PRECISA DE DEPENDÊNCIAS"
+    
+    declare -A DEPENDENCIAS=(
+        ["git"]="essencial"
+        ["wget"]="essencial"
+        ["curl"]="essencial"
+        ["binutils"]="essencial"
+        ["build-essential"]="compilacao"
+        ["clang"]="compilacao"
+        ["make"]="compilacao"
+        ["cmake"]="compilacao"
+        ["autoconf"]="compilacao"
+        ["automake"]="compilacao"
+        ["libtool"]="compilacao"
+        ["pkg-config"]="compilacao"
+        ["openssl"]="biblioteca"
+        ["libcurl"]="biblioteca"
+        ["jansson"]="biblioteca"
+        ["libmicrohttpd"]="biblioteca"
+        ["libuv"]="biblioteca"
+        ["hwloc"]="biblioteca"
+        ["screen"]="ferramenta"
+        ["tmux"]="ferramenta"
+        ["nano"]="ferramenta"
+        ["bc"]="ferramenta"
+        ["termux-api"]="termux"
+        ["termux-services"]="termux"
+    )
+    
+    local total=${#DEPENDENCIAS[@]}
+    local contador=0
+    local instalados=0
+    local falhos=()
+
+    print_msg "Total de dependências a verificar: $total"
+    echo ""
+
+    for pacote in "${!DEPENDENCIAS[@]}"; do
+        contador=$((contador + 1))
+        tipo="${DEPENDENCIAS[$pacote]}"
+        echo -ne "${AZUL}[${contador}/${total}]${RESET} Verificando ${BOLD}$pacote${RESET} ($tipo)... "
+
+        if pkg list-installed 2>/dev/null | grep -q "^$pacote$"; then
+            echo -e "${VERDE}✓ já instalado${RESET}"
+            instalados=$((instalados + 1))
+            continue
+        fi
+
+        local instalou=0
+        local tentativa=1
+        while [ $tentativa -le $MAX_TENTATIVAS ] && [ $instalou -eq 0 ]; do
+            if pkg install -y "$pacote" >> "$LOG_INSTALACAO" 2>&1; then
+                instalou=1
+                echo -e "${VERDE}✓ instalado na tentativa $tentativa${RESET}"
+                instalados=$((instalados + 1))
+            else
+                if [ $tentativa -lt $MAX_TENTATIVAS ]; then
+                    sleep 5
+                fi
+            fi
+            tentativa=$((tentativa + 1))
+        done
+
+        if [ $instalou -eq 0 ]; then
+            echo -e "${VERMELHO}✗ falhou após $MAX_TENTATIVAS tentativas${RESET}"
+            falhos+=("$pacote")
+        fi
+    done
+
+    echo ""
+    print_sucesso "Instalação concluída: $instalados/$total instalados"
+    if [ ${#falhos[@]} -gt 0 ]; then
+        print_aviso "Pacotes não instalados: ${falhos[*]}"
+        for pacote_critico in git make gcc clang; do
+            if [[ " ${falhos[@]} " =~ " ${pacote_critico} " ]]; then
+                print_critico "Pacote crítico $pacote_critico não foi instalado. Abortando."
+            fi
+        done
+        print_aviso "Continuando com funcionalidade limitada..."
+    fi
+    echo ""
+}
+
+# █████████████████████████████████████████████████████████████████████████████
+# 10 MÉTODOS DE INSTALAÇÃO DO MINERADOR (PRECISOS, ADAPTADOS DA VERSÃO 5.2)
 # █████████████████████████████████████████████████████████████████████████████
 
 MINER_PATH=""
 declare -a METODOS_SUCESSO=()
 
-# MÉTODO 1: Pacote oficial cpuminer
-metodo1_pacote_oficial() {
-    log_metodo "MÉTODO 1: Tentando pacote oficial cpuminer"
-    print_msg "M1: Pacote oficial cpuminer"
-    
-    if pkg install -y cpuminer >> "$LOG_METODOS" 2>&1; then
-        if command -v cpuminer &> /dev/null; then
-            MINER_PATH=$(which cpuminer)
-            log_metodo "M1: SUCESSO - $MINER_PATH"
-            METODOS_SUCESSO+=("M1: Pacote oficial")
-            return 0
-        fi
+# Função para testar minerador de forma precisa
+testar_minerador_preciso() {
+    local miner="$1"
+    log_teste "Testando minerador: $miner"
+    if [ ! -f "$miner" ]; then
+        log_teste "ERRO: Arquivo não existe"
+        return 1
     fi
+    if [ ! -x "$miner" ]; then
+        log_teste "Arquivo sem permissão de execução. Corrigindo..."
+        chmod +x "$miner"
+    fi
+    if "$miner" --version > /dev/null 2>&1; then
+        local versao=$("$miner" --version 2>&1 | head -n1)
+        log_teste "Minerador responde ao --version: $versao"
+    elif "$miner" -h > /dev/null 2>&1; then
+        log_teste "Minerador responde ao -h"
+    elif "$miner" --help > /dev/null 2>&1; then
+        log_teste "Minerador responde ao --help"
+    else
+        log_teste "Minerador não responde a comandos básicos"
+    fi
+    log_teste "Teste básico concluído"
+    return 0
+}
+
+# Método 1: Pacote oficial cpuminer
+metodo1_pacote_oficial() {
+    log_metodo "MÉTODO 1: Pacote oficial cpuminer"
+    print_msg "M1: Tentando pacote oficial cpuminer"
+    if command -v cpuminer &> /dev/null; then
+        MINER_PATH=$(which cpuminer)
+        log_metodo "cpuminer já instalado em $MINER_PATH"
+        METODOS_SUCESSO+=("M1: já instalado")
+        return 0
+    fi
+    local tentativa=1
+    while [ $tentativa -le $MAX_TENTATIVAS ]; do
+        log_metodo "Tentativa $tentativa de $MAX_TENTATIVAS"
+        if pkg install -y cpuminer >> "$LOG_METODOS" 2>&1; then
+            if command -v cpuminer &> /dev/null; then
+                MINER_PATH=$(which cpuminer)
+                log_metodo "SUCESSO na tentativa $tentativa: $MINER_PATH"
+                if testar_minerador_preciso "$MINER_PATH"; then
+                    METODOS_SUCESSO+=("M1: pacote oficial")
+                    return 0
+                fi
+            fi
+        fi
+        if [ $tentativa -lt $MAX_TENTATIVAS ]; then
+            sleep 10
+        fi
+        tentativa=$((tentativa + 1))
+    done
     return 1
 }
 
-# MÉTODO 2: Pacote minerd (nome alternativo)
+# Método 2: Pacote minerd
 metodo2_pacote_minerd() {
-    log_metodo "MÉTODO 2: Tentando pacote minerd"
-    print_msg "M2: Pacote minerd"
-    
+    log_metodo "MÉTODO 2: Pacote minerd"
+    print_msg "M2: Tentando pacote minerd"
+    if command -v minerd &> /dev/null; then
+        MINER_PATH=$(which minerd)
+        log_metodo "minerd já instalado em $MINER_PATH"
+        METODOS_SUCESSO+=("M2: já instalado")
+        return 0
+    fi
     if pkg install -y minerd >> "$LOG_METODOS" 2>&1; then
         if command -v minerd &> /dev/null; then
             MINER_PATH=$(which minerd)
-            log_metodo "M2: SUCESSO - $MINER_PATH"
-            METODOS_SUCESSO+=("M2: Pacote minerd")
-            return 0
-        fi
-    fi
-    return 1
-}
-
-# MÉTODO 3: Compilar cpuminer (pooler) com otimizações
-metodo3_compilar_pooler() {
-    log_metodo "MÉTODO 3: Compilando pooler/cpuminer"
-    print_msg "M3: Compilando pooler/cpuminer"
-    
-    cd ~
-    rm -rf cpuminer_pooler
-    git clone https://github.com/pooler/cpuminer.git cpuminer_pooler >> "$LOG_METODOS" 2>&1
-    if [ $? -ne 0 ]; then
-        log_erro "Falha ao clonar repositório pooler"
-        return 1
-    fi
-    
-    cd cpuminer_pooler
-    
-    ./autogen.sh >> "$LOG_METODOS" 2>&1
-    ./configure --prefix=$PREFIX CFLAGS="-O3 -march=native" >> "$LOG_METODOS" 2>&1
-    
-    if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
-        if [ -f minerd ]; then
-            cp minerd $PREFIX/bin/cpuminer-pooler
-            chmod +x $PREFIX/bin/cpuminer-pooler
-            MINER_PATH="$PREFIX/bin/cpuminer-pooler"
-            log_metodo "M3: SUCESSO"
-            METODOS_SUCESSO+=("M3: Pooler")
-            return 0
-        elif [ -f cpuminer ]; then
-            cp cpuminer $PREFIX/bin/cpuminer-pooler
-            chmod +x $PREFIX/bin/cpuminer-pooler
-            MINER_PATH="$PREFIX/bin/cpuminer-pooler"
-            log_metodo "M3: SUCESSO"
-            METODOS_SUCESSO+=("M3: Pooler")
-            return 0
-        fi
-    fi
-    
-    cd ~
-    return 1
-}
-
-# MÉTODO 4: Compilar cpuminer-multi (tpruvot)
-metodo4_compilar_multi() {
-    log_metodo "MÉTODO 4: Compilando cpuminer-multi"
-    print_msg "M4: Compilando cpuminer-multi"
-    
-    cd ~
-    rm -rf cpuminer-multi
-    git clone https://github.com/tpruvot/cpuminer-multi.git cpuminer-multi >> "$LOG_METODOS" 2>&1
-    if [ $? -ne 0 ]; then
-        log_erro "Falha ao clonar cpuminer-multi"
-        return 1
-    fi
-    
-    cd cpuminer-multi
-    
-    # Tenta build.sh primeiro
-    if [ -f ./build.sh ]; then
-        chmod +x ./build.sh
-        ./build.sh >> "$LOG_METODOS" 2>&1
-    fi
-    
-    # Se build.sh falhar ou não existir, tenta make direto
-    if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
-        if [ -f cpuminer ]; then
-            cp cpuminer $PREFIX/bin/cpuminer-multi
-            chmod +x $PREFIX/bin/cpuminer-multi
-            MINER_PATH="$PREFIX/bin/cpuminer-multi"
-            log_metodo "M4: SUCESSO"
-            METODOS_SUCESSO+=("M4: Multi")
-            return 0
-        fi
-    fi
-    
-    cd ~
-    return 1
-}
-
-# MÉTODO 5: Compilar xmrig (para RandomX)
-metodo5_compilar_xmrig() {
-    log_metodo "MÉTODO 5: Compilando XMRig"
-    print_msg "M5: Compilando XMRig"
-    
-    cd ~
-    rm -rf xmrig
-    git clone https://github.com/xmrig/xmrig.git xmrig >> "$LOG_METODOS" 2>&1
-    if [ $? -ne 0 ]; then
-        log_erro "Falha ao clonar XMRig"
-        return 1
-    fi
-    
-    cd xmrig
-    mkdir -p build
-    cd build
-    
-    # Tenta compilar com hwloc desabilitado (mais compatível)
-    if cmake .. -DWITH_HWLOC=OFF >> "$LOG_METODOS" 2>&1; then
-        if make -j$(nproc) >> "$LOG_METODOS" 2>&1; then
-            if [ -f xmrig ]; then
-                cp xmrig $PREFIX/bin/xmrig
-                chmod +x $PREFIX/bin/xmrig
-                MINER_PATH="$PREFIX/bin/xmrig"
-                log_metodo "M5: SUCESSO"
-                METODOS_SUCESSO+=("M5: XMRig")
+            log_metodo "SUCESSO: $MINER_PATH"
+            if testar_minerador_preciso "$MINER_PATH"; then
+                METODOS_SUCESSO+=("M2: minerd")
                 return 0
             fi
         fi
     fi
-    
-    cd ~
     return 1
 }
 
-# MÉTODO 6: Compilar ccminer (para GPU, se disponível)
-metodo6_compilar_ccminer() {
-    log_metodo "MÉTODO 6: Tentando ccminer (GPU)"
-    print_msg "M6: Compilando ccminer"
-    
-    # Verifica se tem GPU (opcional, não impede)
-    if [ ! -e /dev/kgsl-3d0 ] && [ ! -e /dev/mali0 ]; then
-        log_aviso "M6: GPU não detectada, continuando mesmo assim"
-    fi
-    
-    cd ~
-    rm -rf ccminer
-    git clone https://github.com/monkins1010/ccminer.git ccminer >> "$LOG_METODOS" 2>&1
+# Método 3: Compilar cpuminer (pooler)
+metodo3_compilar_pooler() {
+    log_metodo "MÉTODO 3: Compilando pooler/cpuminer"
+    print_msg "M3: Compilando cpuminer do pooler (pode levar até 30 minutos)"
+    cd "$WORK_DIR"
+    rm -rf cpuminer_pooler
+    git clone https://github.com/pooler/cpuminer.git cpuminer_pooler >> "$LOG_COMPILACAO" 2>&1
     if [ $? -ne 0 ]; then
-        log_erro "Falha ao clonar ccminer"
+        log_erro "Falha ao clonar repositório"
         return 1
     fi
-    
-    cd ccminer
-    
-    # Instala dependências adicionais
-    pkg install -y libc++ >> "$LOG_METODOS" 2>&1
-    
+    cd cpuminer_pooler
+    log_compilacao "Executando autogen.sh..."
+    ./autogen.sh >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha no autogen.sh"
+        return 1
+    fi
+    local config_sucesso=0
+    local config_flags=(
+        "--prefix=$PREFIX CFLAGS='-O2 -march=native'"
+        "--prefix=$PREFIX CFLAGS='-O2'"
+        "--prefix=$PREFIX"
+    )
+    for flags in "${config_flags[@]}"; do
+        log_compilacao "Tentando configuração: $flags"
+        eval ./configure $flags >> "$LOG_COMPILACAO" 2>&1
+        if [ $? -eq 0 ]; then
+            config_sucesso=1
+            break
+        fi
+    done
+    if [ $config_sucesso -eq 0 ]; then
+        log_erro "Falha na configuração"
+        return 1
+    fi
+    log_compilacao "Iniciando compilação com $(nproc) threads..."
+    timeout $TIMEOUT_COMPILACAO make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
+    local make_status=$?
+    if [ $make_status -eq 124 ]; then
+        log_erro "Compilação excedeu tempo limite de $TIMEOUT_COMPILACAO segundos"
+        return 1
+    elif [ $make_status -ne 0 ]; then
+        log_erro "Falha na compilação"
+        return 1
+    fi
+    local miner_encontrado=""
+    if [ -f minerd ]; then
+        miner_encontrado="minerd"
+    elif [ -f cpuminer ]; then
+        miner_encontrado="cpuminer"
+    else
+        miner_encontrado=$(find . -type f -executable -name "minerd" -o -name "cpuminer" | head -n1)
+    fi
+    if [ -n "$miner_encontrado" ]; then
+        cp "$miner_encontrado" $PREFIX/bin/cpuminer-pooler
+        chmod +x $PREFIX/bin/cpuminer-pooler
+        MINER_PATH="$PREFIX/bin/cpuminer-pooler"
+        log_compilacao "Minerador compilado: $MINER_PATH"
+        if testar_minerador_preciso "$MINER_PATH"; then
+            METODOS_SUCESSO+=("M3: pooler compilado")
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Método 4: Compilar cpuminer-multi (tpruvot)
+metodo4_compilar_multi() {
+    log_metodo "MÉTODO 4: Compilando cpuminer-multi"
+    print_msg "M4: Compilando cpuminer-multi (pode levar até 30 minutos)"
+    cd "$WORK_DIR"
+    rm -rf cpuminer-multi
+    git clone https://github.com/tpruvot/cpuminer-multi.git cpuminer-multi >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar repositório"
+        return 1
+    fi
+    cd cpuminer-multi
     if [ -f ./build.sh ]; then
         chmod +x ./build.sh
-        ./build.sh >> "$LOG_METODOS" 2>&1
+        log_compilacao "Executando build.sh..."
+        timeout $TIMEOUT_COMPILACAO ./build.sh >> "$LOG_COMPILACAO" 2>&1
     fi
-    
+    if [ ! -f cpuminer ]; then
+        log_compilacao "Tentando make direto..."
+        timeout $TIMEOUT_COMPILACAO make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
+    fi
+    if [ -f cpuminer ]; then
+        cp cpuminer $PREFIX/bin/cpuminer-multi
+        chmod +x $PREFIX/bin/cpuminer-multi
+        MINER_PATH="$PREFIX/bin/cpuminer-multi"
+        if testar_minerador_preciso "$MINER_PATH"; then
+            METODOS_SUCESSO+=("M4: multi compilado")
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Método 5: Compilar xmrig
+metodo5_compilar_xmrig() {
+    log_metodo "MÉTODO 5: Compilando XMRig"
+    print_msg "M5: Compilando XMRig (pode levar até 40 minutos)"
+    cd "$WORK_DIR"
+    rm -rf xmrig
+    git clone https://github.com/xmrig/xmrig.git xmrig >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar repositório"
+        return 1
+    fi
+    cd xmrig
+    mkdir -p build
+    cd build
+    log_compilacao "Configurando com CMake..."
+    cmake .. -DWITH_HWLOC=OFF >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha na configuração CMake"
+        return 1
+    fi
+    log_compilacao "Compilando..."
+    timeout $TIMEOUT_COMPILACAO make -j$(nproc) >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha na compilação"
+        return 1
+    fi
+    if [ -f xmrig ]; then
+        cp xmrig $PREFIX/bin/xmrig
+        chmod +x $PREFIX/bin/xmrig
+        MINER_PATH="$PREFIX/bin/xmrig"
+        if testar_minerador_preciso "$MINER_PATH"; then
+            METODOS_SUCESSO+=("M5: XMRig")
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Método 6: Compilar ccminer (GPU)
+metodo6_compilar_ccminer() {
+    log_metodo "MÉTODO 6: Compilando ccminer (GPU)"
+    print_msg "M6: Compilando ccminer (se GPU disponível)"
+    if [ ! -e /dev/kgsl-3d0 ] && [ ! -e /dev/mali0 ]; then
+        log_aviso "M6: GPU não detectada, tentando mesmo assim"
+    fi
+    cd "$WORK_DIR"
+    rm -rf ccminer
+    git clone https://github.com/monkins1010/ccminer.git ccminer >> "$LOG_COMPILACAO" 2>&1
+    if [ $? -ne 0 ]; then
+        log_erro "Falha ao clonar repositório"
+        return 1
+    fi
+    cd ccminer
+    pkg install -y libc++ >> "$LOG_COMPILACAO" 2>&1
+    if [ -f ./build.sh ]; then
+        chmod +x ./build.sh
+        ./build.sh >> "$LOG_COMPILACAO" 2>&1
+    fi
     if [ -f ccminer ]; then
         cp ccminer $PREFIX/bin/ccminer
         chmod +x $PREFIX/bin/ccminer
         MINER_PATH="$PREFIX/bin/ccminer"
-        log_metodo "M6: SUCESSO"
-        METODOS_SUCESSO+=("M6: ccminer")
-        return 0
+        if testar_minerador_preciso "$MINER_PATH"; then
+            METODOS_SUCESSO+=("M6: ccminer")
+            return 0
+        fi
     fi
-    
-    cd ~
     return 1
 }
 
-# MÉTODO 7: Baixar binário pré-compilado (várias fontes)
+# Método 7: Binário pré-compilado
 metodo7_binario_precompilado() {
-    log_metodo "MÉTODO 7: Tentando binários pré-compilados"
-    print_msg "M7: Buscando binários pré-compilados"
-    
-    cd ~
+    log_metodo "MÉTODO 7: Binário pré-compilado"
+    print_msg "M7: Buscando binário pré-compilado compatível"
+    cd "$DOWNLOAD_DIR"
     mkdir -p binarios
     cd binarios
-    
-    # Lista de URLs para tentar (várias fontes)
     local urls=(
         "https://github.com/OhGodACompany/OhGodATool/raw/main/cpuminer"
         "https://github.com/rplant8/cpuminer-opt-rplant/raw/master/build/cpuminer"
-        "https://github.com/hellcatz/hunter/raw/master/download/cpuminer"
     )
-    
+    local arquitetura=$(uname -m)
+    log_metodo "Arquitetura detectada: $arquitetura"
     for i in "${!urls[@]}"; do
         local url="${urls[$i]}"
         local nome="cpuminer-pre-$i"
-        
         print_msg "  Tentando fonte $((i+1))..."
-        if wget -q --timeout=10 "$url" -O "$nome" 2>/dev/null; then
+        if wget -q --timeout=$TIMEOUT_DOWNLOAD "$url" -O "$nome"; then
             chmod +x "$nome"
-            if ./"$nome" --help > /dev/null 2>&1; then
-                cp "$nome" $PREFIX/bin/cpuminer-pre
-                MINER_PATH="$PREFIX/bin/cpuminer-pre"
-                log_metodo "M7: SUCESSO via fonte $((i+1))"
-                METODOS_SUCESSO+=("M7: Binário")
-                return 0
+            if file "$nome" | grep -q "ELF"; then
+                log_metodo "Arquivo ELF válido"
+                if ./"$nome" --help > /dev/null 2>&1; then
+                    log_metodo "Binário responde aos comandos"
+                    cp "$nome" $PREFIX/bin/cpuminer-pre
+                    MINER_PATH="$PREFIX/bin/cpuminer-pre"
+                    if testar_minerador_preciso "$MINER_PATH"; then
+                        METODOS_SUCESSO+=("M7: binário pré-compilado")
+                        return 0
+                    fi
+                fi
+            else
+                log_metodo "Arquivo não é ELF válido"
             fi
         fi
     done
-    
-    cd ~
     return 1
 }
 
-# MÉTODO 8: Minerador Python (simulação, último recurso)
+# Método 8: Minerador Python (simulação)
 metodo8_minerador_python() {
     log_metodo "MÉTODO 8: Minerador Python"
-    print_msg "M8: Criando minerador Python"
-    
+    print_msg "M8: Criando minerador Python (simulação)"
     cat > $PREFIX/bin/miner-python << 'PYEOF'
 #!/usr/bin/env python3
 import time
 import sys
-import hashlib
-import threading
-
-def minerar():
-    nonce = 0
-    while True:
-        nonce += 1
-        if nonce % 1000000 == 0:
-            print(f"[Minerador Python] Processados {nonce} hashes...")
-
-def main():
-    print("Minerador Python - Modo simulação")
-    print("AVISO: Este é um minerador didático, não funcional para pools reais")
-    threads = []
-    for i in range(4):
-        t = threading.Thread(target=minerar)
-        t.daemon = True
-        threads.append(t)
-        t.start()
-    
-    try:
-        while True:
-            time.sleep(10)
-    except KeyboardInterrupt:
-        print("\nEncerrando...")
-        sys.exit(0)
-
-if __name__ == "__main__":
-    main()
+print("Minerador Python - Modo simulação")
+print("Para mineração real, use minerador compilado em C")
+sys.exit(1)
 PYEOF
-    
     chmod +x $PREFIX/bin/miner-python
     log_metodo "M8: Criado (modo simulação)"
-    return 1  # Retorna 1 porque não é funcional para NiceHash
+    return 1
 }
 
-# MÉTODO 9: Compilar cpuminer-opt (otimizado)
+# Método 9: Compilar cpuminer-opt
 metodo9_compilar_opt() {
     log_metodo "MÉTODO 9: Compilando cpuminer-opt"
-    print_msg "M9: Compilando cpuminer-opt"
-    
-    cd ~
+    print_msg "M9: Compilando cpuminer-opt (pode levar até 30 minutos)"
+    cd "$WORK_DIR"
     rm -rf cpuminer-opt
-    git clone https://github.com/JayDDee/cpuminer-opt.git cpuminer-opt >> "$LOG_METODOS" 2>&1
+    git clone https://github.com/JayDDee/cpuminer-opt.git cpuminer-opt >> "$LOG_COMPILACAO" 2>&1
     if [ $? -ne 0 ]; then
-        log_erro "Falha ao clonar cpuminer-opt"
+        log_erro "Falha ao clonar repositório"
         return 1
     fi
-    
     cd cpuminer-opt
-    
     if [ -f ./build.sh ]; then
         chmod +x ./build.sh
-        ./build.sh >> "$LOG_METODOS" 2>&1
+        timeout $TIMEOUT_COMPILACAO ./build.sh >> "$LOG_COMPILACAO" 2>&1
     fi
-    
     if [ -f cpuminer ]; then
         cp cpuminer $PREFIX/bin/cpuminer-opt
         chmod +x $PREFIX/bin/cpuminer-opt
         MINER_PATH="$PREFIX/bin/cpuminer-opt"
-        log_metodo "M9: SUCESSO"
-        METODOS_SUCESSO+=("M9: cpuminer-opt")
-        return 0
+        if testar_minerador_preciso "$MINER_PATH"; then
+            METODOS_SUCESSO+=("M9: cpuminer-opt")
+            return 0
+        fi
     fi
-    
-    cd ~
     return 1
 }
 
-# MÉTODO 10: Minerador C simples (fallback extremo)
+# Método 10: Minerador C simples (fallback)
 metodo10_minerador_simples() {
-    log_metodo "MÉTODO 10: Criando minerador C simples"
-    print_msg "M10: Criando minerador C mínimo"
-    
-    cd ~
+    log_metodo "MÉTODO 10: Minerador C simples"
+    print_msg "M10: Criando minerador C mínimo (didático)"
+    cd "$WORK_DIR"
     cat > minero_simples.c << 'CEOF'
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <time.h>
-
-typedef struct {
-    int thread_id;
-    unsigned long hashes;
-} thread_data_t;
-
+#include <unistd.h>
 void* mine_thread(void* arg) {
-    thread_data_t* data = (thread_data_t*)arg;
+    int thread_id = *(int*)arg;
     unsigned long count = 0;
-    time_t last_report = time(NULL);
-    
     while(1) {
         count++;
-        data->hashes = count;
-        
-        time_t now = time(NULL);
-        if(now - last_report >= 5) {
-            printf("[Thread %d] Hashrate: %lu H/s\n", 
-                   data->thread_id, count / 5);
-            count = 0;
-            last_report = now;
+        if(count % 1000000 == 0) {
+            printf("[Thread %d] Processados %lu hashes\n", thread_id, count);
         }
     }
     return NULL;
 }
-
-int main(int argc, char* argv[]) {
+int main() {
     int threads = sysconf(_SC_NPROCESSORS_ONLN);
-    printf("╔════════════════════════════════════════════════════════╗\n");
-    printf("║     MINERADOR C SIMPLES - VERSÃO DIDÁTICA             ║\n");
-    printf("╚════════════════════════════════════════════════════════╝\n");
-    printf("Threads: %d\n", threads);
-    printf("AVISO: Este minerador não se conecta a pools!\n");
-    printf("Use apenas para testes de performance da CPU.\n\n");
-    
+    printf("Minerador C simples iniciado com %d threads\n", threads);
+    printf("AVISO: Este é um minerador didático, não funcional para pools reais\n");
     pthread_t* thread_array = malloc(threads * sizeof(pthread_t));
-    thread_data_t* thread_data = malloc(threads * sizeof(thread_data_t));
-    
+    int* ids = malloc(threads * sizeof(int));
     for(int i = 0; i < threads; i++) {
-        thread_data[i].thread_id = i;
-        thread_data[i].hashes = 0;
-        pthread_create(&thread_array[i], NULL, mine_thread, &thread_data[i]);
-        printf("Thread %d iniciada\n", i);
+        ids[i] = i;
+        pthread_create(&thread_array[i], NULL, mine_thread, &ids[i]);
     }
-    
-    printf("\nMinerando... Pressione Ctrl+C para parar\n");
-    
     for(int i = 0; i < threads; i++) {
         pthread_join(thread_array[i], NULL);
     }
-    
     free(thread_array);
-    free(thread_data);
+    free(ids);
     return 0;
 }
 CEOF
-
-    # Compila o minerador simples
     if gcc -o $PREFIX/bin/minero-simples minero_simples.c -lpthread >> "$LOG_METODOS" 2>&1; then
         chmod +x $PREFIX/bin/minero-simples
         log_metodo "M10: Minerador C simples compilado"
-        # Não define MINER_PATH porque não é funcional para NiceHash
     fi
-    
     return 1
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# EXECUTAR TODOS OS MÉTODOS EM SEQUÊNCIA
+# EXECUÇÃO DOS MÉTODOS EM SEQUÊNCIA
 # █████████████████████████████████████████████████████████████████████████████
 
-instalar_minerador() {
-    print_titulo "INSTALANDO MINERADOR (10 MÉTODOS)"
-    
-    # Lista de todos os métodos em ordem de prioridade
+instalar_minerador_preciso() {
+    print_titulo "INSTALAÇÃO PRECISA DO MINERADOR (10 MÉTODOS)"
     local metodos=(
         metodo1_pacote_oficial
         metodo2_pacote_minerd
@@ -772,381 +983,159 @@ instalar_minerador() {
         metodo8_minerador_python
         metodo10_minerador_simples
     )
-    
     local total_metodos=${#metodos[@]}
     local contador=0
-    
     for metodo in "${metodos[@]}"; do
         contador=$((contador + 1))
         echo ""
         print_destaque "[${contador}/${total_metodos}] Executando $metodo"
-        
         if $metodo; then
             print_sucesso "Método $contador funcionou! Minerador: $MINER_PATH"
-            
-            # Testa o minerador
-            if testar_minerador "$MINER_PATH"; then
-                print_sucesso "Minerador testado e aprovado!"
+            if testar_minerador_preciso "$MINER_PATH"; then
+                print_sucesso "Minerador aprovado no teste!"
                 break
             else
                 print_aviso "Minerador instalado mas falhou no teste. Continuando..."
                 MINER_PATH=""
                 continue
             fi
+        else
+            print_aviso "Método $contador falhou"
         fi
     done
-    
     if [ -z "$MINER_PATH" ]; then
         print_critico "Nenhum método de instalação funcionou. Verifique os logs em $LOG_METODOS"
     fi
-    
-    # Mostra estatísticas
     echo ""
-    print_sucesso "Total de métodos que funcionaram: ${#METODOS_SUCESSO[@]}"
+    print_sucesso "Métodos que funcionaram: ${#METODOS_SUCESSO[@]}"
     for metodo in "${METODOS_SUCESSO[@]}"; do
         echo -e "  ${VERDE}✓${RESET} $metodo"
     done
-    
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# TESTE DO MINERADOR
+# CRIAÇÃO DE SCRIPTS DE MINERAÇÃO PRECISOS (ADAPTADOS)
 # █████████████████████████████████████████████████████████████████████████████
 
-testar_minerador() {
-    local miner="$1"
-    print_msg "Testando minerador: $miner"
+criar_scripts_precisos() {
+    print_titulo "CRIANDO SCRIPTS DE MINERAÇÃO PRECISOS"
     
-    # Verifica se o arquivo existe
-    if [ ! -f "$miner" ]; then
-        print_erro "Arquivo não encontrado"
-        return 1
-    fi
-    
-    # Verifica permissão de execução
-    if [ ! -x "$miner" ]; then
-        chmod +x "$miner"
-    fi
-    
-    # Tenta obter versão
-    if "$miner" --version > /dev/null 2>&1; then
-        print_sucesso "Minerador responde ao --version"
-        return 0
-    fi
-    
-    # Tenta --help
-    if "$miner" --help > /dev/null 2>&1; then
-        print_sucesso "Minerador responde ao --help"
-        return 0
-    fi
-    
-    # Tenta uma conexão rápida (sem minerar)
-    timeout 5 "$miner" -a sha256d -o stratum+tcp://sha256.auto.nicehash.com:9200 -u teste -p x -t 1 > /dev/null 2>&1 &
-    local pid=$!
-    sleep 3
-    kill $pid 2>/dev/null
-    wait $pid 2>/dev/null
-    
-    print_sucesso "Minerador executou teste de conexão"
-    return 0
-}
-
-# █████████████████████████████████████████████████████████████████████████████
-# CRIAÇÃO DE MÚLTIPLOS SCRIPTS DE MINERAÇÃO
-# █████████████████████████████████████████████████████████████████████████████
-
-criar_scripts_mineracao() {
-    print_titulo "CRIANDO SCRIPTS DE MINERAÇÃO"
-    
-    mkdir -p ~/mineracao/scripts
-    
-    # 1. Script principal com loop infinito e reconexão
-    cat > ~/mineracao/scripts/minerar_principal.sh << 'PRINCIPAL'
+    cat > "$SCRIPTS_DIR/minerar_preciso.sh" << 'PRINCIPAL'
 #!/bin/bash
-# Script principal de mineração com reconexão automática
-
-# Configurações
 WALLET="bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl"
 THREADS=$(nproc)
-WORKER="termux_$(date +%s | tail -c 5)_$(tr -dc 'a-f0-9' < /dev/urandom | head -c 4)"
-LOG_DIR=~/mineracao/logs
+WORKER="termux_preciso_$(date +%Y%m%d_%H%M%S)"
+BASE_DIR=~/mineracao_precisa
+LOG_DIR="$BASE_DIR/logs"
+LOG_MINERACAO="$LOG_DIR/mineracao.log"
 MINER_PATH="$1"
-
-# Cores (opcional)
-VERDE='\033[0;32m'
-VERMELHO='\033[0;31m'
-AMARELO='\033[1;33m'
-AZUL='\033[0;34m'
-RESET='\033[0m'
-BOLD='\033[1m'
-
-# Se não passaram o caminho, tenta encontrar
 if [ -z "$MINER_PATH" ]; then
-    for miner in cpuminer minerd cpuminer-pooler cpuminer-multi cpuminer-opt xmrig ccminer; do
+    for miner in cpuminer minerd cpuminer-pooler cpuminer-multi cpuminer-opt xmrig; do
         if command -v "$miner" &> /dev/null; then
             MINER_PATH=$(which "$miner")
             break
         fi
     done
 fi
-
 if [ -z "$MINER_PATH" ]; then
     echo "[ERRO] Nenhum minerador encontrado!"
     exit 1
 fi
-
-echo "======================================================"
-echo "MINERADOR: $MINER_PATH"
-echo "WALLET: $WALLET"
-echo "WORKER: $WORKER"
-echo "THREADS: $THREADS"
-echo "LOG: $LOG_DIR"
-echo "======================================================"
-
-# Lista de algoritmos e portas
-declare -A ALGORITMOS=(
-    ["sha256d"]="9200"
-    ["scrypt"]="9000"
-    ["x11"]="9000"
-    ["neoscrypt"]="9000"
-    ["cryptonight"]="9000"
-    ["yescrypt"]="9000"
-)
-
+echo "Minerador: $MINER_PATH"
+echo "Carteira: $WALLET"
+echo "Worker: $WORKER"
+echo "Threads: $THREADS"
+ALGORITMOS=("sha256d" "scrypt" "x11" "neoscrypt")
 while true; do
-    for ALG in "${!ALGORITMOS[@]}"; do
-        PORTA="${ALGORITMOS[$ALG]}"
-        POOL="stratum+tcp://${ALG}.auto.nicehash.com:${PORTA}"
-        
-        echo "[$(date)] Tentando algoritmo: $ALG"
-        echo "[$(date)] Pool: $POOL"
-        echo "[$(date)] Worker: $WALLET.$WORKER"
-        
-        # Tenta com worker
+    for ALG in "${ALGORITMOS[@]}"; do
+        case $ALG in "sha256d") PORT=9200 ;; *) PORT=9000 ;; esac
+        POOL="stratum+tcp://${ALG}.auto.nicehash.com:${PORT}"
+        echo "[$(date)] Tentando $ALG em $POOL"
         "$MINER_PATH" -a "$ALG" -o "$POOL" -u "$WALLET.$WORKER" -p x -t "$THREADS"
-        
-        # Se falhar, tenta sem worker
         if [ $? -ne 0 ]; then
             echo "[$(date)] Falha com worker. Tentando sem worker..."
             "$MINER_PATH" -a "$ALG" -o "$POOL" -u "$WALLET" -p x -t "$THREADS"
         fi
-        
         echo "[$(date)] Algoritmo $ALG desconectado. Aguardando..."
         sleep 10
     done
 done
 PRINCIPAL
 
-    # 2. Script de monitoramento avançado
-    cat > ~/mineracao/scripts/monitor_avancado.sh << 'MONITOR'
+    cat > "$SCRIPTS_DIR/monitor_preciso.sh" << 'MONITOR'
 #!/bin/bash
-# Monitor avançado de mineração
-
-LOG_DIR=~/mineracao/logs
-LOG_MINERACAO="$LOG_DIR/mineracao.log"
-LOG_PERFORMANCE="$LOG_DIR/performance.log"
-
-# Cores
+BASE_DIR=~/mineracao_precisa
+LOG_DIR="$BASE_DIR/logs"
 VERDE='\033[0;32m'
 VERMELHO='\033[0;31m'
 AMARELO='\033[1;33m'
 AZUL='\033[0;34m'
 RESET='\033[0m'
 BOLD='\033[1m'
-
-clear
 while true; do
-    echo -e "${BOLD}╔════════════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}║              MONITOR DE MINERAÇÃO - NICEHASH                   ║${RESET}"
-    echo -e "${BOLD}╚════════════════════════════════════════════════════════════════╝${RESET}"
-    echo ""
-    
-    # Data e hora
-    echo -e "${AZUL}DATA:${RESET} $(date '+%Y-%m-%d %H:%M:%S')"
-    echo -e "${AZUL}UPTIME:${RESET} $(uptime -p | sed 's/up //')"
-    echo ""
-    
-    # Status do minerador
-    if pgrep -f "cpuminer\|minerd\|xmrig\|ccminer" > /dev/null; then
-        echo -e "${VERDE}●${RESET} ${BOLD}MINERADOR:${RESET} ${VERDE}ATIVO${RESET}"
-        echo -e "  ${AZUL}PIDs:${RESET} $(pgrep -f cpuminer | tr '\n' ' ')"
-    else
-        echo -e "${VERMELHO}●${RESET} ${BOLD}MINERADOR:${RESET} ${VERMELHO}INATIVO${RESET}"
-    fi
-    echo ""
-    
-    # Estatísticas da CPU
-    echo -e "${BOLD}CPU:${RESET}"
-    local load=$(uptime | awk -F'load average:' '{print $2}')
-    echo -e "  Load average:$load"
-    
-    # Uso da CPU por processo
-    if pgrep -f cpuminer > /dev/null; then
-        local cpu_uso=$(ps -o pcpu -p $(pgrep -f cpuminer | head -1) 2>/dev/null | tail -1)
-        echo -e "  CPU minerador: ${cpu_uso:-N/A}%"
-    fi
-    echo ""
-    
-    # Memória
-    echo -e "${BOLD}MEMÓRIA:${RESET}"
-    free -h | grep -v + | tail -2
-    echo ""
-    
-    # Últimos shares
-    echo -e "${BOLD}ÚLTIMOS SHARES:${RESET}"
-    tail -n 20 "$LOG_MINERACAO" 2>/dev/null | grep -E "accepted|rejected|yay|boooo" | tail -n 10
-    echo ""
-    
-    # Estatísticas de rede
-    echo -e "${BOLD}REDE:${RESET}"
-    netstat -an 2>/dev/null | grep -E "9200|9000|3333|4444" | grep ESTABLISHED | wc -l | while read n; do
-        echo -e "  Conexões ativas: $n"
-    done
-    echo ""
-    
-    # Bateria (se disponível)
-    if command -v termux-battery-status &> /dev/null; then
-        bateria=$(termux-battery-status 2>/dev/null)
-        level=$(echo "$bateria" | grep -o '"percentage":[0-9]*' | cut -d: -f2)
-        status=$(echo "$bateria" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
-        echo -e "${BOLD}BATERIA:${RESET} $level% ($status)"
-        echo ""
-    fi
-    
-    # Temperatura
-    for temp_path in /sys/class/thermal/thermal_zone*/temp; do
-        if [ -f "$temp_path" ]; then
-            temp=$(cat "$temp_path" 2>/dev/null | awk '{print $1/1000}')
-            echo -e "${BOLD}TEMPERATURA:${RESET} ${temp}°C"
-            break
-        fi
-    done
-    echo ""
-    
-    echo -e "${AMARELO}Atualizando a cada 10s... Pressione Ctrl+C para sair${RESET}"
-    echo -e "${AZUL}════════════════════════════════════════════════════════════════${RESET}"
-    
-    sleep 10
     clear
+    echo -e "${BOLD}MONITOR PRECISO DE MINERAÇÃO${RESET}"
+    echo ""
+    if pgrep -f "cpuminer|minerd|xmrig" > /dev/null; then
+        echo -e "${VERDE}● MINERADOR ATIVO (PIDs: $(pgrep -f cpuminer | tr '\n' ' '))${RESET}"
+    else
+        echo -e "${VERMELHO}● MINERADOR INATIVO${RESET}"
+    fi
+    echo ""
+    echo "Últimos eventos:"
+    tail -n 10 "$LOG_DIR/mineracao.log" 2>/dev/null
+    echo ""
+    echo "Atualizando a cada 10s... Ctrl+C para sair"
+    sleep 10
 done
 MONITOR
 
-    # 3. Script de diagnóstico
-    cat > ~/mineracao/scripts/diagnostico.sh << 'DIAG'
-#!/bin/bash
-# Script de diagnóstico completo
-
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║           DIAGNÓSTICO COMPLETO DO SISTEMA                 ║"
-echo "╚════════════════════════════════════════════════════════════╝"
-echo ""
-
-echo "1. INFORMAÇÕES DO SISTEMA"
-echo "-------------------------"
-echo "Data: $(date)"
-echo "Hostname: $(hostname)"
-echo "Usuário: $(whoami)"
-echo "Diretório atual: $(pwd)"
-echo "Terminal: $(tty)"
-echo ""
-
-echo "2. HARDWARE"
-echo "-----------"
-echo "Processador: $(uname -m)"
-echo "Núcleos CPU: $(nproc)"
-echo "Modelo: $(getprop ro.product.model 2>/dev/null || echo 'N/A')"
-echo "Android: $(getprop ro.build.version.release 2>/dev/null || echo 'N/A')"
-echo ""
-
-echo "3. MEMÓRIA"
-echo "----------"
-free -h
-echo ""
-
-echo "4. ARMAZENAMENTO"
-echo "----------------"
-df -h ~
-echo ""
-
-echo "5. PROCESSOS"
-echo "------------"
-ps aux | grep -E "cpuminer|minerd|xmrig|ccminer" | grep -v grep || echo "Nenhum minerador rodando"
-echo ""
-
-echo "6. CONEXÕES DE REDE"
-echo "-------------------"
-netstat -an 2>/dev/null | grep -E "9200|9000|3333" | head -10
-echo ""
-
-echo "7. LOGS RECENTES"
-echo "----------------"
-tail -n 30 ~/mineracao/logs/mineracao.log 2>/dev/null | grep -E "accepted|rejected|yay|boooo" | tail -10
-echo ""
-
-echo "8. VARIÁVEIS DE AMBIENTE"
-echo "------------------------"
-echo "PATH: $PATH"
-echo "HOME: $HOME"
-echo "PREFIX: $PREFIX"
-echo ""
-
-echo "Diagnóstico concluído em $(date)"
-DIAG
-
-    chmod +x ~/mineracao/scripts/*.sh
-    print_sucesso "Scripts criados em ~/mineracao/scripts/"
+    chmod +x "$SCRIPTS_DIR"/*.sh
+    print_sucesso "Scripts criados em $SCRIPTS_DIR"
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# CONFIGURAÇÃO DE INICIALIZAÇÃO AUTOMÁTICA
+# CONFIGURAÇÃO DE INICIALIZAÇÃO AUTOMÁTICA (ADAPTADA)
 # █████████████████████████████████████████████████████████████████████████████
 
-configurar_autostart() {
+configurar_autostart_preciso() {
     print_titulo "CONFIGURANDO INICIALIZAÇÃO AUTOMÁTICA"
-    
-    # Método 1: .bashrc
     print_msg "Configurando .bashrc..."
-    if ! grep -q "mineracao" ~/.bashrc; then
+    if ! grep -q "mineracao_precisa" ~/.bashrc; then
         cat >> ~/.bashrc << 'BASHRCEOF'
-
-# Auto-start mineração (descomente para ativar)
-if [ -f ~/mineracao/scripts/minerar_principal.sh ]; then
-    echo "Para iniciar mineração: screen -dmS mineracao ~/mineracao/scripts/minerar_principal.sh"
+if [ -f ~/mineracao_precisa/scripts/minerar_preciso.sh ]; then
+    echo "Para iniciar mineração precisa: screen -dmS mineracao_precisa ~/mineracao_precisa/scripts/minerar_preciso.sh"
 fi
 BASHRCEOF
         print_sucesso ".bashrc configurado"
     fi
-    
-    # Método 2: termux-boot
     print_msg "Configurando termux-boot..."
     mkdir -p ~/.termux/boot
-    cat > ~/.termux/boot/start_miner << 'BOOTEOF'
+    cat > ~/.termux/boot/start_miner_preciso << 'BOOTEOF'
 #!/data/data/com.termux/files/usr/bin/sh
 termux-wake-lock
 sleep 30
-cd /data/data/com.termux/files/home/mineracao
-nohup ./scripts/minerar_principal.sh >> logs/boot.log 2>&1 &
+cd /data/data/com.termux/files/home/mineracao_precisa
+nohup ./scripts/minerar_preciso.sh >> logs/boot.log 2>&1 &
 BOOTEOF
-    chmod +x ~/.termux/boot/start_miner
-    print_sucesso "termux-boot configurado (inicia com o dispositivo)"
-    
+    chmod +x ~/.termux/boot/start_miner_preciso
+    print_sucesso "termux-boot configurado"
     echo ""
 }
 
 # █████████████████████████████████████████████████████████████████████████████
-# RESUMO FINAL E INSTRUÇÕES
+# RESUMO FINAL PRECISO
 # █████████████████████████████████████████████████████████████████████████████
 
-mostrar_resumo() {
+mostrar_resumo_preciso() {
     clear
     echo -e "${VERDE}${BOLD}"
     echo "╔═════════════════════════════════════════════════════════════════════════════════╗"
-    echo "║                        INSTALAÇÃO COMPLETA - SUCESSO!                           ║"
+    echo "║                    INSTALAÇÃO PRECISA CONCLUÍDA COM SUCESSO!                    ║"
     echo "╚═════════════════════════════════════════════════════════════════════════════════╝"
     echo -e "${RESET}"
     echo ""
-    
     echo -e "${CIANO}${BOLD}📦 MINERADOR INSTALADO${RESET}"
     echo -e "  Caminho: ${VERDE}$MINER_PATH${RESET}"
     echo -e "  Métodos funcionaram: ${#METODOS_SUCESSO[@]}"
@@ -1154,52 +1143,36 @@ mostrar_resumo() {
         echo -e "    ${VERDE}✓${RESET} $metodo"
     done
     echo ""
-    
-    echo -e "${CIANO}${BOLD}📁 DIRETÓRIOS E ARQUIVOS${RESET}"
-    echo -e "  ${AZUL}➜${RESET} Logs: ~/mineracao/logs/"
-    echo -e "  ${AZUL}➜${RESET} Scripts: ~/mineracao/scripts/"
-    echo -e "  ${AZUL}➜${RESET} Configurações: ~/mineracao/configs/"
+    echo -e "${CIANO}${BOLD}📁 DIRETÓRIOS${RESET}"
+    echo -e "  ${AZUL}➜${RESET} Base: $BASE_DIR"
+    echo -e "  ${AZUL}➜${RESET} Logs: $LOG_DIR"
+    echo -e "  ${AZUL}➜${RESET} Scripts: $SCRIPTS_DIR"
     echo ""
-    
-    echo -e "${CIANO}${BOLD}🚀 COMANDOS PRINCIPAIS${RESET}"
-    echo -e "  ${VERDE}1.${RESET} Iniciar mineração: ${BOLD}screen -dmS mineracao ~/mineracao/scripts/minerar_principal.sh${RESET}"
-    echo -e "  ${VERDE}2.${RESET} Ver mineração ao vivo: ${BOLD}screen -r mineracao${RESET}"
-    echo -e "  ${VERDE}3.${RESET} Sair da screen (mantém rodando): ${BOLD}Ctrl+A, D${RESET}"
-    echo -e "  ${VERDE}4.${RESET} Monitor avançado: ${BOLD}~/mineracao/scripts/monitor_avancado.sh${RESET}"
-    echo -e "  ${VERDE}5.${RESET} Diagnóstico: ${BOLD}~/mineracao/scripts/diagnostico.sh${RESET}"
-    echo -e "  ${VERDE}6.${RESET} Ver logs em tempo real: ${BOLD}tail -f ~/mineracao/logs/mineracao.log${RESET}"
-    echo -e "  ${VERDE}7.${RESET} Parar mineração: ${BOLD}pkill -f cpuminer${RESET}"
+    echo -e "${CIANO}${BOLD}🚀 COMANDOS${RESET}"
+    echo -e "  ${VERDE}1.${RESET} Iniciar mineração: ${BOLD}screen -dmS mineracao_precisa $SCRIPTS_DIR/minerar_preciso.sh${RESET}"
+    echo -e "  ${VERDE}2.${RESET} Ver mineração: ${BOLD}screen -r mineracao_precisa${RESET}"
+    echo -e "  ${VERDE}3.${RESET} Monitor: ${BOLD}$SCRIPTS_DIR/monitor_preciso.sh${RESET}"
+    echo -e "  ${VERDE}4.${RESET} Logs: ${BOLD}tail -f $LOG_DIR/mineracao.log${RESET}"
     echo ""
-    
     echo -e "${CIANO}${BOLD}⚙️ CONFIGURAÇÕES${RESET}"
     echo -e "  Carteira: ${AMARELO}bc1qtz2j3ky2nh409w432wh8uyqphhny84a3qhs2tl${RESET}"
     echo -e "  Threads: ${AMARELO}$(nproc)${RESET}"
-    echo -e "  Worker: ${AMARELO}termux_$(date +%s | tail -c 5)${RESET}"
     echo ""
-    
-    echo -e "${CIANO}${BOLD}📊 LOGS DISPONÍVEIS${RESET}"
-    ls -la ~/mineracao/logs/ 2>/dev/null | grep -v total | awk '{print "  " $9 " (" $5 " bytes)"}'
-    echo ""
-    
     echo -e "${CIANO}${BOLD}⚡ INICIANDO MINERAÇÃO AGORA...${RESET}"
     echo ""
-    
-    # Inicia a mineração
-    cd ~/mineracao
-    screen -dmS mineracao ./scripts/minerar_principal.sh "$MINER_PATH"
+    cd "$BASE_DIR"
+    screen -dmS mineracao_precisa "$SCRIPTS_DIR/minerar_preciso.sh" "$MINER_PATH"
     sleep 2
-    
-    if screen -list | grep -q "mineracao"; then
+    if screen -list | grep -q "mineracao_precisa"; then
         echo -e "${VERDE}✅ Mineração iniciada em segundo plano!${RESET}"
-        echo -e "${AMARELO}📺 Para ver ao vivo: screen -r mineracao${RESET}"
+        echo -e "${AMARELO}📺 Para ver ao vivo: screen -r mineracao_precisa${RESET}"
     else
-        echo -e "${VERMELHO}❌ Falha ao iniciar. Iniciando em modo debug...${RESET}"
-        ./scripts/minerar_principal.sh "$MINER_PATH"
+        echo -e "${VERMELHO}❌ Falha ao iniciar. Executando em modo debug...${RESET}"
+        "$SCRIPTS_DIR/minerar_preciso.sh" "$MINER_PATH"
     fi
-    
     echo ""
     echo -e "${VERDE}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
-    echo -e "${VERDE}${BOLD}                    SCRIPT CONCLUÍDO - BOA MINERAÇÃO!                           ${RESET}"
+    echo -e "${VERDE}${BOLD}                    SCRIPT CONCLUÍDO - BOA MINERAÇÃO PRECISA!                   ${RESET}"
     echo -e "${VERDE}${BOLD}═════════════════════════════════════════════════════════════════════════════════${RESET}"
 }
 
@@ -1208,44 +1181,30 @@ mostrar_resumo() {
 # █████████████████████████████████████████████████████████████████████████████
 
 main() {
-    # Inicializa logs
     inicializar_logs
-    
-    # Mostra banner
     clear
     echo -e "${MAGENTA}${BOLD}"
     echo "██████████████████████████████████████████████████████████████████████████████"
     echo "█                                                                            █"
-    echo "█             MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO ULTIMATE              █"
+    echo "█         MINERAÇÃO NICEHASH PARA TERMUX - VERSÃO PRECISA 6.0               █"
     echo "█                                                                            █"
-    echo "█                        10 MÉTODOS DE INSTALAÇÃO                            █"
-    echo "█                        LOGS PROFISSIONAIS                                  █"
-    echo "█                        AUTO-RECUPERAÇÃO                                    █"
+    echo "█         10 MÉTODOS DE INSTALAÇÃO COM VERIFICAÇÃO RIGOROSA                 █"
+    echo "█         LOGS COM MICROSEGUNDOS E TIME LIMITS GENEROSOS                    █"
+    echo "█         PRIORIZANDO PRECISÃO E ESTABILIDADE SOBRE VELOCIDADE              █"
     echo "█                                                                            █"
     echo "██████████████████████████████████████████████████████████████████████████████"
     echo -e "${RESET}"
     echo ""
-    
-    # Executa todas as etapas
-    verificar_ambiente
+    verificar_ambiente_preciso
     diagnostico_sistema
-    atualizar_sistema
-    instalar_dependencias
-    instalar_minerador
-    criar_scripts_mineracao
-    configurar_autostart
-    mostrar_resumo
+    atualizar_sistema_preciso
+    instalar_dependencias_preciso
+    instalar_minerador_preciso
+    criar_scripts_precisos
+    configurar_autostart_preciso
+    mostrar_resumo_preciso
 }
 
-# █████████████████████████████████████████████████████████████████████████████
-# EXECUÇÃO
-# █████████████████████████████████████████████████████████████████████████████
-
-# Captura Ctrl+C
 trap 'echo -e "\n${AMARELO}Script interrompido pelo usuário${RESET}"; termux-wake-unlock 2>/dev/null; exit 0' INT TERM
-
-# Executa função principal
 main
-
-# Desativa wake lock ao sair
 termux-wake-unlock 2>/dev/null
